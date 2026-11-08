@@ -989,12 +989,12 @@ const ROOM = [-10.4, 3.5, -3.3, 3.7], PR = 0.28;
 const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
-  const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0) + walk.pad.s;
-  if (k.ArrowLeft) walk.yaw += 1.6 * dt; if (k.ArrowRight) walk.yaw -= 1.6 * dt;
-  const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw), rx = Math.cos(walk.yaw), rz = -Math.sin(walk.yaw);
-  const dx = (fx * f + rx * sd) * sp, dz = (fz * f + rz * sd) * sp;
+  const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
+  walk.yaw -= sd * 1.6 * dt;   // 左右：その場で回る
+  const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
+  const dx = fx * f * sp, dz = fz * f * sp;
   if (!hitAt(walk.pos.x + dx, walk.pos.z)) walk.pos.x += dx; if (!hitAt(walk.pos.x, walk.pos.z + dz)) walk.pos.z += dz;
-  const bob = (f || sd) ? Math.sin(vt * 9 * run) * 0.012 : 0;
+  const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
 }
 function setWalk(on) {
@@ -1003,11 +1003,11 @@ function setWalk(on) {
   else { controls.enabled = true; camera.fov = 45; camera.updateProjectionMatrix(); camera.rotation.order = 'XYZ'; const sv = walk.saved || [new THREE.Vector3(-5.6, 2.4, 5.2), new THREE.Vector3(0, 1.4, 0)]; camera.position.copy(sv[0]); controls.target.copy(sv[1]); camera.up.set(0, 1, 0); camera.lookAt(sv[1]); controls.update(); }
 }
 const pad = document.createElement('div'); pad.className = 'hud'; pad.style.cssText = 'right:14px;bottom:14px;display:none;user-select:none;touch-action:none;padding:6px';
-pad.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:4px"><span></span><button data-p="f1">▲</button><span></span><button data-p="s-1">◀</button><button data-p="f-1">▼</button><button data-p="s1">▶</button></div><div style="font-size:11px;text-align:center;color:#bcd">移動パッド</div>';
+pad.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:4px"><span></span><button data-p="f1">▲</button><span></span><button data-p="s-1">◀</button><button data-p="f-1">▼</button><button data-p="s1">▶</button></div><div style="font-size:11px;text-align:center;color:#bcd">▲▼：前後　◀▶：その場で回る</div>';
 document.body.appendChild(pad);
 pad.querySelectorAll('button').forEach(b => { const [t, v] = [b.dataset.p[0], +b.dataset.p.slice(1)]; const set = on => { walk.pad[t] = on ? v : 0; }; b.style.fontSize = '20px'; b.onpointerdown = e => { e.preventDefault(); set(true); b.setPointerCapture(e.pointerId); }; b.onpointerup = b.onpointercancel = () => set(false); });
 const hint = document.createElement('div'); hint.className = 'hud'; hint.style.cssText = 'left:50%;top:70px;transform:translateX(-50%);display:none;text-align:center;pointer-events:none';
-hint.innerHTML = '<b>歩く視点</b><br>W A S D／矢印キー：移動　Shift：小走り　<br>ドラッグ：見回す　画面右下のパッド：移動（スマホ）';
+hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
 $('bw').onclick = () => setWalk(!walk.on);
