@@ -771,18 +771,18 @@ panelNames.forEach((nm, i) => buildCabinet(i, -8.3 + i * 0.95, nm));
 const lv = new THREE.Group(); lv.position.set(-3.0, 3.0, -3.36); room.add(lv);
 bx(-0.65, 0.65, -0.5, 0.5, -0.04, 0.04, M(0x6f8f96, 0.4, 0.6), lv);
 for (let i = 0; i < 9; i++) bx(-0.6, 0.6, -0.45 + i * 0.105, -0.4 + i * 0.105, 0.04, 0.1, M(0xe0dccb, 0.2, 0.7), lv);
-const rack = new THREE.Group(); rack.position.set(-9.85, 0, -1.7); rack.rotation.y = Math.PI / 2; room.add(rack);
+const rack = new THREE.Group(); rack.position.set(-9.3, 0, -3.08); room.add(rack);
 const teal = M(0x79a59f, 0.4, 0.6);
 for (const x of [-0.5, 0.5]) for (const z of [-0.28, 0.28]) bx(x - 0.03, x + 0.03, 0, 2.0, z - 0.03, z + 0.03, teal, rack);
 for (const y of [0.6, 1.2, 1.8]) { bx(-0.5, 0.5, y, y + 0.05, -0.3, 0.3, teal, rack); bx(-0.42, 0.42, y + 0.05, y + 0.3, -0.25, 0.25, M(0x8fb0b0, 0.3, 0.6), rack); }
-bx(-9.4, -8.5, 0, 0.3, -3.3, -2.7, M(0xf0f0ee, 0, 0.8), room);                  // 白い台
-bx(-10.4, -9.95, 0, 2.0, -3.3, -2.35, M(0xbfc3b8, 0.2, 0.7), room); bx(-9.97, -9.93, 0, 2.0, -2.85, -2.81, M(0x8a8e84), room); for (const z of [-2.9, -2.76]) bx(-9.98, -9.93, 0.95, 1.1, z - 0.01, z + 0.01, chrome, room);
+bx(-7.5, -6.6, 0, 0.3, -3.3, -2.7, M(0xf0f0ee, 0, 0.8), room);                  // 白い台
+bx(-8.75, -7.7, 0, 2.0, -3.4, -2.95, M(0xbfc3b8, 0.2, 0.7), room); bx(-8.22, -8.18, 0, 2.0, -2.97, -2.93, M(0x8a8e84), room); for (const x of [-8.28, -8.12]) bx(x - 0.01, x + 0.01, 0.95, 1.1, -2.98, -2.93, chrome, room);
 bx(-5.95, -4.65, 0, 2.55, -3.4, -3.36, M(0xc8c4a8, 0, 0.9), room); bx(-5.8, -4.8, 0, 2.15, -3.36, -3.3, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.31, -5.29, 0, 2.15, -3.3, -3.29, M(0x888c86), room); for (const x of [-5.36, -5.24]) bx(x - 0.01, x + 0.01, 1.0, 1.15, -3.31, -3.27, chrome, room);
 { const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('入口', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
 { const n2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.42), M(0xf2f2f0, 0, 0.8)); n2.position.set(-0.75, 1.55, -3.285); n2.rotation.y = Math.PI; n2.visible = false; room.add(n2); }
 bx(0.2, 1.1, 0, 0.75, -3.4, -3.05, M(0xe9dfc0, 0.1, 0.7), room); for (let i = 0; i < 6; i++) bx(0.35, 0.95, 0.5 + i * 0.03, 0.52 + i * 0.03, -3.05, -3.04, M(0x9a9482), room); // 温風機
 bx(0.0, 0.14, 1.9, 2.04, -3.4, -3.33, M(0xc0141a, 0, 0.5), room);               // 火災報知機
-cyl(0.28, 0.25, M(0x1a1a1c), -8.0, 0.13, -3.0, 'y', room, 28); cyl(0.28, 0.25, M(0x1a1a1c), -8.0, 0.38, -3.0, 'y', room, 28); cyl(0.2, 0.32, M(0x1d6b40), -7.3, 0.16, -3.0, 'y', room, 20);
+cyl(0.28, 0.25, M(0x1a1a1c), -3.6, 0.13, -3.0, 'y', room, 28); cyl(0.28, 0.25, M(0x1a1a1c), -3.6, 0.38, -3.0, 'y', room, 28); cyl(0.2, 0.32, M(0x1d6b40), -4.1, 0.16, -3.0, 'y', room, 20);
 bx(-1.75, -1.35, 0, 0.25, -2.55, -2.15, M(0xd8a95a, 0, 0.9), room);               // 段ボール
 bx(-1.25, -0.85, 0, 0.24, -2.45, -2.05, M(0x2b6dc4, 0, 0.7), room);               // 青いコンテナ
 // 消火器・はしご台車（ステンレス）
@@ -986,7 +986,7 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 // ================= 歩く視点（一人称） =================
 const walk = { on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
 const BLOCKS = [[-3.2, 2.75, -1.55, 0.15], [-2.9, -1.55, -2.2, -1.48], [-1.55, -0.5, -2.6, -1.85], [-0.5, 1.0, -0.2, 0.8], [-0.5, 0.15, 0.5, 1.25], [-0.5, 1.0, -2.2, -1.2], [1.3, 3.1, -1.65, 0.25],
-  [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.7], [-10.4, -9.3, -2.3, -1.1], [-10.4, -9.9, -3.4, -2.3], [-9.4, -8.5, -3.4, -2.7], [-8.4, -6.9, -3.4, -2.6]];
+  [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.7], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 3.7], PR = 0.28;
 const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
 function walkStep(dt) {
