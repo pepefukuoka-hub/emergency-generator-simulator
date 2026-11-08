@@ -1343,7 +1343,7 @@ function rtTick(dt) {
   if (ready && (on || prev)) {
     if (t.g === 'ocr') {
       const Is = d.Is * dv.Is, Ti = d.Iinst * dv.Inst, T3 = d.T300 * dv.T;
-      if (on) { if (lv >= Ti) rel.acc += dt / 0.045; else if (lv >= Is) { const Tm = RT.mode === 1 ? Math.min(Tcurve(lv / d.Is, T3), 0.6) : Tcurve(lv / d.Is, T3); rel.acc += dt / Math.min(Tm, 300); } else { rel.acc = 0; if (RT.mode === 1 && lv < Is * 0.9) rel.op = false; } }
+      if (on) { if (lv >= Ti) rel.acc += dt / 0.045; else if (lv >= Is) { const Tm = RT.mode === 1 ? Math.min(Tcurve(lv / d.Is, T3), 0.25) : Tcurve(lv / d.Is, T3); rel.acc += dt / Math.min(Tm, 300); } else { rel.acc = 0; if (RT.mode === 1 && lv < Is * 0.9) rel.op = false; } }
     } else if (t.g === 'uvr') {
       const Vs = d.Vs * dv.V, Tt = d.T * dv.TV;
       if (lv >= Vs * 1.02) rel.armed = true;
