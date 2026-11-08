@@ -72,7 +72,7 @@ const mat = {
   perf: new THREE.MeshStandardMaterial({ map: perfTex, alphaTest: 0.5, side: THREE.DoubleSide, metalness: 0.3, roughness: 0.6 }),
   cable: M(0x2c2f33, 0.2, 0.8), floor: M(0xffffff, 0, 0.95, { map: concreteTex([6, 6]) }),
 };
-const gen = new THREE.Group(); scene.add(gen);
+const gen = new THREE.Group(); gen.position.z = -0.7; scene.add(gen);
 const blkG = M(0x14161a, 0.35, 0.25), chrome = M(0xdfe3e6, 1, 0.18), silv = M(0xb9bdc2, 0.9, 0.3);
 const bx = (x0, x1, y0, y1, z0, z1, m, p = gen) => {
   const o = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m);
@@ -90,13 +90,14 @@ const pipe = (pts, r, m, p = gen) => {
 
 // ---------- 室（機械室） ----------
 const room = new THREE.Group(); scene.add(room);
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(14.1, 7.2), mat.floor);
-floor.rotation.x = -Math.PI / 2; floor.position.set(-3.45, 0, 0.2); floor.receiveShadow = true; room.add(floor);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 7.2), mat.floor);
+floor.rotation.x = -Math.PI / 2; floor.position.set(-4.7, 0, 0.2); floor.receiveShadow = true; room.add(floor);
 const wallMat = M(0xffffff, 0, 1, { map: concreteTex([5, 2]), side: THREE.BackSide });
-const walls = new THREE.Mesh(new THREE.BoxGeometry(14.1, 4.4, 7.2), wallMat); walls.position.set(-3.45, 2.2, 0.2); room.add(walls);
+const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 7.2), wallMat); walls.position.set(-4.7, 2.2, 0.2); room.add(walls);
 for (const [x0, x1, z0, z1] of [[-3.6, 3.2, -1.95, -1.85], [-3.6, 3.2, 2.0, 2.1], [-3.6, -3.5, -1.95, 2.1], [3.1, 3.2, -1.95, 2.1]])
   bx(x0, x1, 0, 0.01, z0, z1, mat.black, room);
 const lamp = M(0xffffff, 0, 0.3, { emissive: 0xffffff, emissiveIntensity: 1 });
+for (const z of [-1.6, 1.6]) bx(-12.8, -11.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
 for (const z of [-1.6, 1.6]) for (const x of [-10.0, -8.4, -6.8, -5.2, -3.6, -2.0, -0.4, 1.2, 2.8]) bx(x - 0.6, x + 0.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
 
 
@@ -749,7 +750,8 @@ function doorBack(dg, rec, cx) {
 function buildCabinet(i, x, nm) {
   const tx = panelTex(nm, i), rec = tx.userData.rec, hingeX = x - 0.465, W = 0.93;
   // 盤の躯体（背板・側板・天板・底・前枠）
-  bx(x - 0.47, x + 0.47, 0, 2.3, -3.38, -3.36, sheetM, pnl); bx(x - 0.47, x - 0.45, 0, 2.3, -3.38, -2.88, cream, pnl); bx(x + 0.45, x + 0.47, 0, 2.3, -3.38, -2.88, cream, pnl);
+  bx(x - 0.47, x + 0.47, 0, 2.3, -3.38, -3.36, sheetM, pnl); bx(x - 0.47, x - 0.45, 0, 2.3, -4.88, -2.88, cream, pnl); bx(x + 0.45, x + 0.47, 0, 2.3, -4.88, -2.88, cream, pnl);
+  bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.28, 2.3, -3.38, -2.88, cream, pnl); bx(x - 0.47, x + 0.47, 0, 0.12, -3.38, -2.88, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.25, 2.3, -2.9, -2.875, cream, pnl); bx(x - 0.47, x + 0.47, 0.1, 0.14, -2.9, -2.875, cream, pnl);
   const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i);
@@ -983,9 +985,9 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 
 // ================= 歩く視点（一人称） =================
 const walk = { on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
-const BLOCKS = [[-3.2, 2.75, -0.85, 0.85], [-2.9, -1.55, -1.5, -0.78], [-1.55, -0.5, -1.9, -1.15], [-0.5, 1.0, 0.5, 1.5], [-0.5, 0.15, 1.2, 1.95], [-0.5, 1.0, -1.5, -0.5], [1.3, 3.1, -0.95, 0.95],
-  [1.7, 3.3, 2.0, 3.6], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-10.4, -9.5, -1.2, 3.7], [-10.4, -9.3, -2.3, -1.1], [-10.4, -9.9, -3.4, -2.3], [-9.4, -8.5, -3.4, -2.7], [-8.4, -6.9, -3.4, -2.6]];
-const ROOM = [-10.4, 3.5, -3.3, 3.7], PR = 0.28;
+const BLOCKS = [[-3.2, 2.75, -1.55, 0.15], [-2.9, -1.55, -2.2, -1.48], [-1.55, -0.5, -2.6, -1.85], [-0.5, 1.0, -0.2, 0.8], [-0.5, 0.15, 0.5, 1.25], [-0.5, 1.0, -2.2, -1.2], [1.3, 3.1, -1.65, 0.25],
+  [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.7], [-10.4, -9.3, -2.3, -1.1], [-10.4, -9.9, -3.4, -2.3], [-9.4, -8.5, -3.4, -2.7], [-8.4, -6.9, -3.4, -2.6]];
+const ROOM = [-12.9, 3.5, -3.3, 3.7], PR = 0.28;
 const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
