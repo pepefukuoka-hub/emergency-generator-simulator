@@ -90,14 +90,14 @@ const pipe = (pts, r, m, p = gen) => {
 
 // ---------- 室（機械室） ----------
 const room = new THREE.Group(); scene.add(room);
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 7.2), mat.floor);
-floor.rotation.x = -Math.PI / 2; floor.position.set(-4.7, 0, 0.2); floor.receiveShadow = true; room.add(floor);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 8.0), mat.floor);
+floor.rotation.x = -Math.PI / 2; floor.position.set(-4.7, 0, 0.6); floor.receiveShadow = true; room.add(floor);
 const wallMat = M(0xffffff, 0, 1, { map: concreteTex([5, 2]), side: THREE.BackSide });
-const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 7.2), wallMat); walls.position.set(-4.7, 2.2, 0.2); room.add(walls);
+const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), wallMat); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
 for (const [x0, x1, z0, z1] of [[-3.6, 3.2, -1.95, -1.85], [-3.6, 3.2, 2.0, 2.1], [-3.6, -3.5, -1.95, 2.1], [3.1, 3.2, -1.95, 2.1]])
   bx(x0, x1, 0, 0.01, z0, z1, mat.black, room);
 const lamp = M(0xffffff, 0, 0.3, { emissive: 0xffffff, emissiveIntensity: 1 });
-for (const z of [-1.6, 1.6]) bx(-12.8, -11.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
+for (const z of [-1.6, 1.6, 3.8]) bx(-12.8, -11.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
 for (const z of [-1.6, 1.6]) for (const x of [-10.0, -8.4, -6.8, -5.2, -3.6, -2.0, -0.4, 1.2, 2.8]) bx(x - 0.6, x + 0.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
 
 
@@ -326,7 +326,7 @@ pipe([[0.45, 1.8, -0.42], [0.6, 1.8, -0.5], [0.6, 0.5, -0.55]], 0.025, mat.red, 
 // ---------- 機械室の付帯設備（ビデオより） ----------
 const conc = M(0x9a9ea2, 0.05, 0.9), beige = M(0xd9d0b4, 0.2, 0.6), duct = M(0x9aa0a4, 0.5, 0.45);
 // 天井のはり
-for (const x of [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0]) bx(x - 0.15, x + 0.15, 4.0, 4.4, -3.4, 3.8, M(0x5a5d60, 0, 0.95), room);
+for (const x of [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0]) bx(x - 0.15, x + 0.15, 4.0, 4.4, -3.4, 4.6, M(0x5a5d60, 0, 0.95), room);
 // 左壁（-z側）の下部ベージュ帯と、床の縞鋼板
 bx(-10.5, 3.6, 0, 1.25, -3.4, -3.37, M(0x9c9d83, 0, 0.9), room);
 bx(-4.1, 3.6, 0, 0.012, -3.3, -2.5, mat.plate, room); bx(-10.4, -9.5, 0, 0.012, -3.3, -1.0, mat.plate, room);
@@ -986,8 +986,8 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 // ================= 歩く視点（一人称） =================
 const walk = { on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
 const BLOCKS = [[-3.2, 2.75, -1.55, 0.15], [-2.9, -1.55, -2.2, -1.48], [-1.55, -0.5, -2.6, -1.85], [-0.5, 1.0, -0.2, 0.8], [-0.5, 0.15, 0.5, 1.25], [-0.5, 1.0, -2.2, -1.2], [1.3, 3.1, -1.65, 0.25],
-  [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.7], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
-const ROOM = [-12.9, 3.5, -3.3, 3.7], PR = 0.28;
+  [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
+const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
 const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
