@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RELAY_PHOTO, TERM_PHOTO } from './relay-photos.js';
+import { DESK_PHOTO } from './desk-photo.js';
 import { paintRotary, paintMeter, syncTesterControls } from './relay-instruments.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -296,6 +297,10 @@ function gauge(x, y, r, max) {
 gauge(-0.24, 0.1, 0.075, 0.75); gauge(0.05, 0.1, 0.05, 0.6); gauge(0.17, 0.1, 0.05, 0.5); gauge(0.29, 0.1, 0.05, 0.55);
 bx(-0.31, -0.17, -0.2, -0.06, 0, 0.01, mat.black, desk);
 const knob = bx(-0.255, -0.225, -0.17, -0.09, 0.01, 0.04, mat.black, desk); knob.rotation.z = -0.5;
+// 天板は、実機の写真（真上に補正）を貼る。回転計が左、圧力計3つが右、切替スイッチが回転計の下。
+desk.children.forEach(o => { o.visible = false; });
+{ const t = new THREE.TextureLoader().load(DESK_PHOTO.uri); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9 * DESK_PHOTO.h / DESK_PHOTO.w * 0.9 / 0.9), new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.1 })); top.position.z = 0.0015; top.receiveShadow = true; desk.add(top); }
 // 金網ガード（危険表示付）：写真1・3より、発電機側面（-z側）で操作盤の隣（反駆動側寄り）
 const cage = new THREE.Group(); cage.position.set(-2.2, 0, -1.12); cage.rotation.y = 0; gen.add(cage);
 const CW = 1.3, CD = 0.65, CH = 1.9;
