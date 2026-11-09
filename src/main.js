@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { RELAY_PHOTO } from './relay-photos.js';
+import { RELAY_PHOTO, TERM_PHOTO } from './relay-photos.js';
 import { paintRotary, paintMeter, syncTesterControls } from './relay-instruments.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -482,7 +482,7 @@ function dialMark(g, cx, cy, R, vals, a0 = 225, a1 = -45, fs = 15) {
 }
 const photoTex = {};
 function relayFace(type, tag) {
-  const pk = type === 'ovr' ? (tag === '59G' ? 'ovr59' : null) : type, ph = pk && RELAY_PHOTO[pk];
+  const pk = type === 'ovr' ? (tag === '59G' ? 'ovr59' : 'ovr27') : type, ph = pk && RELAY_PHOTO[pk];
   if (ph) { const t = photoTex[pk] || (photoTex[pk] = (() => { const x = new THREE.TextureLoader().load(ph.uri); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 4; return x; })()); return { tex: t, W: ph.w, H: ph.h, dials: [], vert: type === 'lvg', ex: [], aspect: ph.w / ph.h }; }
   const vert = type === 'elr' || type === 'lvg', W = vert ? 280 : 400, H = vert ? 440 : 500, dials = [];
   const Q = 2, ex = [];
@@ -570,10 +570,13 @@ function blockFace(t, red) {
     if (red) { g.fillStyle = '#d11'; g.fillRect(14, 110, 132, 22); g.fillStyle = '#fff'; g.font = 'bold 18px sans-serif'; g.fillText('PT', 80, 122); } else { g.fillStyle = '#ddd'; g.font = 'bold 20px sans-serif'; g.fillText('CT', 80, 122); }
   });
 }
+const termTex = {};
+function termMap(t) { const k = t.startsWith('EVT3') ? 'evt3' : t.startsWith('EVT') ? 'evt2' : t.startsWith('VT') ? 'vt' : t.startsWith('CT') ? 'ct' : null; if (!k) return null; return termTex[k] || (termTex[k] = (() => { const x = new THREE.TextureLoader().load(TERM_PHOTO[k].uri); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 4; return x; })()); }
 function block3D(t, red) {
   const g3 = new THREE.Group();
   g3.add(ext(rrShape(0.085, 0.075, 0.006), 0.022, blkG, 0.002));
-  const fc = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.062), new THREE.MeshStandardMaterial({ map: blockFace(t, red), roughness: 0.4 })); fc.position.z = 0.0245; g3.add(fc);
+  const tm = termMap(t);
+  const fc = new THREE.Mesh(new THREE.PlaneGeometry(tm ? 0.084 : 0.07, tm ? 0.082 : 0.062), new THREE.MeshStandardMaterial({ map: tm || blockFace(t, red), roughness: 0.4 })); fc.position.z = 0.0245; g3.add(fc);
   const cv = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 0.016), new THREE.MeshPhysicalMaterial({ color: 0xcfe0e8, transparent: true, opacity: 0.35, roughness: 0.05, depthWrite: false })); cv.position.set(0, -0.002, 0.03); cv.rotation.x = -0.25; g3.add(cv);
   return g3;
 }
