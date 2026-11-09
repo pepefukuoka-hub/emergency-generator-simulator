@@ -1163,7 +1163,8 @@ const caseM = M(0x9a8b6f, 0.2, 0.7), tableM = M(0xc2c6ca, 0.8, 0.35);
 function mkUnit(W, H, name) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const g = new THREE.Group(), tilt = new THREE.Group(); g.add(tilt); tilt.rotation.x = -0.85; tilt.position.y = 0.06;
+  // パネルを天板と平行にし、ケース底面（ローカル z=-0.091）を机の上に載せる。
+  const g = new THREE.Group(), tilt = new THREE.Group(); g.add(tilt); tilt.rotation.x = -Math.PI / 2; tilt.position.y = 0.091;
   const pw = 0.4, ph = pw * H / W;
   const body = new THREE.Mesh(new THREE.BoxGeometry(pw + 0.03, ph + 0.03, 0.09), caseM); body.position.z = -0.046; body.castShadow = true; tilt.add(body);
   const pane = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.2 })); pane.position.z = 0.001; tilt.add(pane);
@@ -1175,9 +1176,11 @@ const uM = mkUnit(1000, 700, 'PRT-3M'), uT = mkUnit(1000, 720, 'PRT-3TR');
 tset.add(uM); tset.add(uT);
 uM.rotation.y = uT.rotation.y = Math.PI / 2; uM.position.set(0, 0.78, -0.27); uT.position.set(0, 0.78, 0.27);
 tset.visible = false;
-const tableBlock = [0, 0, 0, 0]; BLOCKS.push(tableBlock);
+const tableBlock = [0, 0, 0, 0];
 function placeSet() {
-  const d = cur(), z = pz(d.panel); tset.position.set(-9.28, 0, z); tset.visible = true;
+  if (!RT.open) return;
+  const d = cur(), z = pz(d.panel); tset.position.set(-9.28, 0, z); tset.visible = true; leadGrp.visible = true;
+  if (!BLOCKS.includes(tableBlock)) BLOCKS.push(tableBlock);
   tableBlock[0] = -9.65; tableBlock[1] = -8.9; tableBlock[2] = z - 0.65; tableBlock[3] = z + 0.65; RT.leadsDirty = true;
 }
 function termWorld(unit, px, py) { const u = unit.userData; const v = new THREE.Vector3((px / u.W - 0.5) * u.pw, (0.5 - py / u.H) * u.ph, 0.012); return u.pane.localToWorld(v); }
@@ -1366,9 +1369,9 @@ function rtTick(dt) {
   RT.pt += dt; if (RT.open || RT.pt < 0.3) { if (RT.pt > 0.07) { RT.pt = 0; drawM(); drawT(); RT.dirty = false; } }
 }
 // ---------- 配線（3D のリード線） ----------
-const leadGrp = new THREE.Group(); scene.add(leadGrp);
+const leadGrp = new THREE.Group(); leadGrp.visible = false; scene.add(leadGrp);
 function rebuildLeads() {
-  while (leadGrp.children.length) { const o = leadGrp.children.pop(); o.geometry.dispose(); }
+  while (leadGrp.children.length) { const o = leadGrp.children[0]; leadGrp.remove(o); o.geometry.dispose(); o.material.dispose(); }
   if (!tset.visible) return; const rel = RELAYS[RT.target]; if (!rel) return; scene.updateMatrixWorld(true);
   const tube = (pts, col, r = 0.0045) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.3), 40, r, 6), M(col, 0.1, 0.6)); m.castShadow = true; leadGrp.add(m); };
   for (const id of Object.keys(RT.leads)) { if (!RT.leads[id]) continue;
@@ -1377,7 +1380,7 @@ function rebuildLeads() {
     tube([A, A.clone().add(new THREE.Vector3(0.0, 0.07, 0.0)), mid, B.clone().add(new THREE.Vector3(0.18, -0.12, 0)), B], new THREE.Color(LC[id]).getHex());
   }
   if (RT.earth) { const A = termWorld(uT, 945, 36); tube([A, A.clone().add(new THREE.Vector3(0.05, 0.05, 0)), new THREE.Vector3(A.x + 0.12, 0.8, A.z + 0.1), new THREE.Vector3(A.x + 0.35, 0.06, A.z + 0.1)], 0x3fd163); }
-  if (RT.mc) { const A = termWorld(uM, 962, 66), B = termWorld(uT, 165, 120); const m = A.clone().lerp(B, 0.5); m.y = 0.62; m.x += 0.08; tube([A, A.clone().add(new THREE.Vector3(0.0, -0.04, 0)), m, B.clone().add(new THREE.Vector3(0.0, -0.04, 0)), B], 0x1b1b1f, 0.008); }
+  if (RT.mc) { const A = termWorld(uM, 962, 66), B = termWorld(uT, 165, 120); const m = A.clone().lerp(B, 0.5); m.y = Math.max(A.y, B.y) + 0.02; m.x += 0.08; tube([A, A.clone().add(new THREE.Vector3(0.0, 0.04, 0)), m, B.clone().add(new THREE.Vector3(0.0, 0.04, 0)), B], 0x1b1b1f, 0.008); }
 }
 // ---------- 操作 ----------
 const lockedRot = new Set(['rs', 'outr', 'am', 'sel', 'mode', 'io']);
@@ -1454,7 +1457,7 @@ css4.textContent = '#rtp{position:fixed;top:0;right:0;bottom:0;width:min(700px,1
 document.head.appendChild(css4);
 const rtp = document.createElement('div'); rtp.id = 'rtp'; document.body.appendChild(rtp);
 const rtBtn = document.createElement('button'); h1.insertAdjacentHTML('beforeend', ' <button id=bt style="background:#2563a8;color:#fff;font-weight:bold">🧪 継電器試験</button>');
-rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 閉じる</button></span></div><div class=rtbody>' +
+rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 終了して収納</button></span></div><div class=rtbody>' +
   '<div>試験対象：<select id=rtTarget></select> 試験項目：<select id=rtTest></select> <label><input id=rtBad type=checkbox> 不良個体（判定を体験）</label></div><div id=rtLog></div>' +
   '<h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div class=info>ロータリー：つまみの左半分で戻る・右半分で進む　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
 const rtTargetSel = $('rtTarget'), rtTestSel = $('rtTest');
@@ -1524,8 +1527,19 @@ function rtRender() {
   $('rtGuide').innerHTML = guideHTML(); $('rtRec').innerHTML = recHTML(); $('rtRef').innerHTML = REFHTML;
   $('rtLog').innerHTML = RT.log.map(l => `<div class="lg ${l.lv}">${l.lv === 'e' ? '⚠ ' : l.lv === 'i' ? 'ℹ ' : '・'}${l.t}</div>`).join('');
 }
-function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); if (!tset.visible) selectTarget(RT.target); else placeSet(); RT.open = true; rtp.style.display = 'block'; rtp.classList.remove('min'); RT.guideDirty = true; flyTo([-7.3, 1.55, pz(cur().panel)], [-9.3, 0.9, pz(cur().panel)]); }
-function rtClose() { RT.open = false; rtp.style.display = 'none'; dwBtn.style.display = 'block'; }
+function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; flyTo([-7.3, 1.55, pz(cur().panel)], [-9.3, 0.9, pz(cur().panel)]); }
+function rtClose() {
+  // 収納で電気的な復旧手順を飛ばさない。記録・対象・設定は次回も保持する。
+  if (RT.reg !== 0 || RT.started || RT.applied || RT.counting || RT.nfb || Object.values(RT.leads).some(Boolean) || RT.iso.ctLift || RT.iso.vtLift || RT.iso.ctShort || RT.iso.tripLift) {
+    rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る';
+    rtMsg('収納前に、調整器0 → STOP → POWER OFF → リードを外す → 継電器の線を戻す → CT短絡（VT）を戻す → トリップ回路を戻す、の順で復旧してください。', 'e'); return;
+  }
+  RT.plug = RT.mc = RT.earth = RT.polOK = RT.pbPol = RT.hasPower = false; RT.polLamp = 'off'; RT.hold = null;
+  RT.open = false; tset.visible = leadGrp.visible = false;
+  const i = BLOCKS.indexOf(tableBlock); if (i !== -1) BLOCKS.splice(i, 1);
+  rebuildLeads(); RT.dirty = RT.guideDirty = true;
+  rtp.style.display = 'none'; dwBtn.style.display = 'block';
+}
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
 window.__rt = { RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 
