@@ -1222,14 +1222,14 @@ const LC = { R: '#ff4d3d', T: '#f2f2f2', E: '#3fd163', T1: '#4aa8ff', T2: '#b07b
 function drawM() {
   const g = uM.userData.cv.getContext('2d'), hits = HIT.M = [], c = RT.leads;
   g.clearRect(0, 0, 1000, 700); g.fillStyle = '#101113'; g.fillRect(0, 0, 1000, 700); g.fillStyle = '#17191c'; g.fillRect(0, 0, 1000, 130);
-  termPost(g, hits, 'T1', 150, 66, 'T1', c.T1, LC.T1); termPost(g, hits, 'T2', 240, 66, 'T2', c.T2, LC.T2); termPost(g, hits, 'P1', 350, 66, 'P1', c.P1, LC.P1); termPost(g, hits, 'P2', 440, 66, '(E)P2', c.P2, LC.P2);
-  termPost(g, hits, 'R', 590, 66, 'R', c.R, LC.R); termPost(g, hits, 'T', 670, 66, 'T', false, ''); termPost(g, hits, 'E', 750, 66, 'E', c.E, LC.E); togg(g, hits, 's7', 815, 66, RT.s7 === 0, 'R', 'T', '');
-  tLamp(g, 880, 60, RT.hasPower && RT.mc, '#ff5a20'); g.fillStyle = '#ff9d3a'; g.font = '18px sans-serif'; g.textAlign = 'center'; g.fillText('PL2', 880, 100); g.fillStyle = '#d9d9d9'; g.beginPath(); g.arc(950, 70, 34, 0, 7); g.fill(); g.fillStyle = '#6d7075'; g.beginPath(); g.arc(950, 70, 25, 0, 7); g.fill(); g.fillStyle = '#f4f4f4'; g.fillText('MC', 950, 124);
-  g.strokeStyle = '#ccc'; g.lineWidth = 2; g.strokeRect(445, 20, 150, 105); g.fillStyle = '#f4f4f4'; g.textAlign = 'center'; g.font = '19px sans-serif'; g.fillText('COUNTER', 520, 38);
+  termPost(g, hits, 'T1', 90, 66, 'T1', c.T1, LC.T1); termPost(g, hits, 'T2', 170, 66, 'T2', c.T2, LC.T2); termPost(g, hits, 'P1', 255, 66, 'P1', c.P1, LC.P1); termPost(g, hits, 'P2', 335, 66, '(E)P2', c.P2, LC.P2);
+  termPost(g, hits, 'R', 640, 66, 'R', c.R, LC.R); termPost(g, hits, 'T', 715, 66, 'T', false, ''); termPost(g, hits, 'E', 790, 66, 'E', c.E, LC.E); togg(g, hits, 's7', 850, 66, RT.s7 === 0, 'R', 'T', '');
+  tLamp(g, 903, 58, RT.hasPower && RT.mc, '#ff5a20'); g.fillStyle = '#ff9d3a'; g.font = '16px sans-serif'; g.textAlign = 'center'; g.fillText('PL2', 903, 96); g.fillStyle = '#d9d9d9'; g.beginPath(); g.arc(962, 66, 30, 0, 7); g.fill(); g.fillStyle = '#6d7075'; g.beginPath(); g.arc(962, 66, 22, 0, 7); g.fill(); g.fillStyle = '#f4f4f4'; g.fillText('MC', 962, 116);
+  g.strokeStyle = '#ccc'; g.lineWidth = 2; g.strokeRect(412, 16, 176, 110); g.fillStyle = '#f4f4f4'; g.textAlign = 'center'; g.font = '19px sans-serif'; g.fillText('COUNTER', 500, 34);
   const vmax = VRNG[RT.vr], amax = AMR[RT.am] || 50, vrows = VRNG, arows = [0.5, 1.5, 5, 15, 50];
   meterFace(g, 40, 160, 350, 215, 'V', vrows, RT.vr, RT.needleV, 'VOLTMETER', RT.Vv > vmax * 1.08);
   meterFace(g, 610, 160, 350, 215, 'A', arows, Math.max(0, RT.am - 1), RT.needleA, 'AMMETER', RT.am > 0 && RT.Iv > amax * 1.08);
-  const cw = 130, cx0 = 455; g.fillStyle = '#251126'; g.fillRect(cx0, 170, cw, 70); g.fillStyle = RT.cnt === 0 ? '#3a2340' : '#ff4a8a'; g.font = 'bold 40px monospace'; g.textAlign = 'center';
+  const cw = 150, cx0 = 425; g.fillStyle = '#251126'; g.fillRect(cx0, 170, cw, 70); g.fillStyle = RT.cnt === 0 ? '#3a2340' : '#ff4a8a'; g.font = 'bold 40px monospace'; g.textAlign = 'center';
   const t = RT.tCount, lim = RT.cnt === 1 ? 10 : 100; g.fillText(RT.cnt === 0 ? '' : RT.over ? '-----' : (RT.cnt === 1 ? t.toFixed(3) : t.toFixed(2)), cx0 + cw / 2, 208);
   g.fillStyle = '#ff9d3a'; g.font = '14px sans-serif'; g.textAlign = 'left'; g.fillText('OVER RANGE', 405, 262); g.textAlign = 'right'; g.fillText('SEC', 592, 262);
   togg(g, hits, 'cntR', 440, 305, RT.cnt === 2, '100S', '10S', 'RANGE'); g.fillStyle = '#ddd'; g.textAlign = 'left'; g.font = '15px sans-serif'; g.fillText(CNTN[RT.cnt] === 'OFF' ? '(OFF)' : '', 400, 340);
@@ -1294,7 +1294,7 @@ const testsFor = g => Object.keys(TESTS).filter(k => TESTS[k].g === g);
 const RT_PORTS = { R: 0, P1: 0, E: 1, P2: 1, T1: 2, T2: 3 };
 const LEADSET = { ocr: ['R', 'E', 'T1', 'T2'], uvr: ['P1', 'P2', 'T1', 'T2'], ovr: ['P1', 'P2', 'T1', 'T2'] };
 const LEADTXT = { R: '電流出力 R → 継電器 電流入力①', E: '電流出力 E → 継電器 電流入力②（共通）', P1: '電圧出力 P1 → 継電器 電圧入力①', P2: '電圧出力 (E)P2 → 継電器 電圧入力②', T1: 'TRIP T1 → 継電器 接点出力③', T2: 'TRIP T2 → 継電器 接点出力④' };
-const TERMX = { T1: 150, T2: 240, P1: 350, P2: 440, R: 590, T: 670, E: 750 };
+const TERMX = { T1: 90, T2: 170, P1: 255, P2: 335, R: 640, T: 715, E: 790 };
 function rtMsg(t, lv = 'w') { RT.log.unshift({ t, lv, at: performance.now() }); RT.log.length = Math.min(RT.log.length, 4); RT.guideDirty = true; }
 const grp = () => cur().type;
 const leadsOK = () => LEADSET[grp()].every(k => RT.leads[k]);
@@ -1373,11 +1373,11 @@ function rebuildLeads() {
   const tube = (pts, col, r = 0.0045) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.3), 40, r, 6), M(col, 0.1, 0.6)); m.castShadow = true; leadGrp.add(m); };
   for (const id of Object.keys(RT.leads)) { if (!RT.leads[id]) continue;
     const A = termWorld(uM, TERMX[id], 36), B = rel.localToWorld(rel.userData.ports[RT_PORTS[id]].clone());
-    const mid = A.clone().lerp(B, 0.5); mid.y = Math.min(A.y, B.y) - 0.28; mid.x = (A.x + B.x) / 2 + 0.06;
+    const mid = A.clone().lerp(B, 0.5); mid.y = Math.min(A.y, B.y) - 0.12; mid.x = Math.max(A.x, B.x) + 0.42;
     tube([A, A.clone().add(new THREE.Vector3(0.0, 0.07, 0.0)), mid, B.clone().add(new THREE.Vector3(0.18, -0.12, 0)), B], new THREE.Color(LC[id]).getHex());
   }
   if (RT.earth) { const A = termWorld(uT, 945, 36); tube([A, A.clone().add(new THREE.Vector3(0.05, 0.05, 0)), new THREE.Vector3(A.x + 0.12, 0.8, A.z + 0.1), new THREE.Vector3(A.x + 0.35, 0.06, A.z + 0.1)], 0x3fd163); }
-  if (RT.mc) { const A = termWorld(uM, 950, 70), B = termWorld(uT, 165, 120); const m = A.clone().lerp(B, 0.5); m.y = 0.62; m.x += 0.08; tube([A, A.clone().add(new THREE.Vector3(0.0, -0.04, 0)), m, B.clone().add(new THREE.Vector3(0.0, -0.04, 0)), B], 0x1b1b1f, 0.008); }
+  if (RT.mc) { const A = termWorld(uM, 962, 66), B = termWorld(uT, 165, 120); const m = A.clone().lerp(B, 0.5); m.y = 0.62; m.x += 0.08; tube([A, A.clone().add(new THREE.Vector3(0.0, -0.04, 0)), m, B.clone().add(new THREE.Vector3(0.0, -0.04, 0)), B], 0x1b1b1f, 0.008); }
 }
 // ---------- 操作 ----------
 const lockedRot = new Set(['rs', 'outr', 'am', 'sel', 'mode', 'io']);
@@ -1469,7 +1469,7 @@ function bindCanvas(cv, which) {
   let cur2 = null;
   const pos = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
   const find = ev => { const [x, y] = pos(ev); const list = HIT[which]; for (let i = list.length - 1; i >= 0; i--) { const h = list[i]; if (Math.hypot(x - h.x, y - h.y) <= h.r) return h; } return null; };
-  cv.addEventListener('pointerdown', ev => { const h = find(ev); if (!h) return; cv.setPointerCapture(ev.pointerId); cur2 = h; if (h.k === 'reg') { regFromEv(ev, cv, h); } else if (h.k === 'btn') rtDown(h); else rtClick(which, h, ev, cv); });
+  cv.addEventListener('pointerdown', ev => { const h = find(ev); if (!h) return; cv.setPointerCapture(ev.pointerId); cur2 = h; if (h.k === 'reg') { regFromEv(ev, cv, h); } else if (h.k === 'btn' && h.id !== 'plugflip') rtDown(h); else rtClick(which, h, ev, cv); });
   cv.addEventListener('pointermove', ev => { if (cur2 && cur2.k === 'reg' && ev.buttons) regFromEv(ev, cv, cur2); });
   cv.addEventListener('pointerup', () => { if (cur2 && cur2.k === 'btn') rtUp(cur2); cur2 = null; });
   cv.addEventListener('pointercancel', () => { if (cur2 && cur2.k === 'btn') rtUp(cur2); cur2 = null; });
