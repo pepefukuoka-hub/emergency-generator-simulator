@@ -359,20 +359,45 @@ bx(3.52, 3.6, 2.6, 3.4, -1.9, -1.1, M(0xb5babd, 0.4, 0.6), room);
 { const f = new THREE.Mesh(new THREE.CircleGeometry(0.33, 28), M(0x6e7479, 0.4, 0.6, { side: THREE.DoubleSide })); f.rotation.y = -Math.PI / 2; f.position.set(3.51, 3.0, -1.5); room.add(f); }
 // 燃料タンクの防油堤
 for (const [x0, x1, z0, z1] of [[1.55, 3.45, 2.0, 2.15], [1.55, 3.45, 3.45, 3.6], [1.55, 1.7, 2.0, 3.6], [3.3, 3.45, 2.0, 3.6]]) bx(x0, x1, 0, 0.18, z0, z1, conc, room);
-// 蓄電池設備（黄色い耐酸マットの区画・架台・配管）
+// 蓄電池設備（写真：鉛蓄電池12セル＝6個×2列、黒い枠、黄色の注液栓、触媒栓、番号札、「代表槽」札、+−端子と透明カバー、ベージュの鋼製架台、黄色の耐酸マット）
 const bat = new THREE.Group(); bat.position.set(-1.0, 0, 2.7); room.add(bat);
-for (const [x0, x1, z0, z1] of [[-0.95, 0.95, -0.6, -0.5], [-0.95, 0.95, 0.5, 0.6], [-0.95, -0.85, -0.6, 0.6], [0.85, 0.95, -0.6, 0.6]]) bx(x0, x1, 0, 0.12, z0, z1, conc, bat);
-bx(-0.85, 0.85, 0, 0.02, -0.5, 0.5, M(0xd6c94a, 0, 0.9), bat);
-for (const x of [-0.6, 0.6]) for (const z of [-0.3, 0.3]) bx(x - 0.03, x + 0.03, 0, 0.55, z - 0.03, z + 0.03, beige, bat);
-bx(-0.72, 0.72, 0.55, 0.6, -0.34, 0.34, beige, bat);
-bx(-0.7, 0.7, 0.6, 0.9, -0.3, 0.3, M(0x2a2e3a, 0.3, 0.4, { transparent: true, opacity: 0.9 }), bat);
-for (let i = 0; i < 12; i++) for (const z of [-0.14, 0.14]) {
-  const x = -0.64 + i * 0.116;
-  bx(x - 0.04, x + 0.04, 0.9, 0.96, z - 0.05, z + 0.05, M(0x1a1c20), bat);
-  cyl(0.028, 0.04, i % 3 === 0 ? mat.yellow : M(0x4a5a78, 0.2, 0.5), x, 0.98, z, 'y', bat, 12);
+for (const [x0, x1, z0, z1] of [[-0.85, 0.85, -0.6, -0.5], [-0.85, 0.85, 0.5, 0.6], [-0.85, -0.75, -0.6, 0.6], [0.75, 0.85, -0.6, 0.6]]) bx(x0, x1, 0, 0.12, z0, z1, conc, bat);
+bx(-0.75, 0.75, 0, 0.02, -0.5, 0.5, M(0xd6c94a, 0, 0.9), bat);   // 耐酸マット
+{
+  const stand = M(0xcfc6ae, 0.3, 0.55), jar = new THREE.MeshPhysicalMaterial({ color: 0x1a2550, transparent: true, opacity: 0.82, roughness: 0.12, metalness: 0, clearcoat: 0.6 });
+  const blk = M(0x101114, 0.2, 0.45), yel = M(0xe8c21a, 0, 0.45), cap = M(0x5a6f96, 0, 0.9), wht = M(0xf2f2f0, 0, 0.6);
+  const CW = 0.158, CD = 0.2, CH = 0.37, Y0 = 0.5;                  // セルの幅・奥行き・高さ、底の高さ
+  for (const x of [-0.58, 0.58]) for (const z of [-0.26, 0.26]) bx(x - 0.025, x + 0.025, 0, Y0 - 0.04, z - 0.025, z + 0.025, stand, bat);   // 脚
+  for (const z of [-0.26, 0.26]) bx(-0.64, 0.64, Y0 - 0.1, Y0 - 0.04, z - 0.03, z + 0.03, stand, bat);
+  for (const x of [-0.58, 0.58]) bx(x - 0.03, x + 0.03, 0.2, 0.26, -0.26, 0.26, stand, bat);
+  bx(-0.62, 0.62, Y0 - 0.04, Y0, -0.24, 0.24, stand, bat);          // 受け板
+  const tex = (txt, w = 64, h = 64, bg = '#f4f4f0', fg = '#111', fs = 40) => canvasTex(w, h, (g, ww, hh) => { g.fillStyle = bg; g.fillRect(0, 0, ww, hh); g.fillStyle = fg; g.font = 'bold ' + fs + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, ww / 2, hh / 2 + 2); });
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 6; c++) {
+    const num = r === 0 ? c + 1 : 12 - c, x = -0.5 + c * (CW + 0.013), z = r === 0 ? -0.108 : 0.108, xx = x - 0.0;
+    // 電槽（透明）と蓋の黒い枠
+    const j = bx(xx - CW / 2, xx + CW / 2, Y0, Y0 + CH, z - CD / 2, z + CD / 2, jar, bat); j.castShadow = false;
+    bx(xx - CW / 2 - 0.004, xx + CW / 2 + 0.004, Y0 + CH, Y0 + CH + 0.035, z - CD / 2 - 0.004, z + CD / 2 + 0.004, blk, bat);
+    cyl(0.043, 0.07, blk, xx + 0.005, Y0 + CH + 0.07, z + (r === 0 ? 0.035 : 0.035), 'y', bat, 20);                       // 触媒栓の筒
+    cyl(0.047, 0.026, cap, xx + 0.005, Y0 + CH + 0.118, z + 0.035, 'y', bat, 24);                                            // 青灰色の栓
+    cyl(0.017, 0.032, yel, xx - 0.04, Y0 + CH + 0.052, z - 0.06, 'y', bat, 8);                                              // 黄色い注液栓
+    // 番号札（手前側の面）
+    const lab = new THREE.Mesh(new THREE.CircleGeometry(0.016, 20), new THREE.MeshStandardMaterial({ map: tex(String(num), 64, 64, '#f4f4f0', '#111', 40), roughness: 0.6 }));
+    if (r === 0) { lab.position.set(xx + 0.045, Y0 + CH + 0.036, z - CD / 2 - 0.003 + 0.0); lab.rotation.x = -Math.PI / 2 + 0.0; lab.position.y = Y0 + CH + 0.0365; lab.position.z = z - 0.07; lab.rotation.x = -Math.PI / 2; } else { lab.position.set(xx + 0.045, Y0 + CH + 0.0365, z - 0.07); lab.rotation.x = -Math.PI / 2; }
+    // 電槽の前面：液面線（黄）と、ラベル
+    if (r === 0) { bx(xx - CW / 2 + 0.01, xx + CW / 2 - 0.01, Y0 + CH - 0.07, Y0 + CH - 0.065, z - CD / 2 - 0.001, z - CD / 2 + 0.001, yel, bat); }
+    if (r === 0) { const sp = new THREE.Mesh(new THREE.PlaneGeometry(CW - 0.03, 0.05), new THREE.MeshStandardMaterial({ map: tex('蓄電池', 128, 32, '#00000000', '#e8c21a', 20), transparent: true })); sp.position.set(xx, Y0 + 0.07, z - CD / 2 - 0.002); sp.rotation.y = Math.PI; bat.add(sp); }
+    bat.add(lab);
+  }
+  // 「代表槽」の札（1番セルの前面）
+  { const t = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.035), new THREE.MeshStandardMaterial({ map: tex('代表槽', 128, 40, '#8fc7ff', '#111', 24), roughness: 0.6 })); t.position.set(-0.5, Y0 + 0.2, -0.2 - 0.002); t.rotation.y = Math.PI; bat.add(t); }
+  // +−端子と透明カバー、太いケーブル（右端）
+  bx(-0.6, -0.575, Y0 + CH - 0.02, Y0 + CH + 0.04, -0.2, 0.2, blk, bat);
+  bx(-0.72, -0.6, Y0 + 0.02, Y0 + CH + 0.06, -0.24, 0.24, new THREE.MeshPhysicalMaterial({ color: 0xcfe0f0, transparent: true, opacity: 0.22, roughness: 0.05 }), bat).castShadow = false;
+  for (const [zz, red] of [[-0.1, false], [0.1, true]]) for (const dz of [-0.02, 0.02]) pipe([[-0.6, Y0 + CH + 0.01, zz + dz], [-0.8, Y0 + CH + 0.05, zz + dz], [-0.88, 1.15, zz + dz * 2], [-0.84, 0.6, zz + dz * 3 + (red ? 0.1 : -0.1)]], 0.022, mat.cable, bat);
+  for (const [zz, tx] of [[-0.1, '−'], [0.1, '+']]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.025), new THREE.MeshStandardMaterial({ map: tex(tx, 64, 40, '#f4f4f0', '#111', 34) })); m.position.set(0.5 - 5 * (CW + 0.013) - 0.0, Y0 + CH + 0.0365, zz > 0 ? 0.108 + 0.07 : -0.108 - 0.07); m.rotation.x = -Math.PI / 2; m.visible = false; bat.add(m); }
+  // ケーブル用の配管（右）
+  for (const z of [0.0, 0.1, 0.2]) cyl(0.05, 0.9, beige, -0.78, 0.45, z + 0.3, 'y', bat, 14);
 }
-pipe([[-0.62, 0.95, 0], [-0.62, 1.15, 0], [-0.4, 1.2, 0]], 0.02, mat.cable, bat);
-for (const z of [0.0, 0.1, 0.2]) { cyl(0.05, 0.9, beige, 0.78, 0.45, z + 0.3, 'y', bat, 14); pipe([[0.62, 0.9, z * 0.3], [0.72, 1.0, z * 0.5 + 0.1], [0.78, 0.9, z + 0.3]], 0.02, mat.cable, bat); }
 // 壁の掲示物・スイッチ
 { const n = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.5), M(0xf2f2f0, 0, 0.8)); n.position.set(-0.6, 1.5, 3.57); n.rotation.y = Math.PI; room.add(n); }
 bx(-1.4, -1.28, 1.5, 1.7, 3.55, 3.6, M(0xdcdcdc), room);
@@ -1074,7 +1099,7 @@ const INFO = [
     ['過給機・排気管', [[2.6, 3.1, 2.8], [0.95, 2.8, 0]], '役割：排気ガスの勢いでタービンを回し、空気を押し込んで出力を上げます。排気管は高温なので、保温材で巻いてあります。', '見る点：保温材の破れ、フランジの漏れ（すす）、蛇腹継手の損傷、排気の色。点検直後は火傷に注意。'],
     ['防振装置（空気ばね）', [[-1.0, 0.7, 2.8], [-1.3, 0.3, 0]], '役割：機械の振動を床に伝えないようにします。', '見る点：ゴムのひび・へたり、ボルトの緩み、機械の傾き。'],
     ['室内燃料タンク', [[1.0, 1.9, 4.9], [2.5, 1.4, 2.7]], '役割：エンジンに送る燃料（軽油）を貯めます。下の赤い配管が燃料の配管です。', '見る点：油面計と貯油量、漏れ、防油堤に油がたまっていないか、バルブが「常時開」の札どおりか。', '根拠：軽油は危険物です。貯蔵・取扱いは消防法の規制対象です（要確認）。'],
-    ['蓄電池（始動・制御用）', [[-3.4, 1.8, 0.4], [-1.0, 0.7, 2.7]], '役割：セルモータの始動と、制御電源に使います。鉛蓄電池です。足元の黄色いマットは、電解液がこぼれた時の耐酸マットです。', '見る点：電圧、液量（液式の場合は比重）、端子の腐食と緩み、外観の膨れ、充電器の動作。']]],
+    ['蓄電池（始動・制御用）', [[-3.4, 1.8, 0.4], [-1.0, 0.7, 2.7]], '役割：セルモータの始動と、制御電源に使います。鉛蓄電池です。足元の黄色いマットは、電解液がこぼれた時の耐酸マットです。', '見る点：浮動充電中の総電圧（掲示の目安：2.20V／セル×セル数）、電解液面（減っていれば最高液面線まで精製水を補水）、外観の異常、端子の腐食と緩み。', '定期の保守（現場の掲示の目安）：3ヶ月に1回、均等充電（2.40V／セルで7〜8時間）と、全セルの電圧・比重・液温の測定。浮動充電電圧 2.20±0.05V／セル、比重 1.260±0.005（20℃）。比重の温度換算：D20 ＝ Dt ＋ 0.0007（t − 20）。規定値以下のセルがあれば、均等充電を行う。数値は、使う電池の取扱説明書で確認してください。', '12セル（6個×2列）。1番セルに「代表槽」の札があり、右端にプラスとマイナスの端子と、透明なカバー、太いケーブルがつながる。']]],
   ['機側の設備', [
     ['操作盤（デスク型）', [[-3.1, 1.8, -3.0], [-1.05, 1.1, -1.5]], '役割：機側の計器盤です。回転計、油圧計、水温計、切替スイッチがあります。', '見る点：始動時と運転中の油圧、水温、回転数。値を記録して、前回と比べます。'],
     ['金網ガード', [[-3.9, 1.7, -2.5], [-2.2, 1.0, -1.1]], '役割：発電機の側面で、回転部や端子に不用意に触れないようにします。', '見る点：施錠、扉の開閉、「危険」表示の状態。']]],
