@@ -282,6 +282,7 @@ const prism = new THREE.Mesh(prismG, mat.body); prism.rotation.y = -Math.PI / 2;
 bx(-0.43, -0.01, 0.05, 0.8, 0.3, 0.315, mat.light, cp); bx(0.01, 0.43, 0.05, 0.8, 0.3, 0.315, mat.light, cp);
 bx(-0.07, -0.03, 0.3, 0.5, 0.315, 0.34, mat.steel, cp); bx(0.03, 0.07, 0.3, 0.5, 0.315, 0.34, mat.steel, cp);
 for (const x of [-0.3, 0.3]) { const e = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.012, 8, 16), mat.steel); e.position.set(x, 1.31, -0.28); cp.add(e); }
+const deskNeedles = [];
 const desk = new THREE.Group(); const al = Math.atan2(0.6, 0.25); desk.rotation.x = -al; desk.position.set(0, 1.175, 0); cp.add(desk);
 function gauge(x, y, r, max) {
   const t = canvasTex(128, 128, (g, w, h) => {
@@ -300,7 +301,20 @@ const knob = bx(-0.255, -0.225, -0.17, -0.09, 0.01, 0.04, mat.black, desk); knob
 // 天板は、実機の写真（真上に補正）を貼る。回転計が左、圧力計3つが右、切替スイッチが回転計の下。
 desk.children.forEach(o => { o.visible = false; });
 { const t = new THREE.TextureLoader().load(DESK_PHOTO.uri); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  const top = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9 * DESK_PHOTO.h / DESK_PHOTO.w * 0.9 / 0.9), new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.1 })); top.position.z = 0.0015; top.receiveShadow = true; desk.add(top); }
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9 * DESK_PHOTO.h / DESK_PHOTO.w * 0.9 / 0.9), new THREE.MeshStandardMaterial({ map: t, color: 0xe3f6f1, roughness: 0.5, metalness: 0.1 })); top.position.z = 0.0015; top.receiveShadow = true; desk.add(top);
+  // 計器の針（写真では消してある。運転状態に連動して動く）。位置は、補正した写真の画素（1040×750）で指定。
+  const PXM = 0.9 / DESK_PHOTO.w, needleM = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.5 });
+  const mkNeedle = (hx, hy, tipLen, tailLen, rest, span, fn) => {
+    const g = new THREE.Group(); g.position.set((hx - DESK_PHOTO.w / 2) * PXM, (DESK_PHOTO.h / 2 - hy) * PXM, 0.004); desk.add(g);
+    const len = (tipLen + tailLen) * PXM, n = new THREE.Mesh(new THREE.BoxGeometry(0.0019, len, 0.0012), needleM); n.position.y = (tipLen - tailLen) * PXM / 2; g.add(n);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.002, 16), needleM); cap.rotation.x = Math.PI / 2; g.add(cap);
+    deskNeedles.push({ g, rest, span, fn }); };
+  // rest：停止時の向き（上から時計回りの度）、span：目盛りの端までの角度
+  mkNeedle(245, 205, 40, 8, -118.6, 222.6, () => S.rpm / 1800);       // 機関回転計（0〜1800 min⁻¹）
+  mkNeedle(651, 189, 31, 12, -137, 265, () => 0.5 * Math.min(1, S.rpm / 1200));   // 潤滑油（0〜1 MPa）
+  mkNeedle(781, 190, 33, 12, -137, 265, () => 0.46 * Math.min(1, S.rpm / 1200));  // 冷却水（0〜0.4 MPa）
+  mkNeedle(919, 189, 36, 14, -137, 265, () => 0.35 * Math.min(1, S.rpm / 1200));  // 給気（0〜0.4 MPa）
+}
 // 金網ガード（危険表示付）：写真1・3より、発電機側面（-z側）で操作盤の隣（反駆動側寄り）
 const cage = new THREE.Group(); cage.position.set(-2.2, 0, -1.12); cage.rotation.y = 0; gen.add(cage);
 const CW = 1.3, CD = 0.65, CH = 1.9;
@@ -1086,6 +1100,7 @@ document.head.appendChild(css3);
 dw.innerHTML = '<div class=hd><span>設備の説明</span><button id=dwClose>▲ 収納</button></div><div style="font-size:11px;color:#9cc">項目を押すと、説明が開いて、その設備の場所へ移動します。</div>' +
   INFO.map(([cat, items], ci) => '<h4>' + cat + '</h4>' + items.map(([nm, , ...tx], ii) => `<button class=it data-c=${ci} data-i=${ii}>${nm}</button><div class=tx data-t=${ci}-${ii} style="display:none">${tx.map(t => '<p style="margin:3px 0">' + t + '</p>').join('')}</div>`).join('')).join('') +
   '<div style="font-size:11px;color:#9cc;margin-top:8px">※ 教育用の説明です。実際の整定値・点検項目は、保安規程と現場の資料に従ってください。</div>';
+window.__desk = { needles: deskNeedles, S };
 let fly = null;
 function flyTo(p, t) { if (walk.on) setWalk(false); fly = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) }; }
 dw.addEventListener('click', e => {
@@ -1635,6 +1650,7 @@ renderer.setAnimationLoop(() => {
   stepState(dt); derive();
   const k = Math.min(1, S.rpm / 1200), w = S.rpm / 60 * Math.PI * 2 * S.scale; S.phi += w * dt;
   // 回転部分
+  deskNeedles.forEach(d => { const k = Math.max(0, Math.min(1.05, d.fn())); d.g.rotation.z = -((d.rest + d.span * k) * Math.PI / 180); });
   fan.rotation.x = S.phi; shaft.rotation.x = S.phi; crank.rotation.x = S.phi; fw.rotation.x = S.phi; rotor.rotation.x = S.phi;
   // 振動（運転中の機械全体）
   const va = (S.mode === 'crank' ? 0.0035 : 0.0022 * k) * (S.rpm > 3 ? 1 : 0), vf = 18 + S.rpm * 0.04;
