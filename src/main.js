@@ -955,7 +955,7 @@ const TXT = {
   supply: ['⑥ 非常電源として給電中', '発電機の電力が負荷（非常用照明・消防設備など）に供給されています。', '電圧・周波数・電流が安定しているか、発電機盤で確認します。燃料・冷却水・潤滑油の状態も監視します。'],
   stopping: ['停止中（復電・停止）', '商用電源が復旧し、負荷を商用側へ戻して発電機を停止しています。', '回転が下がり、盤の針も戻ります。機種によっては停止前に無負荷の冷却運転を行います。'],
 };
-function showStat() { const v = TXT[S.mode]; $('stt').textContent = v[0]; $('std').textContent = v[1]; $('stw').textContent = '見どころ：' + v[2]; }
+function showStat() { const v = TXT[S.mode]; $('stt').textContent = v[0] + (h2.classList.contains('ex') ? '  ▾' : '  ▸ タップで説明'); $('std').textContent = v[1]; $('stw').textContent = '見どころ：' + v[2]; }
 function go(m) { S.mode = m; S.t = 0; if (m === 'stopping') { S.rpm0 = S.rpm; S.volt0 = S.volt; } showStat(); }
 function stepState(dt) {
   S.t += dt;
@@ -973,7 +973,7 @@ const FIRE_MODES = ['accel', 'run', 'xfer', 'supply'];
 
 // ================= UI =================
 const css = document.createElement('style');
-css.textContent = '.hud{position:fixed;color:#fff;font:13px/1.6 sans-serif;background:#000b;padding:8px 12px;border-radius:8px}.hud button{font-size:13px;padding:4px 8px;margin:2px;cursor:pointer}.hud button.on{background:#3a7;color:#fff}#hud2{left:12px;bottom:12px;max-width:640px}#stt{font-weight:bold;font-size:15px;color:#ffd866}#rd{color:#9fe;font-family:monospace}';
+css.textContent = '.hud{position:fixed;color:#fff;font:13px/1.6 sans-serif;background:#000b;padding:8px 12px;border-radius:8px}.hud button{font-size:13px;padding:4px 8px;margin:2px;cursor:pointer}.hud button.on{background:#3a7;color:#fff}#hud2{left:12px;bottom:12px;max-width:640px}#stt{font-weight:bold;font-size:15px;color:#ffd866}#rd{color:#9fe;font-family:monospace}.hudtg{background:#1c3a46;color:#fff;border:1px solid #7fe0d0;border-radius:6px;font-weight:bold;display:block;width:100%;text-align:left}.hud.min{padding:4px}.hud.min .hb{display:none}.hud.min .hudtg{width:auto}#std,#stw{display:none}#hud2.ex #std,#hud2.ex #stw{display:block}#stt{cursor:pointer;padding:4px 0}@media (pointer:coarse){.hud button,.hud select{min-height:34px}}';
 document.head.appendChild(css);
 const h1 = document.createElement('div'); h1.className = 'hud'; h1.style.cssText = 'top:12px;left:12px';
 h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / ホイール:拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
@@ -1665,6 +1665,23 @@ function rtClose() {
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
 window.__rt = { RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 drawM(); drawT();
+
+// ---------- スマホ向け：画面の文字を収納できるようにする ----------
+function wrapHud(h, label, openLabel) {
+  const hb = document.createElement('div'); hb.className = 'hb';
+  while (h.firstChild) hb.appendChild(h.firstChild);
+  const tg = document.createElement('button'); tg.className = 'hudtg'; h.append(tg, hb);
+  const sync = () => { tg.textContent = h.classList.contains('min') ? label : openLabel; };
+  tg.onclick = () => { h.classList.toggle('min'); sync(); };
+  h._collapse = () => { h.classList.add('min'); sync(); };
+  const narrow = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
+  if (narrow) h.classList.add('min'); sync();
+}
+wrapHud(h1, '📋 視点・操作', '▲ 収納');
+wrapHud(h2, '🎛 運転・内部', '▼ 収納');
+if (h1.classList.contains('min')) h1.querySelector('.hb').addEventListener('click', e => { const b = e.target.closest('button'); if (b && (b.dataset.v || b.id === 'bw' || b.id === 'bd')) h1._collapse(); });
+$('stt').addEventListener('click', () => { h2.classList.toggle('ex'); showStat(); });
+showStat();
 
 // ================= 毎フレーム =================
 const clock = new THREE.Clock(); let vt = 0, texAcc = 0;
