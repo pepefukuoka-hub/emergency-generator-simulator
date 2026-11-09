@@ -16,7 +16,8 @@ Claude Code、Codex など、どのエージェントでも、この指示書に
 
 ## 3. 構成とビルド
 ```
-src/main.js        全ソース（約1600行・1ファイル。three.js を import）
+src/main.js        主な処理（three.js を import）
+src/relay-instruments.js  試験機の立体つまみ・メーター・拡大パネルの描画
 scripts/build.mjs  esbuild で three.js ごと1つの HTML にまとめる
 docs/index.html    完成品（ビルドで生成。手で編集しない）
 ```
@@ -57,6 +58,9 @@ npm run dev      # 監視ビルド
 
 ## 6. 試験機（継電器試験）の作り
 - 状態は `RT`、模擬は `rtTick(dt)`、判定の目安は `TOL`。継電器の整定は `RDEF`（架空）、不良個体の倍率は `DEV`。
+- 試験機の外観は `relay-instruments.js`。つまみは3Dメッシュで、`syncTesterControls()` がパネルのクリック領域・選択角度と同期する。メーターは立体枠・ガラス・針と、Canvas の文字盤を組み合わせる。写真からの寸法・質感の近似であり、実測ではない。
+- 試験機 Canvas は表示用に2倍の解像度を使う。操作・端子・部品の座標は `dataset.panelWidth / panelHeight`（1000×700／1000×720）の論理座標を使う。実ピクセルの `canvas.width / height` と混ぜない。
+- 「測定箱／電源箱を3Dで拡大」で机上の実体を確認できる。3D操作も `rtRot / rtDown / rtClick / rtRegAt` を使い、電気的な安全処理を迂回しない。
 - 試験の定義は `TESTS`。手順ガイドは `guideHTML()`。判定は `rtRecord()`。
 - 実機の銘板（PRT-3M／PRT-3TR）に合わせた部分：端子名、操作の注意、スイッチの種類と並び。簡略化した部分：継電器の特性（反限時の近似）、時間測定の「通電前の指示」、`UV TIME` の意味（教材での解釈）。**この区別を、画面と報告で崩さない。**
 - 判定値の根拠は、メーカー資料の一例（動作値±5%、瞬時±15%、不足・過電圧の時間±10%または下限±50ms）。**JIS C 4602 の本文の数値は未確認。** 取扱説明書・JEM-TR 156・自主検査要領で確認する旨を、画面に残す。

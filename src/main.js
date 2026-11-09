@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { paintRotary, paintMeter, syncTesterControls } from './relay-instruments.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -1161,7 +1162,7 @@ const tset = new THREE.Group(); room.add(tset);
 const caseM = M(0x9a8b6f, 0.2, 0.7), tableM = M(0xc2c6ca, 0.8, 0.35);
 { const top = bx(-0.35, 0.35, 0.74, 0.78, -0.62, 0.62, tableM, tset); for (const x of [-0.31, 0.31]) for (const z of [-0.58, 0.58]) bx(x - 0.015, x + 0.015, 0, 0.74, z - 0.015, z + 0.015, tableM, tset); bx(-0.3, 0.3, 0.2, 0.22, -0.58, 0.58, tableM, tset); void top; }
 function mkUnit(W, H, name) {
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const cv = document.createElement('canvas'); cv.width = W * 2; cv.height = H * 2; cv.dataset.panelWidth = W; cv.dataset.panelHeight = H; cv.getContext('2d').scale(2, 2);
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   // パネルを天板と平行にし、ケース底面（ローカル z=-0.091）を机の上に載せる。
   const g = new THREE.Group(), tilt = new THREE.Group(); g.add(tilt); tilt.rotation.x = -Math.PI / 2; tilt.position.y = 0.091;
@@ -1189,12 +1190,14 @@ function termWorld(unit, px, py) { const u = unit.userData; const v = new THREE.
 let HIT = { M: [], T: [] };
 const KB = '#111214';
 function knobRot(g, hits, id, x, y, r, n, idx, labels, a0 = -120, a1 = 120, lf = 17) {
-  hits.push({ k: 'rot', id, x, y, r: r + 34, n });
-  g.fillStyle = '#2b2d31'; g.beginPath(); g.arc(x, y, r + 7, 0, 7); g.fill();
-  for (let i = 0; i < n; i++) { const a = (a0 + (a1 - a0) * i / (n - 1) - 90) * Math.PI / 180; g.fillStyle = i === idx ? '#ffd866' : '#f4f4f4'; g.font = (i === idx ? 'bold ' : '') + lf + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(labels[i], x + Math.cos(a) * (r + 24), y + Math.sin(a) * (r + 24)); }
-  const a = (a0 + (a1 - a0) * idx / (n - 1) - 90) * Math.PI / 180;
-  const gr = g.createRadialGradient(x - r * 0.3, y - r * 0.3, 2, x, y, r); gr.addColorStop(0, '#3b3e44'); gr.addColorStop(1, KB); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-  g.strokeStyle = '#ffd866'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + Math.cos(a) * r * 0.2, y + Math.sin(a) * r * 0.2); g.lineTo(x + Math.cos(a) * r * 0.92, y + Math.sin(a) * r * 0.92); g.stroke();
+  const angle = a0 + (a1 - a0) * idx / (n - 1);
+  hits.push({ k: 'rot', id, x, y, r: r + 34, bodyRadius: r, angle, n });
+  for (let i = 0; i < n; i++) {
+    const a = (a0 + (a1 - a0) * i / (n - 1) - 90) * Math.PI / 180;
+    g.strokeStyle = '#c7cccc'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x + Math.cos(a) * (r + 4), y + Math.sin(a) * (r + 4)); g.lineTo(x + Math.cos(a) * (r + 11), y + Math.sin(a) * (r + 11)); g.stroke();
+    g.fillStyle = i === idx ? '#fff0b1' : '#f4f4f4'; g.font = (i === idx ? 'bold ' : '') + lf + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(labels[i], x + Math.cos(a) * (r + 25), y + Math.sin(a) * (r + 25));
+  }
+  paintRotary(g, x, y, r, angle);
 }
 function togg(g, hits, id, x, y, on, up, dn, lbl) {
   hits.push({ k: 'tog', id, x, y, r: 40 });
@@ -1209,17 +1212,7 @@ function termPost(g, hits, id, x, y, label, conn, col) {
   if (conn) { g.strokeStyle = col; g.lineWidth = 8; g.beginPath(); g.arc(x, y - 4, 29, 0, 7); g.stroke(); }
 }
 function meterFace(g, x, y, w, h, unit, rows, active, val, label, over) {
-  g.fillStyle = '#09090b'; g.beginPath(); g.roundRect(x - 14, y - 14, w + 28, h + 150, 18); g.fill();
-  const gr = g.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#eceadb'); gr.addColorStop(1, '#d6d3bf'); g.fillStyle = gr; g.fillRect(x, y, w, h);
-  const cx = x + w / 2, cy = y + h * 1.35, R = h * 1.12; g.strokeStyle = '#111'; g.fillStyle = '#111'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  rows.forEach((mx, ri) => { const rr = R - ri * 24, on = ri === active; g.lineWidth = on ? 3 : 1.6; g.globalAlpha = on ? 1 : 0.55; g.beginPath(); g.arc(cx, cy, rr, (-90 - 36) * Math.PI / 180, (-90 + 36) * Math.PI / 180); g.stroke();
-    for (let i = 0; i <= 20; i++) { const a = (-90 - 36 + 72 * i / 20) * Math.PI / 180, l = i % 5 ? 6 : 12; g.beginPath(); g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); g.lineTo(cx + Math.cos(a) * (rr - l), cy + Math.sin(a) * (rr - l)); g.stroke(); }
-    g.font = (on ? 'bold ' : '') + '14px sans-serif'; for (let i = 0; i <= 5; i++) { const a = (-90 - 36 + 72 * i / 5) * Math.PI / 180; const t = +(mx * i / 5).toFixed(2); g.fillText(String(t), cx + Math.cos(a) * (rr + 14), cy + Math.sin(a) * (rr + 14)); } g.globalAlpha = 1; });
-  g.font = 'bold 54px sans-serif'; g.fillText(unit, cx, y + h * 0.5); g.font = '16px sans-serif'; g.fillText('~ 0.5 級   NISSIN ELECTRIC', cx, y + h * 0.78);
-  const a = (-90 - 36 + 72 * clamp(val, 0, 1.08)) * Math.PI / 180; g.strokeStyle = '#15151a'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6)); g.stroke();
-  g.save(); g.beginPath(); g.rect(x, y, w, h); g.restore();
-  g.fillStyle = '#e9e9ee'; g.font = '20px sans-serif'; g.fillText(label, cx, y + h + 38);
-  if (over) { g.fillStyle = '#ff5544'; g.font = 'bold 22px sans-serif'; g.fillText('レンジ超過', cx, y + h + 70); }
+  paintMeter(g, x, y, w, h, unit, rows, active, val, label, over, uM);
 }
 const LC = { R: '#ff4d3d', T: '#f2f2f2', E: '#3fd163', T1: '#4aa8ff', T2: '#b07bff', P1: '#ffb52e', P2: '#c58b3a' };
 function drawM() {
@@ -1231,21 +1224,21 @@ function drawM() {
   g.strokeStyle = '#ccc'; g.lineWidth = 2; g.strokeRect(412, 16, 176, 110); g.fillStyle = '#f4f4f4'; g.textAlign = 'center'; g.font = '19px sans-serif'; g.fillText('COUNTER', 500, 34);
   const vmax = VRNG[RT.vr], amax = AMR[RT.am] || 50, vrows = VRNG, arows = [0.5, 1.5, 5, 15, 50];
   meterFace(g, 40, 160, 350, 215, 'V', vrows, RT.vr, RT.needleV, 'VOLTMETER', RT.Vv > vmax * 1.08);
-  meterFace(g, 610, 160, 350, 215, 'A', arows, Math.max(0, RT.am - 1), RT.needleA, 'AMMETER', RT.am > 0 && RT.Iv > amax * 1.08);
+  meterFace(g, 610, 160, 350, 215, 'A', arows, RT.am - 1, RT.needleA, 'AMMETER', RT.am > 0 && RT.Iv > amax * 1.08);
   const cw = 150, cx0 = 425; g.fillStyle = '#251126'; g.fillRect(cx0, 170, cw, 70); g.fillStyle = RT.cnt === 0 ? '#3a2340' : '#ff4a8a'; g.font = 'bold 40px monospace'; g.textAlign = 'center';
   const t = RT.tCount, lim = RT.cnt === 1 ? 10 : 100; g.fillText(RT.cnt === 0 ? '' : RT.over ? '-----' : (RT.cnt === 1 ? t.toFixed(3) : t.toFixed(2)), cx0 + cw / 2, 208);
   g.fillStyle = '#ff9d3a'; g.font = '14px sans-serif'; g.textAlign = 'left'; g.fillText('OVER RANGE', 405, 262); g.textAlign = 'right'; g.fillText('SEC', 592, 262);
-  togg(g, hits, 'cntR', 440, 305, RT.cnt === 2, '100S', '10S', 'RANGE'); g.fillStyle = '#ddd'; g.textAlign = 'left'; g.font = '15px sans-serif'; g.fillText(CNTN[RT.cnt] === 'OFF' ? '(OFF)' : '', 400, 340);
+  togg(g, hits, 'cntR', 450, 325, RT.cnt === 2, '100S', '10S', 'RANGE'); g.fillStyle = '#ddd'; g.textAlign = 'left'; g.font = '15px sans-serif'; g.fillText(CNTN[RT.cnt] === 'OFF' ? '(OFF)' : '', 400, 340);
   hits.push({ k: 'btn', id: 'pb4', x: 540, y: 305, r: 26 }); g.fillStyle = '#26282c'; g.beginPath(); g.arc(540, 305, 22, 0, 7); g.fill(); g.strokeStyle = '#ccc'; g.lineWidth = 3; g.stroke(); g.fillStyle = '#f4f4f4'; g.textAlign = 'center'; g.font = '16px sans-serif'; g.fillText('RESET', 540, 345);
   tLamp(g, 530, 395, RT.pl3, '#ffe35a'); g.fillStyle = '#f4f4f4'; g.font = '16px sans-serif'; g.fillText('PL3 動作確認', 530, 428);
   knobRot(g, hits, 'mode', 460, 505, 36, 3, RT.mode, ['DVT', 'OP.CHECK', 'TIME'], -50, 50, 16);
   togg(g, hits, 'trip', 580, 505, RT.trip === 0, 'DC TRIP', 'CT TRIP', 'TRIP MODE'); g.fillStyle = '#f4f4f4'; g.font = '17px sans-serif'; g.textAlign = 'center'; g.fillText('TEST MODE', 460, 566);
-  togg(g, hits, 'uvt', 80, 520, RT.uvt === 0, 'TEST', 'NORMAL', 'UV TIME'); knobRot(g, hits, 'vr', 190, 540, 34, 3, RT.vr, ['75', '150', '300'], -55, 55, 17);
-  g.fillText('VOLTMETER RANGE (V)', 190, 612); knobRot(g, hits, 'io', 300, 540, 30, 3, RT.io, ['0.5', '0.9', '1.2'], -55, 55, 16); g.fillText('Io RANGE (A)', 300, 612);
-  knobRot(g, hits, 'am', 760, 540, 36, 6, RT.am, AMN, -110, 70, 15); g.fillText('AMMETER RANGE (A)', 760, 622);
-  knobRot(g, hits, 'sel', 905, 535, 34, 6, RT.sel, SELN, -95, 85, 16); g.fillText('TEST SELECT', 905, 622);
+  togg(g, hits, 'uvt', 80, 520, RT.uvt === 0, 'TEST', 'NORMAL', 'UV TIME'); knobRot(g, hits, 'vr', 190, 552, 34, 3, RT.vr, ['75', '150', '300'], -55, 55, 17);
+  g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('VOLTMETER', 190, 614); g.fillText('RANGE (V)', 190, 632); knobRot(g, hits, 'io', 320, 552, 30, 3, RT.io, ['0.5', '0.9', '1.2'], -55, 55, 16); g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('Io RANGE (A)', 320, 620);
+  knobRot(g, hits, 'am', 760, 552, 36, 6, RT.am, AMN, -110, 70, 15); g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('AMMETER', 760, 614); g.fillText('RANGE (A)', 760, 632);
+  knobRot(g, hits, 'sel', 905, 552, 34, 6, RT.sel, SELN, -95, 85, 16); g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('TEST SELECT', 905, 622);
   g.fillStyle = '#ffa339'; g.font = 'bold 22px sans-serif'; g.fillText('METER UNIT : PRT-3M', 520, 672); g.fillStyle = '#c8c8c8'; g.font = '14px sans-serif'; g.fillText('NISSIN ELECTRIC CO.,LTD.  KYOTO JAPAN', 520, 692);
-  uM.userData.tex.needsUpdate = true;
+  syncTesterControls(uM, hits, 'M'); uM.userData.tex.needsUpdate = true;
 }
 function drawT() {
   const g = uT.userData.cv.getContext('2d'), hits = HIT.T = [], c = RT.leads; g.clearRect(0, 0, 1000, 720); g.fillStyle = '#101113'; g.fillRect(0, 0, 1000, 720);
@@ -1267,17 +1260,16 @@ function drawT() {
   hits.push({ k: 'btn', id: 'stop', x: 150, y: 680, r: 55 }); g.fillStyle = '#d8d8d8'; g.beginPath(); g.arc(150, 668, 50, 0, 7); g.fill(); g.fillStyle = '#e0302c'; g.beginPath(); g.arc(150, 668, 40, 0, 7); g.fill();
   g.fillStyle = '#f4f4f4'; g.font = '21px sans-serif'; g.textAlign = 'left'; g.fillText('START', 218, 546); g.fillText('STOP', 214, 672); g.fillText('TEST START', 225, 606); g.textAlign = 'center';
   knobRot(g, hits, 'outr', 450, 600, 38, 6, RT.rangeV, ['5', '10', '30', '60', '130', '250'], -80, 80, 19); g.font = '19px sans-serif'; g.fillText('OUTPUT RANGE (V)', 450, 676);
-  g.font = '14px sans-serif'; g.fillStyle = '#cfd2d6'; g.fillText('130 = DVT 兼用', 450, 696);
-  const ra = (-135 + 270 * RT.reg / 10 - 90) * Math.PI / 180; hits.push({ k: 'reg', id: 'reg', x: 700, y: 560, r: 105 });
+  g.font = '11px sans-serif'; g.fillStyle = '#cfd2d6'; g.fillText('130 = DVT 兼用', 450, 692);
+  hits.push({ k: 'reg', id: 'reg', x: 700, y: 560, r: 105, bodyRadius: 80, angle: -135 + 27 * RT.reg });
   for (let i = 0; i <= 10; i++) { const a = (-135 + 27 * i - 90) * Math.PI / 180; g.fillStyle = '#f4f4f4'; g.font = '19px sans-serif'; g.fillText(String(i), 700 + Math.cos(a) * 112, 560 + Math.sin(a) * 112); }
-  const kg = g.createRadialGradient(675, 535, 5, 700, 560, 80); kg.addColorStop(0, '#3c3f45'); kg.addColorStop(1, '#0c0d0f'); g.fillStyle = kg; g.beginPath(); g.arc(700, 560, 80, 0, 7); g.fill();
-  g.strokeStyle = '#fff'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(700 + Math.cos(ra) * 24, 560 + Math.sin(ra) * 24); g.lineTo(700 + Math.cos(ra) * 74, 560 + Math.sin(ra) * 74); g.stroke();
+  paintRotary(g, 700, 560, 80, -135 + 27 * RT.reg, true);
   g.fillStyle = '#f4f4f4'; g.font = 'bold 22px sans-serif'; g.fillText('REGULATOR  ' + RT.reg.toFixed(1), 700, 690);
   tLamp(g, 920, 520, RT.nfb && RT.plug, '#ff5a20'); g.fillStyle = '#ffa339'; g.font = '16px sans-serif'; g.fillText('PL1', 962, 524);
   hits.push({ k: 'tog', id: 'nfb', x: 920, y: 600, r: 40 }); g.fillStyle = '#f4f4f4'; g.font = '16px sans-serif'; g.fillText('ON', 920, 560); g.fillText('OFF', 920, 650); g.fillText('POWER 15A', 920, 676);
   g.fillStyle = '#15161a'; g.fillRect(900, 572, 40, 56); g.fillStyle = '#333'; g.fillRect(905, RT.nfb ? 574 : 600, 30, 26);
-  g.fillStyle = '#ffa339'; g.font = 'bold 22px sans-serif'; g.fillText('POWER UNIT : PRT-3TR', 560, 712);
-  uT.userData.tex.needsUpdate = true;
+  g.fillStyle = '#ffa339'; g.font = 'bold 18px sans-serif'; g.fillText('POWER UNIT : PRT-3TR', 570, 711);
+  syncTesterControls(uT, hits, 'T'); uT.userData.tex.needsUpdate = true;
 }
 
 // ---------- 試験の定義 ----------
@@ -1411,7 +1403,7 @@ function rtLead(id) {
 }
 function rtClick(which, h, ev, cv) {
   const id = h.id;
-  if (h.k === 'rot') { const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * cv.width / r.width; rtRot(id, x < h.x ? -1 : 1); return; }
+  if (h.k === 'rot') { const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * +cv.dataset.panelWidth / r.width; rtRot(id, x < h.x ? -1 : 1); return; }
   if (h.k === 'tog') {
     switch (id) {
       case 'trip': RT.trip = RT.trip ? 0 : 1; break; case 'uvt': RT.uvt = RT.uvt ? 0 : 1; break; case 's7': RT.s7 = RT.s7 ? 0 : 1; break;
@@ -1441,7 +1433,8 @@ function rtDown(h) {
   RT.guideDirty = true; RT.dirty = true;
 }
 function rtUp(h) { if (h.id === 'pb1') { RT.pbPol = false; RT.polLamp = 'off'; } RT.dirty = true; }
-function regFromEv(ev, cv, h) { const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * cv.width / r.width - h.x, y = (ev.clientY - r.top) * cv.height / r.height - h.y; const a = Math.atan2(x, -y) * 180 / Math.PI; RT.reg = clamp(Math.round((a + 135) / 270 * 100) / 10, 0, 10); }
+function regFromEv(ev, cv, h) { const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) * +cv.dataset.panelWidth / r.width - h.x, y = (ev.clientY - r.top) * +cv.dataset.panelHeight / r.height - h.y; rtRegAt(x + h.x, y + h.y, h); }
+function rtRegAt(x, y, h) { const a = Math.atan2(x - h.x, h.y - y) * 180 / Math.PI; RT.reg = clamp(Math.round((a + 135) / 270 * 100) / 10, 0, 10); RT.dirty = RT.guideDirty = true; }
 // ---------- 記録表 ----------
 function rtRecord() {
   const t = TESTS[RT.test], d = cur(), L = RT.lastOp; if (!L || L.test !== RT.test) { rtMsg('まだ、この項目の測定値がありません。'); return; }
@@ -1459,7 +1452,7 @@ const rtp = document.createElement('div'); rtp.id = 'rtp'; document.body.appendC
 const rtBtn = document.createElement('button'); h1.insertAdjacentHTML('beforeend', ' <button id=bt style="background:#2563a8;color:#fff;font-weight:bold">🧪 継電器試験</button>');
 rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 終了して収納</button></span></div><div class=rtbody>' +
   '<div>試験対象：<select id=rtTarget></select> 試験項目：<select id=rtTest></select> <label><input id=rtBad type=checkbox> 不良個体（判定を体験）</label></div><div id=rtLog></div>' +
-  '<h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div class=info>ロータリー：つまみの左半分で戻る・右半分で進む　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
+  '<h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div><button id=rtZoomM>測定箱を3Dで拡大</button><button id=rtZoomT>電源箱を3Dで拡大</button></div><div class=info>ロータリー：つまみの左半分で戻る・右半分で進む　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
 const rtTargetSel = $('rtTarget'), rtTestSel = $('rtTest');
 rtTargetSel.innerHTML = Object.keys(RDEF).map(k => `<option value="${k}">${RDEF[k].name}</option>`).join('');
 function fillTests() { rtTestSel.innerHTML = testsFor(grp()).map(k => `<option value="${k}">${TESTS[k].title}</option>`).join('') + '<option value="_ground">地絡（OCG／DG）・漏電リレー：解説のみ</option>'; rtTestSel.value = RT.test; }
@@ -1470,7 +1463,7 @@ $('rtBad').onchange = e => { RT.bad = e.target.checked; RT.lastOp = null; rtMsg(
 const unitsDiv = $('rtUnits'); unitsDiv.append(uM.userData.cv, uT.userData.cv);
 function bindCanvas(cv, which) {
   let cur2 = null;
-  const pos = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * cv.width / r.width, (ev.clientY - r.top) * cv.height / r.height]; };
+  const pos = ev => { const r = cv.getBoundingClientRect(); return [(ev.clientX - r.left) * +cv.dataset.panelWidth / r.width, (ev.clientY - r.top) * +cv.dataset.panelHeight / r.height]; };
   const find = ev => { const [x, y] = pos(ev); const list = HIT[which]; for (let i = list.length - 1; i >= 0; i--) { const h = list[i]; if (Math.hypot(x - h.x, y - h.y) <= h.r) return h; } return null; };
   cv.addEventListener('pointerdown', ev => { const h = find(ev); if (!h) return; cv.setPointerCapture(ev.pointerId); cur2 = h; if (h.k === 'reg') { regFromEv(ev, cv, h); } else if (h.k === 'btn' && h.id !== 'plugflip') rtDown(h); else rtClick(which, h, ev, cv); });
   cv.addEventListener('pointermove', ev => { if (cur2 && cur2.k === 'reg' && ev.buttons) regFromEv(ev, cv, cur2); });
@@ -1479,6 +1472,82 @@ function bindCanvas(cv, which) {
   cv.addEventListener('wheel', ev => { const h = find(ev); if (h && h.k === 'reg') { ev.preventDefault(); RT.reg = clamp(Math.round((RT.reg + (ev.deltaY < 0 ? 0.1 : -0.1)) * 10) / 10, 0, 10); } }, { passive: false });
 }
 bindCanvas(uM.userData.cv, 'M'); bindCanvas(uT.userData.cv, 'T');
+// 机上の立体部品も、右側の操作パネルと同じ状態・安全処理を使う。
+const rtRay = new THREE.Raycaster(), rtPointer = new THREE.Vector2();
+let rtDrag3D = null;
+function rtRayAt(e) {
+  const b = renderer.domElement.getBoundingClientRect();
+  rtPointer.set((e.clientX - b.left) / b.width * 2 - 1, 1 - (e.clientY - b.top) / b.height * 2);
+  scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); rtRay.setFromCamera(rtPointer, camera);
+}
+function rtPanelPoint(unit, point) {
+  const u = unit.userData, p = u.pane.worldToLocal(point.clone());
+  return [(p.x / u.pw + 0.5) * u.W, (0.5 - p.y / u.ph) * u.H];
+}
+function rtPick3D(e) {
+  if (!RT.open || !tset.visible || walk.on || ov.style.display !== 'none') return null;
+  rtRayAt(e);
+  for (const hit of rtRay.intersectObjects([uM, uT], true)) {
+    let o = hit.object;
+    while (o && !o.userData.rtControl && o !== uM && o !== uT) o = o.parent;
+    if (o?.userData.rtControl) {
+      const { which, hit: h } = o.userData.rtControl, unit = which === 'M' ? uM : uT;
+      return { unit, which, h, point: rtPanelPoint(unit, hit.point) };
+    }
+    const unit = o === uM ? uM : o === uT ? uT : null;
+    if (!unit || hit.object !== unit.userData.pane) continue;
+    const which = unit === uM ? 'M' : 'T', point = rtPanelPoint(unit, hit.point);
+    const h = [...HIT[which]].reverse().find(h => Math.hypot(point[0] - h.x, point[1] - h.y) <= h.r);
+    return h ? { unit, which, h, point } : null;
+  }
+  return null;
+}
+function rtDrawUnit(which) { if (which === 'M') drawM(); else drawT(); }
+function endRT3D(e) {
+  if (!rtDrag3D || (e && e.pointerId !== rtDrag3D.pointerId)) return;
+  const d = rtDrag3D; rtDrag3D = null;
+  if (d.h.k === 'btn') rtUp(d.h);
+  controls.enabled = d.controlsEnabled; rtDrawUnit(d.which);
+}
+{
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || rtDrag3D) return;
+    const d = rtPick3D(e); if (!d) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    rtDrag3D = { ...d, pointerId: e.pointerId, controlsEnabled: controls.enabled }; controls.enabled = false; el.setPointerCapture(e.pointerId);
+    if (d.h.k === 'rot') rtRot(d.h.id, d.point[0] < d.h.x ? -1 : 1);
+    else if (d.h.k === 'reg') rtRegAt(...d.point, d.h);
+    else if (d.h.k === 'btn' && d.h.id !== 'plugflip') rtDown(d.h);
+    else rtClick(d.which, d.h, e, d.unit.userData.cv);
+    rtDrawUnit(d.which);
+  }, true);
+  el.addEventListener('pointermove', e => {
+    if (!rtDrag3D || e.pointerId !== rtDrag3D.pointerId) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const d = rtDrag3D; if (d.h.k !== 'reg') return;
+    rtRayAt(e);
+    const pane = d.unit.userData.pane, normal = new THREE.Vector3(0, 0, 1).transformDirection(pane.matrixWorld);
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, pane.getWorldPosition(new THREE.Vector3()));
+    const hit = rtRay.ray.intersectPlane(plane, new THREE.Vector3());
+    if (hit) { rtRegAt(...rtPanelPoint(d.unit, hit), d.h); rtDrawUnit(d.which); }
+  }, true);
+  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(name, e => {
+    if (!rtDrag3D || e.pointerId !== rtDrag3D.pointerId) return;
+    e.stopImmediatePropagation(); endRT3D(e);
+  }, true);
+  el.addEventListener('wheel', e => {
+    const d = rtPick3D(e); if (!d || d.h.k !== 'reg') return;
+    e.preventDefault(); e.stopImmediatePropagation(); RT.reg = clamp(Math.round((RT.reg + (e.deltaY < 0 ? 0.1 : -0.1)) * 10) / 10, 0, 10); RT.guideDirty = RT.dirty = true; drawT();
+  }, { capture: true, passive: false });
+}
+function rtFocusUnit(unit) {
+  rtp.classList.add('min'); $('rtMin').textContent = '▲ 開く';
+  tset.updateWorldMatrix(true, true); const p = unit.getWorldPosition(new THREE.Vector3()); p.y += 0.09;
+  const fit = Math.max(1, 1.05 / camera.aspect);
+  fly = null; view([p.x + 0.36 * fit, p.y + 0.5 * fit, p.z], p.toArray()); controls.update();
+}
+$('rtZoomM').onclick = () => rtFocusUnit(uM); $('rtZoomT').onclick = () => rtFocusUnit(uT);
 rtp.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.a) rtAct(b.dataset.a); if (b.dataset.l) rtLead(b.dataset.l); if (b.dataset.rec) rtRecord();
@@ -1542,6 +1611,7 @@ function rtClose() {
 }
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
 window.__rt = { RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
+drawM(); drawT();
 
 // ================= 毎フレーム =================
 const clock = new THREE.Clock(); let vt = 0, texAcc = 0;
