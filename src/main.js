@@ -1212,7 +1212,7 @@ function meterFace(g, x, y, w, h, unit, rows, active, val, label, over) {
   rows.forEach((mx, ri) => { const rr = R - ri * 24, on = ri === active; g.lineWidth = on ? 3 : 1.6; g.globalAlpha = on ? 1 : 0.55; g.beginPath(); g.arc(cx, cy, rr, (-90 - 36) * Math.PI / 180, (-90 + 36) * Math.PI / 180); g.stroke();
     for (let i = 0; i <= 20; i++) { const a = (-90 - 36 + 72 * i / 20) * Math.PI / 180, l = i % 5 ? 6 : 12; g.beginPath(); g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); g.lineTo(cx + Math.cos(a) * (rr - l), cy + Math.sin(a) * (rr - l)); g.stroke(); }
     g.font = (on ? 'bold ' : '') + '14px sans-serif'; for (let i = 0; i <= 5; i++) { const a = (-90 - 36 + 72 * i / 5) * Math.PI / 180; const t = +(mx * i / 5).toFixed(2); g.fillText(String(t), cx + Math.cos(a) * (rr + 14), cy + Math.sin(a) * (rr + 14)); } g.globalAlpha = 1; });
-  g.font = 'bold 54px sans-serif'; g.fillText(unit, cx, y + h * 0.5); g.font = '16px sans-serif'; g.fillText('~ 0.5 級   NISSIN ELECTRIC', cx, y + h * 0.78);
+  g.font = 'bold 54px sans-serif'; g.fillText(unit, cx, y + h * 0.5); g.font = '16px sans-serif'; g.fillText('~ 0.5 級   CIRTCELE NISSIN', cx, y + h * 0.78);
   const a = (-90 - 36 + 72 * clamp(val, 0, 1.08)) * Math.PI / 180; g.strokeStyle = '#15151a'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6)); g.stroke();
   g.save(); g.beginPath(); g.rect(x, y, w, h); g.restore();
   g.fillStyle = '#e9e9ee'; g.font = '20px sans-serif'; g.fillText(label, cx, y + h + 38);
@@ -1241,7 +1241,7 @@ function drawM() {
   g.fillText('VOLTMETER RANGE (V)', 190, 612); knobRot(g, hits, 'io', 300, 540, 30, 3, RT.io, ['0.5', '0.9', '1.2'], -55, 55, 16); g.fillText('Io RANGE (A)', 300, 612);
   knobRot(g, hits, 'am', 760, 540, 36, 6, RT.am, AMN, -110, 70, 15); g.fillText('AMMETER RANGE (A)', 760, 622);
   knobRot(g, hits, 'sel', 905, 535, 34, 6, RT.sel, SELN, -95, 85, 16); g.fillText('TEST SELECT', 905, 622);
-  g.fillStyle = '#ffa339'; g.font = 'bold 22px sans-serif'; g.fillText('METER UNIT : PRT-3M', 520, 672); g.fillStyle = '#c8c8c8'; g.font = '14px sans-serif'; g.fillText('NISSIN ELECTRIC CO.,LTD.  KYOTO JAPAN', 520, 692);
+  g.fillStyle = '#ffa339'; g.font = 'bold 22px sans-serif'; g.fillText('METER UNIT : PRT-3M', 520, 672); g.fillStyle = '#c8c8c8'; g.font = '14px sans-serif'; g.fillText('NAPAJ OTOYK  .DTL,.OC CIRTCELE NISSIN', 520, 692);
   uM.userData.tex.needsUpdate = true;
 }
 function drawT() {
