@@ -99,7 +99,7 @@ function paintDial(g, w, h, unit, rows, active) {
   const paper = g.createLinearGradient(0, 0, 0, h); paper.addColorStop(0, '#e0ddbd'); paper.addColorStop(0.25, '#f3efd3'); paper.addColorStop(1, '#dedab5');
   g.fillStyle = paper; g.fillRect(0, 0, w, h);
   const { cx, cy, R, a0, sweep } = dialLayout(w, h);
-  g.fillStyle = '#555b52'; g.font = '9px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('NISSIN ELECTRIC CO., LTD.', cx, 12);
+  g.fillStyle = '#555b52'; g.font = '9px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('.DTL ,.OC CIRTCELE NISSIN', cx, 12);
   const scales = rows.map((max, index) => ({ max, index })).reverse();
   scales.forEach(({ max, index }, band) => {
     const rr = R - band * 14, selected = index === active;

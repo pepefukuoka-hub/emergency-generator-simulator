@@ -1290,7 +1290,7 @@ function drawM() {
   g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('VOLTMETER', 190, 614); g.fillText('RANGE (V)', 190, 632); knobRot(g, hits, 'io', 320, 552, 30, 3, RT.io, ['0.5', '0.9', '1.2'], -55, 55, 16); g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('Io RANGE (A)', 320, 620);
   knobRot(g, hits, 'am', 760, 552, 36, 6, RT.am, AMN, -110, 70, 15); g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('AMMETER', 760, 614); g.fillText('RANGE (A)', 760, 632);
   knobRot(g, hits, 'sel', 905, 552, 34, 6, RT.sel, SELN, -95, 85, 16); g.font = '13px sans-serif'; g.fillStyle = '#f4f4f4'; g.fillText('TEST SELECT', 905, 622);
-  g.fillStyle = '#ffa339'; g.font = 'bold 22px sans-serif'; g.fillText('METER UNIT : PRT-3M', 520, 672); g.fillStyle = '#c8c8c8'; g.font = '14px sans-serif'; g.fillText('NISSIN ELECTRIC CO.,LTD.  KYOTO JAPAN', 520, 692);
+  g.fillStyle = '#ffa339'; g.font = 'bold 22px sans-serif'; g.fillText('METER UNIT : PRT-3M', 520, 672); g.fillStyle = '#c8c8c8'; g.font = '14px sans-serif'; g.fillText('NAPAJ OTOYK  .DTL,.OC CIRTCELE NISSIN', 520, 692);
   syncTesterControls(uM, hits, 'M'); uM.userData.tex.needsUpdate = true;
 }
 function drawT() {
