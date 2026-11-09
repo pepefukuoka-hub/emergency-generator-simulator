@@ -725,7 +725,12 @@ function cabinetInside(ig, kind) {
       bx(-0.16, 0.16, 0.34, 0.56, 0.2, 0.205, M(0xbfbba8, 0.2, 0.7), u); for (let i = 0; i < 4; i++) bx(-0.14 + i * 0.07, -0.1 + i * 0.07, 0.8, 0.83, 0.2, 0.205, i % 2 ? M(0xf0a040) : M(0xe8d9a0), u); }
     for (const y of [0.9, 0.6]) { bx(0.3, 0.42, y - 0.06, y + 0.06, 0.03, 0.09, M(0xb4b8bc, 0.5, 0.4), ig); const k = knob3D(); k.position.set(0.36, y, 0.09); ig.add(k); }
     for (const x of [-0.36, -0.28]) cyl(0.03, 0.8, M(0x8a8e92, 0.2, 0.9), x, 0.52, 0.06, 'y', ig, 12);
-  } else if (kind === 0) {      // 高圧配電盤 GF2/GF1：真空遮断器（VCB）の見本（実際は開閉不可の想定）
+  } else if (kind === 0) {      // 高圧配電盤 GF2/GF1：真空遮断器（VCB）の見本
+    { const silverC = M(0x9aa0a5, 0.7, 0.45);
+      bx(-0.43, -0.385, 0.35, 1.15, 0.0, 0.07, darkP, ig);                                  // 左の端子台
+      for (let i = 0; i < 16; i++) { const y = 0.38 + i * 0.048; bx(-0.43, -0.385, y, y + 0.018, 0.07, 0.078, i % 4 ? M(0xc9a24a, 0.8, 0.3) : whtM, ig); wire(ig, [-0.4, y + 0.01, 0.078], [-0.34, y + 0.03, 0.09]); wire(ig, [-0.4, y + 0.01, 0.078], [-0.37, y - 0.02, 0.1]); }
+      pipe([[-0.36, 1.5, 0.12], [-0.34, 1.3, 0.2], [-0.38, 1.1, 0.16], [-0.4, 0.95, 0.1]], 0.03, silverC, ig);   // 銀色テープの蛇腹管
+      pipe([[0.36, 1.5, 0.1], [0.4, 1.3, 0.18], [0.38, 1.0, 0.14]], 0.028, mat.cable, ig); }（実際は開閉不可の想定）
     const gold = M(0xb59a3a, 0.8, 0.4), vcbBody = M(0xd8d2bb, 0.2, 0.55);
     const vcb = (y0, tag) => {
       const u = new THREE.Group(); u.position.set(0, y0, 0); ig.add(u);
@@ -790,7 +795,7 @@ function cabinetInside(ig, kind) {
   }
 }
 const i0 = y => (y > 1.5 ? darkP : cream);
-function doorBack(dg, rec, cx) {
+function doorBack(dg, rec, cx, kind) {
   const P = (xx, yy) => [cx + (xx - 256) * KM, 2.29 - yy * KM];
   const termDots = (g, x, y, w) => { for (let i = 0; i < 6; i++) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.012, 8), M(0xd0b060, 0.8, 0.3)); t.rotation.x = Math.PI / 2; t.position.set(x - w / 2 + 0.01 + i * (w - 0.02) / 5, y, -0.115); g.add(t); } };
   const rows = new Set();
@@ -801,6 +806,21 @@ function doorBack(dg, rec, cx) {
   wduct(dg, cx - 0.36, 1.2, -0.075, 1.9, true); rows.forEach(r => { const y = r / 5 - 0.12; if (y > 0.3) wduct(dg, cx + 0.1, y, -0.075, 0.5, false, 0.04); });
   bx(cx - 0.455, cx - 0.435, 0.1, 2.2, -0.05, -0.03, M(0xb89a3c, 0.8, 0.35), dg);     // 蝶番側の金具
   bx(cx - 0.455, cx + 0.45, 0.78, 0.8, -0.05, -0.03, M(0xb89a3c, 0.8, 0.35), dg);
+  if (kind === 0) {   // 高圧配電盤の扉の裏（写真：スリット付き配線ダクト、端子台と黄色い配線、吊り下げた黒い箱、計器の背面、扉の開き止め）
+    const silverM = M(0xa9aeb3, 0.7, 0.4), tie = M(0xf2f2ee, 0, 0.6);
+    wduct(dg, 0.2, 1.25, -0.075, 1.6, true, 0.1);                                   // 縦ダクト
+    bx(0.265, 0.295, 0.5, 1.95, -0.1, -0.04, darkP, dg);                              // 端子台
+    for (let i = 0; i < 26; i++) { const y = 0.55 + i * 0.055; bx(0.262, 0.298, y, y + 0.02, -0.105, -0.095, i % 5 ? M(0xc9a24a, 0.8, 0.3) : tie, dg); wire(dg, [0.28, y + 0.01, -0.105], [0.23 + (i % 3) * 0.01, y - 0.02, -0.08]); wire(dg, [0.28, y + 0.01, -0.105], [0.14, y - 0.01, -0.08]); }
+    wduct(dg, 0.58, 1.02, -0.09, 0.72, false, 0.11);                                // 横ダクト
+    for (let i = 0; i < 16; i++) { const x = 0.26 + i * 0.045; wire(dg, [x, 1.08, -0.1], [x + 0.01, 0.98, -0.1]); }
+    bx(0.38, 0.78, 0.52, 0.93, -0.32, -0.12, M(0x0d0e10, 0.2, 0.5), dg);               // 吊り下げた黒い箱
+    bx(0.4, 0.76, 0.9, 0.95, -0.16, -0.1, silverM, dg);                                // 受け金具
+    { const m = cyl(0.1, 0.26, M(0x121316, 0.3, 0.5), 0.72, 1.74, -0.18, 'z', dg, 32); cyl(0.085, 0.012, silverM, 0.72, 1.74, -0.315, 'z', dg, 32); }   // 計器の背面（丸い筒）
+    for (let i = 0; i < 12; i++) wire(dg, [0.62, 1.55 + i * 0.012, -0.1], [0.66, 1.74, -0.2]);
+    for (const y of [0.35, 0.45]) bx(0.5, 0.8, y, y + 0.05, -0.1, -0.06, silverM, dg);   // 取付け金具
+    bx(0.62, 0.99, 2.2, 2.215, -0.22, -0.2, silverM, dg); cyl(0.012, 0.03, silverM, 0.62, 2.21, -0.21, 'z', dg, 10); cyl(0.012, 0.03, silverM, 0.99, 2.21, -0.21, 'z', dg, 10); // 開き止めの棒
+    for (let k = 0; k < 8; k++) { const t = bx(0.19, 0.21, 0.6 + k * 0.17, 0.612 + k * 0.17, -0.12, -0.1, tie, dg); void t; }
+  }
   const np = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.14), plateT([['盤銘板', 15], ['（教育用モデル）', 15]], 200, 90)); np.position.set(cx - 0.05, 0.5, -0.032); np.rotation.y = Math.PI; dg.add(np);
 }
 function buildCabinet(i, x, nm) {
@@ -816,7 +836,7 @@ function buildCabinet(i, x, nm) {
   bx(0.0, W, 0.01, 2.29, -0.03, -0.002, cream, dg);
   const f = new THREE.Mesh(new THREE.PlaneGeometry(W, 2.28), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.45 })); f.position.set(W / 2, 1.15, 0); dg.add(f);
   buildDevices(dg, 0.465, rec, 0);
-  doorBack(dg, rec, 0.465);
+  doorBack(dg, rec, 0.465, i);
   const d = { g: dg, cur: 0, target: 0, light: null };
   if (i === 3 || i === 4 || i === 2) { const l = new THREE.PointLight(0xfff2dc, 0, 2.6, 1.6); l.position.set(x, 2.0, -3.0); pnl.add(l); d.light = l; }
   doors.push(d);
