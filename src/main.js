@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RELAY_PHOTO } from './relay-photos.js';
 import { paintRotary, paintMeter, syncTesterControls } from './relay-instruments.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -479,7 +480,10 @@ function dialMark(g, cx, cy, R, vals, a0 = 225, a1 = -45, fs = 15) {
   g.fillStyle = '#111'; g.font = `${fs}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   vals.forEach((v, i) => { const a = (a0 + (a1 - a0) * i / (vals.length - 1)) * Math.PI / 180; g.fillText(String(v), cx + Math.cos(a) * (R + 14), cy - Math.sin(a) * (R + 14)); });
 }
+const photoTex = {};
 function relayFace(type, tag) {
+  const pk = type === 'ovr' ? (tag === '59G' ? 'ovr59' : null) : type, ph = pk && RELAY_PHOTO[pk];
+  if (ph) { const t = photoTex[pk] || (photoTex[pk] = (() => { const x = new THREE.TextureLoader().load(ph.uri); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 4; return x; })()); return { tex: t, W: ph.w, H: ph.h, dials: [], vert: type === 'lvg', ex: [], aspect: ph.w / ph.h }; }
   const vert = type === 'elr' || type === 'lvg', W = vert ? 280 : 400, H = vert ? 440 : 500, dials = [];
   const Q = 2, ex = [];
   const tex = canvasTex(W * Q, H * Q, (g) => {
@@ -532,11 +536,12 @@ const gearShape = (() => { const sh = new THREE.Shape(), n = 40; for (let i = 0;
 const streakTex = (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 256; const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0.15, 'rgba(255,255,255,0)'); gr.addColorStop(0.32, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.08)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.3)'); gr.addColorStop(0.75, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return new THREE.CanvasTexture(c); })();
 function relay3D(type, tag) {
   const f = relayFace(type, tag), g3 = new THREE.Group();
-  const bw = f.vert ? 0.115 : 0.205, bh = f.vert ? 0.215 : 0.26, fw = bw - 0.075, fh = bh - 0.105;
+  const bw = f.vert ? 0.115 : 0.205, bh = f.vert ? 0.215 : 0.26; let fw = bw - 0.075, fh = bh - 0.105;
+  if (f.aspect) { if (f.vert) { fh = 0.15; fw = fh * f.aspect; } else { fw = 0.135; fh = fw / f.aspect; } }
   g3.add(ext(rrShape(bw, bh, 0.014), 0.02, blkG));
   const st = ext(rrShape(bw - 0.03, bh - 0.04, 0.01), 0.012, blkG); st.position.z = 0.022; g3.add(st);
   const rec = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.058, bh - 0.08, 0.004), M(0x050506, 0.2, 0.9)); rec.position.z = 0.036; g3.add(rec);
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({ map: f.tex, roughness: 0.4, metalness: 0.5 })); face.position.set(0, 0.006, 0.039); g3.add(face);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshStandardMaterial({ map: f.tex, roughness: f.aspect ? 0.35 : 0.4, metalness: f.aspect ? 0 : 0.5 })); face.position.set(0, 0.006, 0.039); g3.add(face);
   f.dials.forEach(([u, v, ang]) => {
     const d = new THREE.Group(); d.position.set((u - 0.5) * fw, (0.5 - v) * fh + 0.006, 0.04); d.rotation.z = -ang; g3.add(d);
     const kn = ext(gearShape, 0.012, blkG, 0.0004); kn.position.z = 0.0; d.add(kn);
