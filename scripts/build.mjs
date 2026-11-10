@@ -3,7 +3,7 @@ import { build, context } from 'esbuild';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const watch = process.argv.includes('--watch');
-const opts = { entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', write: false, legalComments: 'inline' };
+const opts = { entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', write: false, legalComments: 'inline', loader: { '.glb': 'binary', '.jpg': 'dataurl', '.png': 'dataurl', '.webp': 'dataurl' } };
 
 function emit(js) {
   const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">' +

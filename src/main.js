@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RELAY_PHOTO, TERM_PHOTO } from './relay-photos.js';
 import { DESK_PHOTO } from './desk-photo.js';
+import { loadGenset, GENSET } from './genset.js';
 import { paintRotary, paintMeter, syncTesterControls } from './relay-instruments.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -352,7 +353,7 @@ for (const x of [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0]) bx(x - 0.15, x + 0.15
 bx(-10.5, 3.6, 0, 1.25, -3.4, -3.37, M(0x9c9d83, 0, 0.9), room);
 bx(-4.1, 3.6, 0, 0.012, -3.3, -2.5, mat.plate, room); bx(-10.4, -9.5, 0, 0.012, -3.3, -1.0, mat.plate, room);
 // 排気管（天井まで→入口側へ）と、風道の曲がり
-pipe([[0.95, 4.2, -0.05], [0.95, 4.05, -0.05], [0.4, 4.05, -0.05], [-0.8, 4.05, -0.05]], 0.2, mat.lag, room);
+pipe([[0.55, 4.3, -0.32], [0.55, 4.05, -0.32], [0.4, 4.05, -0.05], [-0.8, 4.05, -0.05]], 0.2, mat.lag, room);
 pipe([[2.3, 2.8, 0], [2.3, 3.6, -0.6], [1.8, 3.75, -1.8], [0.4, 3.75, -2.9], [-2.5, 3.75, -3.0]], 0.38, duct, room);
 // 背面壁の換気扇
 bx(3.52, 3.6, 2.6, 3.4, -1.9, -1.1, M(0xb5babd, 0.4, 0.6), room);
@@ -930,6 +931,19 @@ const cutPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   });
 }
 let xray = false, section = false;
+// ---------- 発電機の外観：Blender で作ったモデルに差し替える（古い手作りの外観は隠す。内部の動く部品・天板の写真・燃料タンクは残す） ----------
+rig.children.forEach(o => { if (o !== inner) o.visible = false; });
+gen.children.forEach(o => { if (o.isMesh) o.visible = false; });
+fan.visible = true; fan.children.forEach(o => { o.visible = false; }); fan.position.set(...GENSET.fan);
+cage.visible = false; cp.children.forEach(o => { if (o !== desk) o.visible = false; });
+cp.position.set(-1.775, 0, -1.2025); desk.rotation.x = -Math.atan2(0.625, 0.24); desk.position.set(0, 1.108, 0);
+inner.position.set(-0.29, -0.30, 0);      // 新しい外観の軸の高さ・シリンダ位置に合わせる
+cutPlane.constant = -0.7;                 // 断面は、発電機の軸を通る面で切る
+loadGenset(out => {
+  out.rig.forEach(o => rig.add(o)); out.static.forEach(o => gen.add(o)); out.fan.forEach(o => { o.userData.tip = 'fan'; fan.add(o); });
+  Object.values(out.materials).forEach(m => { if (m.userData.cls === 'big' || m.userData.cls === 'small') shellMats.push(m); });
+  applyView();
+});
 function applyView() {
   inner.visible = xray || section; fuelGroup.visible = inner.visible;
   shellMats.forEach(m => { m.transparent = xray; m.opacity = xray ? 0.16 : 1; m.depthWrite = !xray; m.clippingPlanes = section ? [cutPlane] : []; m.needsUpdate = true; });
@@ -1061,7 +1075,7 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 
 // ================= 歩く視点（一人称） =================
 const walk = { on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
-const BLOCKS = [[-3.2, 2.75, -1.55, 0.15], [-2.9, -1.55, -2.2, -1.48], [-1.55, -0.5, -2.6, -1.85], [-0.5, 1.0, -0.2, 0.8], [-0.5, 0.15, 0.5, 1.25], [-0.5, 1.0, -2.2, -1.2], [1.3, 3.1, -1.65, 0.25],
+const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
 const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
