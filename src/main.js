@@ -999,7 +999,7 @@ $('bx').onclick = () => { if (S.mode !== 'stop' && S.mode !== 'stopping') { S.ma
 $('bi').onclick = () => { xray = !xray; applyView(); };
 $('bc').onclick = () => { section = !section; applyView(); };
 const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0]], [[-3.4, 1.8, -3.0], [-1.5, 1.1, -1.0]], [[-6.2, 1.9, 0.4], [-1, 1.5, 0]], [[-5.3, 1.65, -2.8], [0.5, 1.3, 1.0]], [[-1, 0.85, 1.25], [-1, 0.7, 2.7]], [[-6.3, 1.6, 1.0], [-9.8, 1.5, 1.0]], [[-8.2, 1.5, 1.25], [-9.8, 1.4, 1.25]], [[-0.4, 2.4, 6.4], [-0.6, 1.6, 0]], [[-7.4, 1.6, -0.2], [-9.9, 1.4, 0.1]]];
-views.push([[-8.3, 0.55, pz(4)], [-9.8, 0.55, pz(4)]], [[-1.05, 0.5, -3.1], [-1.05, 0.5, -1.5]]);
+views.push([[-8.3, 0.55, -0.65], [-9.8, 0.55, -0.65]], [[-1.05, 0.5, -3.6], [-1.05, 0.5, -2.22]]);
 h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
