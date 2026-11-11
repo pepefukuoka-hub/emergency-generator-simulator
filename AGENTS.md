@@ -85,7 +85,7 @@ npm run dev      # 監視ビルド
 - モデルは `src/worker/worker.glb`（＋ `body.jpg`・`outfit.jpg`）。`blender/worker/build.py` で作る（手順は `blender/worker/README.md`）。体・骨・ウェイト・目は MakeHuman / MPFB の CC0 データ、服・帽子・靴・髪はスクリプトで作成。**架空の人物。実在の人の写真・顔・氏名・所属・ロゴは使わない。**
 - `src/worker.js` の `createWorker()` が `{ root, update(進んだ距離) }` を返す。歩く動きは、骨の回転で付けている（`turn(骨, [軸, 角度]…)`。軸はモデルの向きで、X＝左右、Y＝上、Z＝前）。
 - 視点の切り替え（本人の目線／後ろから見る）は、`walk.third` と `#personView`。確認用に `window.__worker` を出してある。
-- 服・帽子・靴の形は推測。市販のゲーム並みの人物ではない（顔の絵・髪・しわ・指は簡素）。
+- 明るいグレーの服と白い保護帽の外観は指定写真を参考に改善。寸法・見えない部分・靴の形は推測。市販のゲーム並みの人物ではない（顔の絵・髪・しわ・指は簡素）。
 
 ## 7. 動作確認の方法
 - ヘッドレス Chromium（Playwright）で確認する。`require('playwright')` は、プロジェクトの外では使えないことがある。スクリプトを `.cjs` にして、リポジトリの直下に一時的に置いて実行し、終わったら消す（コミットしない）。

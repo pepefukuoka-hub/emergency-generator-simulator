@@ -1,4 +1,4 @@
-# 作業員（グレーの帽子と作業服）を作る Blender スクリプト。
+# 作業員（白い保護帽とグレーの作業服）を作る Blender スクリプト。
 # 体のメッシュ・体型の差分・骨・ウェイト・目は、MakeHuman / MPFB の CC0 データを「データとして」読むだけ（MPFB のプログラムは実行しない）。
 # 服・帽子・靴・髪は、体のヘルパー形状（helper-tights / helper-hair）と足の形から、このスクリプトで作る。
 # 使い方： python build.py <MPFBのdataフォルダ> <MakeHumanのdataフォルダ> <出力フォルダ> [preview]
@@ -162,7 +162,17 @@ arm_w = lambda i: wsum(i, ['upperarm', 'lowerarm', 'hand'])
 leg_w = lambda i: wsum(i, ['thigh', 'calf', 'foot', 'ball'])
 # 上着：すそはベルトより 11cm 下まで。胴はゆったり、そでは少しゆったり
 jf, jp, je, jid = cloth(lambda i: P[i, 2] > waist - 0.11 and wsum(i, ['hand', 'thumb', 'index', 'middle', 'ring', 'pinky']) < 0.55 and P[i, 2] < neckz + 0.012,
-                   lambda i: 0.012, 6, lambda i: 0.016 if arm_w(i) > 0.5 else 0.02 + 0.012 * max(0, min(1, (waist + 0.12 - P[i, 2]) / 0.2)))
+                   lambda i: 0.012, 6, lambda i: 0.024 if arm_w(i) > 0.5 else 0.032 + 0.020 * max(0, min(1, (waist + 0.12 - P[i, 2]) / 0.2)))
+# Work jacket hangs from the shoulders instead of following the body's waist.
+for i in jid:
+    if arm_w(i) < 0.2 and jp[i, 2] < neckz - 0.12:
+        z = jp[i, 2]
+        fill = math.exp(-((z - waist - 0.12) / 0.15) ** 2)
+        jp[i, 0] *= 1 + 0.20 * fill
+        jp[i, 1] *= 1 + 0.16 * fill
+        # Gather the bottom hem slightly, like a blouson waistband.
+        hem = math.exp(-((z - waist + 0.105) / 0.045) ** 2)
+        jp[i, :2] *= 1 - 0.09 * hem
 # ズボン：ベルトの高さから足首まで
 ankle = cube('joint-l-ankle')[2]
 pf, pp, pe, pid = cloth(lambda i: P[i, 2] < waist + 0.02 and P[i, 2] > ankle - 0.035, lambda i: 0.01, 5, lambda i: 0.012 + 0.014 * max(0, min(1, (0.5 - P[i, 2]) / 0.45)))
@@ -181,14 +191,18 @@ def wrinkle(pos, faces, spots, amp):
 Z = np.array([0, 0, 1.0]); X = np.array([1.0, 0, 0])
 spots_j = [(cube('joint-l-elbow'), 0.13, X * 0.6 + Z * 0.8, 95), (cube('joint-r-elbow'), 0.13, -X * 0.6 + Z * 0.8, 95), (cube('joint-l-shoulder') - Z * 0.07, 0.12, Z, 80), (cube('joint-r-shoulder') - Z * 0.07, 0.12, Z, 80), (np.array([0, 0, waist + 0.03]), 0.2, Z, 90)]
 spots_p = [(cube('joint-l-knee'), 0.16, Z, 85), (cube('joint-r-knee'), 0.16, Z, 85), (cube('joint-pelvis') - Z * 0.06, 0.17, X, 70), (cube('joint-l-ankle') + Z * 0.08, 0.13, Z, 110), (cube('joint-r-ankle') + Z * 0.08, 0.13, Z, 110)]
-jp = wrinkle(jp, jf, spots_j, 0.0042); pp = wrinkle(pp, pf, spots_p, 0.0045)
+for i in jid:
+    z = jp[i, 2]; lower = math.exp(-((z - waist - 0.025) / 0.095) ** 2)
+    if arm_w(i) < 0.25:
+        jp[i] += N[i] * (0.009 * lower * math.sin(jp[i, 0] * 42 + z * 22))
+jp = wrinkle(jp, jf, spots_j, 0.0055); pp = wrinkle(pp, pf, spots_p, 0.0045)
 # 縁をまっすぐにそろえる（すそ・ウエスト・ズボンのすそ）
 for i in jid:
     if je[i] and jp[i, 2] < waist: jp[i, 2] = waist - 0.105
 for i in pid:
     if pe[i]: pp[i, 2] = waist + 0.012 if pp[i, 2] > waist - 0.1 else ankle - 0.03
 
-GREY = (0.25, 0.265, 0.28); GREY_D = (0.225, 0.24, 0.255)
+GREY = (0.39, 0.415, 0.44); GREY_D = (0.35, 0.375, 0.40)
 JACKET = make('jacket', jf, mat('cloth', GREY, 0.85), jp)
 PANTS = make('pants', pf, mat('cloth', GREY, 0.85), pp)
 
@@ -335,29 +349,41 @@ def scalp(sel, puff, it):
 hset = set(hid)
 hf, hp = scalp(lambda i: P[i, 2] > hairz(i) and back(i) > 0.16, lambda i: 0.0035, 1)
 HAIR = make('hair', hf, mat('hair', (0.02, 0.018, 0.016), 0.6), hp, rigid='head')
-def puff_cap(i):
-    t = max(0.0, min(1.0, (P[i, 2] - capz(i)) / (top - capz(i))))
-    return 0.007 + 0.014 * math.sin(t * math.pi * 0.9) + 0.016 * (1 - back(i)) * math.sin(min(1.0, t * 1.6) * math.pi * 0.5) * (1 - t * 0.6)   # 前を少し高く立てる
-capf, cp = scalp(lambda i: P[i, 2] > capz(i), puff_cap, 4)
-CAP = make('cap', capf, mat('cap', (0.27, 0.285, 0.30), 0.85), cp, rigid='head'); thicken(CAP, 0.006)
-hc = P[hid].mean(0)
-# つば
-cco = np.array([v.co for v in CAP.data.vertices]); rim = cco[(cco[:, 2] < eye[2] + 0.07) & (cco[:, 1] < eye[1] + 0.04)]
-bm = bmesh.new(); S = 14; rows = []
-xs = np.linspace(-0.074, 0.074, S)
-for a, (ext, drop) in enumerate([(0.0, 0.0), (0.03, 0.004), (0.058, 0.011), (0.075, 0.019)]):
+# Smooth protective helmet: elliptical shell with a rolled rim and short front peak.
+# Reference informs clothing silhouette only; dimensions are approximate.
+bm = bmesh.new(); rings = []; segments = 64
+cy = (ymin + ymax) / 2 + 0.012
+basez = eye[2] + 0.047
+for j in range(25):
+    angle = (j / 24) * math.pi / 2
+    rr = max(0.001, math.cos(angle))
     row = []
-    for x in xs:
-        j = int(np.argmin((rim[:, 0] - x) ** 2 + (rim[:, 2] - (eye[2] + 0.05)) ** 2 * 4)); base = rim[j]
-        round_ = math.cos(x / 0.074 * math.pi / 2) ** 0.75
-        row.append(bm.verts.new((x * (1 - 0.06 * a), base[1] + 0.014 - ext * round_, eye[2] + 0.057 - drop - 0.006 * (x / 0.074) ** 2)))
-    rows.append(row)
-for a in range(3):
-    for b in range(S - 1): bm.faces.new((rows[a][b], rows[a][b + 1], rows[a + 1][b + 1], rows[a + 1][b]))
-bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.005)
+    for k in range(segments):
+        t = k * math.tau / segments
+        row.append(bm.verts.new((0.103 * rr * math.cos(t), cy + 0.126 * rr * math.sin(t), basez + 0.143 * math.sin(angle))))
+    rings.append(row)
+for j in range(24):
+    for k in range(segments):
+        n = (k + 1) % segments
+        bm.faces.new((rings[j][k], rings[j][n], rings[j+1][n], rings[j+1][k]))
+bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.003)
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-BRIM = from_bm('brim', bm, mat('cap', (0.27, 0.285, 0.30), 0.85), CAP)
-
+CAP = from_bm('helmet_shell', bm, mat('cap', (0.80, 0.82, 0.81), 0.32), HAIR)
+# All shell vertices follow the head rigidly.
+CAP.vertex_groups.clear(); g = CAP.vertex_groups.new(name='head'); g.add(list(range(len(CAP.data.vertices))), 1, 'REPLACE')
+bm = bmesh.new(); rings = []
+for dr, dz in [(0, 0.002), (0.006, 0.001), (0.009, -0.003), (0.005, -0.006)]:
+    row = []
+    for k in range(segments):
+        t = k * math.tau / segments; peak = max(0, -math.sin(t)) ** 8 * 0.027
+        row.append(bm.verts.new(((0.103+dr)*math.cos(t), cy+(0.126+dr+peak)*math.sin(t), basez+dz-peak*0.16)))
+    rings.append(row)
+for j in range(3):
+    for k in range(segments):
+        n=(k+1)%segments; bm.faces.new((rings[j][k],rings[j][n],rings[j+1][n],rings[j+1][k]))
+bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.002)
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+BRIM=from_bm('helmet_rim', bm, MATS['cap'], CAP)
 
 # ---------- 8. まとめる：肌＋目 → body、服・帽子・髪・靴 → outfit ----------
 def join(name, obs):
@@ -367,6 +393,10 @@ def join(name, obs):
 def edit(ob, fn):
     bpy.ops.object.select_all(action='DESELECT'); ob.select_set(True); bpy.context.view_layer.objects.active = ob
     bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); fn(); bpy.ops.object.mode_set(mode='OBJECT')
+for ob in [SKIN, JACKET, PANTS, COLLAR]:
+    bpy.context.view_layer.objects.active = ob
+    sub = ob.modifiers.new('Tailored surface', 'SUBSURF'); sub.levels = 1
+    bpy.ops.object.modifier_apply(modifier=sub.name)
 BODY = join('body', [SKIN, EYES])
 edit(BODY, lambda: (bpy.ops.uv.average_islands_scale(), bpy.ops.uv.pack_islands(margin=0.006, rotate=False)))
 OUTFIT = join('outfit', [JACKET, PANTS, DETAIL, COLLAR, BUTTONS, BELT, BUCKLE, CAP, BRIM, HAIR] + [o for pr in SHOES for o in pr])

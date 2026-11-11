@@ -1,4 +1,4 @@
-// worker.js — 作業員（グレーの帽子と作業服）。Blender で作ったモデル（GLB）を読み込み、歩く動きを骨の回転で付ける。
+// worker.js — 作業員（白い保護帽とグレーの作業服）。Blender で作ったモデル（GLB）を読み込み、歩く動きを骨の回転で付ける。
 // 形は blender/worker/build.py で生成。体・骨・ウェイト・目は MakeHuman / MPFB の CC0 データ、服・帽子・靴・髪はスクリプトで作成。
 // 架空の人物。実在の人の写真・顔・氏名・所属・ロゴは使わない。
 import * as THREE from 'three';
@@ -15,14 +15,14 @@ function weave() {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(90, 90); return t;
 }
 
-let TW = 1.1;
+let TW = 2.3;
 export function createWorker() {
   const root = new THREE.Group(), B = {}, rest = {}, wr = {};
   let ready = false, phase = 0, amp = 0, last = performance.now();
   new GLTFLoader().parse(GLB.buffer.slice(GLB.byteOffset, GLB.byteOffset + GLB.byteLength), '', gltf => {
     const model = gltf.scene; model.rotation.y = Math.PI; root.add(model);          // モデルの正面（+Z）を、歩く向き（−Z）に合わせる
     const body = new THREE.MeshStandardMaterial({ map: tex(BODY_URI), roughness: 0.58 });
-    const outfit = new THREE.MeshStandardMaterial({ map: tex(OUTFIT_URI), roughness: 0.92, normalMap: weave(), normalScale: new THREE.Vector2(0.35, 0.35), side: THREE.DoubleSide });
+    const outfit = new THREE.MeshStandardMaterial({ map: tex(OUTFIT_URI), roughness: 0.92, normalMap: weave(), normalScale: new THREE.Vector2(0.025, 0.025), side: THREE.DoubleSide });
     model.traverse(o => {
       if (o.isMesh) { o.material = /body|skin/.test(o.name + o.material.name) ? body : outfit; o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; }
       if (o.isBone) B[o.name] = o;
@@ -51,7 +51,7 @@ export function createWorker() {
       turn('thigh_' + sd, [X, -lg * 0.48 * a]);
       turn('calf_' + sd, [X, (Math.max(0, -k * co) * 0.85 + 0.06) * a]);
       turn('foot_' + sd, [X, (lg * 0.18 - Math.max(0, -k * co) * 0.25) * a]);
-      for (const f of ['index', 'middle', 'ring', 'pinky']) for (const n of ['01', '02', '03']) turn(f + '_' + n + '_' + sd, [Zf, -k * 0.09]);
+      for (const f of ['index', 'middle', 'ring', 'pinky']) for (const n of ['01', '02', '03']) turn(f + '_' + n + '_' + sd, [Zf, -k * (n === '01' ? 0.20 : 0.28)]);
     }
     turn('spine_01', [Y, s * 0.05 * a]); turn('spine_03', [Y, -s * 0.09 * a], [X, br * 0.6 + 0.03 * a]); turn('head', [Y, s * 0.04 * a], [X, -br * 0.4]);
     root.children[0].position.y = -Math.abs(Math.sin(p)) * 0.022 * a - 0.004 * a;    // 歩くときの上下
