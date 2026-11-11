@@ -948,7 +948,7 @@ function buildDevices(parent, px, rec, z0 = -2.875) {
   const put = (o, x, y, z = 0.001) => { const [wx, wy] = P(x, y); o.position.set(wx, wy, z0 + z); parent.add(o); return o; };
   rec.name.forEach(n => put(name3D(n), n.cx, n.cy));
   rec.meter.forEach(m => put(meter3D(m), m.cx, m.cy));
-  rec.relay.forEach(r => { const [type, tag] = r.title.split(':'); const o = relay3D(type, tag); if (z0 > -3) RELAYS[tag] = o; put(o, r.x + r.w / 2, r.y + r.h / 2); });
+  rec.relay.forEach(r => { const [type, tag] = r.title.split(':'); const o = relay3D(type, tag); o.userData.relayTag = tag; o.userData.relayType = type; if (z0 > -3) RELAYS[tag] = o; put(o, r.x + r.w / 2, r.y + r.h / 2); });
   rec.block.forEach(b => put(block3D(b.t, b.red), b.x + 23, b.y + 20));
   rec.knob.forEach(k => { const o = put(knob3D(k.t, k.tag), k.x, k.y); o.userData.knob.rotation.z = k.tag ? -0.75 : 0.6 - ((k.x * 13 + k.y * 7) % 3) * 0.6; });
   rec.pistol.forEach(k => put(pistol3D(k.t), k.x, k.y));
@@ -1164,7 +1164,7 @@ function relayBack3D(dg, type, tag, x, y) {
     const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(X, Y, -D - 0.008), new THREE.Vector3(X, Y - 0.014, -D - 0.022), new THREE.Vector3(X - 0.01, -h / 2 - 0.02 - ci * 0.004, -D - 0.012), new THREE.Vector3(-w / 2 - 0.06, -h / 2 - 0.03 - ci * 0.004 - ri * 0.012, -0.06)]), 16, 0.0022, 6), /[CP]/.test(nm) ? yelM : /T/.test(nm) ? whtM : redM); g.add(m);
     wires[/[CP]/.test(nm) ? 'in' : /T/.test(nm) ? 'trip' : 'dc'].push(m);
   }));
-  g.userData = { ports, wires, type }; RELAY_BACK[tag] = g; return g;
+  g.userData = { ports, wires, type, relayTag: tag, relayType: type }; RELAY_BACK[tag] = g; return g;
 }
 function doorBack(dg, rec, cx, kind) {
   const P = (xx, yy) => [cx + (xx - 256) * KM, 2.29 - yy * KM];
@@ -1606,6 +1606,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (Math.hypot(e.clientX - dx, e.clientY - dy) > 6 || performance.now() - t0 > 600 || ov.style.display !== 'none') return;
     const r = el.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera);
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
+    if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
@@ -2129,7 +2130,7 @@ const rtp = document.createElement('div'); rtp.id = 'rtp'; document.body.appendC
 const rtBtn = document.createElement('button'); h1.insertAdjacentHTML('beforeend', ' <button id=bt style="background:#2563a8;color:#fff;font-weight:bold">🧪 継電器試験</button>');
 rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 終了して収納</button></span></div><div id=rtZoomRow style="margin:4px 0">3Dで寄る：<button id=rtZoomM>測定箱</button><button data-z="M,204,230,0.3">電圧計</button><button data-z="M,796,230,0.3">電流計</button><button data-z="M,496,120,0.17">カウンタ</button><button data-z="M,882,566,0.13">TEST SELECT</button><button id=rtZoomT>電源箱</button><button data-z="T,698,484,0.2">調整器</button><button data-z="T,399,500,0.2">出力レンジ</button><button data-zb=1>継電器の背面</button><button data-zb=2>継電器の前面</button></div><div class=rtbody>' +
   '<div>試験対象：<select id=rtTarget></select> 試験項目：<select id=rtTest></select> <label><input id=rtBad type=checkbox> 不良個体（判定を体験）</label></div><div id=rtLog></div>' +
-  '<h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div id=rtStat class=info></div><div class=info>ロータリー：つまみの左半分で左へ・右半分で右へ回る　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
+  '<div class=info>盤の継電器を<b>1回タップ</b>すると名前と整定が出ます。同じ継電器を<b>もう1回タップ</b>すると、その継電器の試験を始めます。</div><h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div id=rtStat class=info></div><div class=info>ロータリー：つまみの左半分で左へ・右半分で右へ回る　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
 const rtTargetSel = $('rtTarget'), rtTestSel = $('rtTest'), rtStatEl = $('rtStat');
 rtTargetSel.innerHTML = Object.keys(RDEF).map(k => `<option value="${k}">${RDEF[k].name}</option>`).join('');
 function fillTests() { rtTestSel.innerHTML = testsFor(grp()).map(k => `<option value="${k}">${TESTS[k].title}</option>`).join('') + '<option value="_ground">地絡（OCG／DG）・漏電リレー：解説のみ</option>'; rtTestSel.value = RT.test; }
@@ -2281,6 +2282,26 @@ function rtRender() {
   $('rtGuide').innerHTML = guideHTML(); $('rtRec').innerHTML = recHTML(); $('rtRef').innerHTML = REFHTML;
   $('rtLog').innerHTML = RT.log.map(l => `<div class="lg ${l.lv}">${l.lv === 'e' ? '⚠ ' : l.lv === 'i' ? 'ℹ ' : '・'}${l.t}</div>`).join('');
 }
+// ---------- 盤の継電器をタップ：1回目で名前を表示、同じ継電器をもう1回で、その継電器の試験を始める（継電器試験を開いている間だけ） ----------
+const RELAY_KIND = { ocr: '過電流継電器', uvr: '不足電圧継電器', ovr: '過電圧継電器', lvg: '地絡過電圧継電器', elr: '漏電リレー' };
+const rtTip = document.createElement('div'); rtTip.style.cssText = 'position:fixed;z-index:19;display:none;max-width:280px;background:#0a1820f2;color:#fff;border:1px solid #7fe0d0;border-radius:8px;padding:8px 10px;font:13px/1.6 sans-serif;pointer-events:none'; document.body.appendChild(rtTip);
+let rtTipTimer = 0;
+function rtTipShow(html, e) { rtTip.innerHTML = html; rtTip.style.display = 'block'; const w = rtTip.offsetWidth, h = rtTip.offsetHeight; rtTip.style.left = clamp(e.clientX + 14, 6, innerWidth - w - 6) + 'px'; rtTip.style.top = clamp(e.clientY - h - 14, 6, innerHeight - h - 6) + 'px'; clearTimeout(rtTipTimer); rtTipTimer = setTimeout(() => { rtTip.style.display = 'none'; RT.pick = null; }, 8000); }
+function rtRelayTap(rc, e) {
+  if (!RT.open) return false;
+  let tag = null, type = null;
+  for (const h of rc.intersectObjects([...Object.values(RELAYS), ...Object.values(RELAY_BACK)], true)) { let o = h.object; while (o && !o.userData.relayTag) o = o.parent; if (o) { tag = o.userData.relayTag; type = o.userData.relayType; break; } }
+  if (!tag) { rtTip.style.display = 'none'; RT.pick = null; return false; }
+  const d = RDEF[tag], name = d ? d.name : (RELAY_KIND[type] || '継電器') + ' ' + tag;
+  if (!d) { RT.pick = null; rtTipShow(`<b>${name}</b><br>この教材では、試験の対象にしていません。`, e); return true; }
+  if (tag === RT.target) { RT.pick = null; rtTipShow(`<b>${name}</b><br>整定（写真から・目安）：${setTxt(d)}<br><span style="color:#7fe0d0">いま試験している継電器です。</span>`, e); return true; }
+  if (RT.pick !== tag) { RT.pick = tag; rtTipShow(`<b>${name}</b><br>整定（写真から・目安）：${setTxt(d)}<br><span style="color:#ffd54a">もう一度タップすると、この継電器の試験を始めます。</span>`, e); return true; }
+  RT.pick = null;
+  // 通電中・リード接続中・切り離し中は、対象を変えない（復旧の手順を飛ばさないため）
+  if (RT.nfb || RT.started || RT.applied || Object.values(RT.leads).some(Boolean) || RT.iso.ctLift || RT.iso.vtLift || RT.iso.ctShort || RT.iso.tripLift) { rtTipShow(`<b>${name}</b><br><span style="color:#ff9d7a">今の継電器の復旧が先です。</span>調整器 0 → STOP → POWER OFF → リードを外す → 線を戻す、の順で戻してから、もう一度タップしてください。`, e); rtMsg('対象を変える前に、今の継電器を復旧してください（POWER OFF・リードを外す・線とトリップ回路を戻す）。', 'e'); return true; }
+  selectTarget(tag); rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; rtView(); rtTipShow(`<b>${name}</b> の試験を始めます。<br>盤の扉を開けて、試験機を前に置きました。`, e); rtMsg(name + ' を試験の対象にしました。手順ガイドの ① から進めてください。', 'i');
+  return true;
+}
 function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; rtView(); }
 function rtClose() {
   // 収納で電気的な復旧手順を飛ばさない。記録・対象・設定は次回も保持する。
@@ -2289,13 +2310,13 @@ function rtClose() {
     rtMsg('収納前に、調整器0 → STOP → POWER OFF → リードを外す → 継電器の線を戻す → CT短絡（VT）を戻す → トリップ回路を戻す、の順で復旧してください。', 'e'); return;
   }
   RT.plug = RT.mc = RT.earth = RT.polOK = RT.pbPol = RT.hasPower = false; RT.polLamp = 'off'; RT.hold = null;
-  RT.open = false; tset.visible = leadGrp.visible = false; doors.forEach(d => { d.target = 0; });
+  RT.open = false; tset.visible = leadGrp.visible = false; doors.forEach(d => { d.target = 0; }); rtTip.style.display = 'none'; RT.pick = null;
   const i = BLOCKS.indexOf(tableBlock); if (i !== -1) BLOCKS.splice(i, 1);
   rebuildLeads(); RT.dirty = RT.guideDirty = true;
   rtp.style.display = 'none'; dwBtn.style.display = 'block';
 }
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
-window.__rt = { tset, HIT: () => HIT, screenOf: (w, x, y, z) => { const v = termWorld(w === 'M' ? uM : uT, x, y, z).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
+window.__rt = { relayScreen: tag => { scene.updateMatrixWorld(true); const v = RELAYS[tag].localToWorld(new THREE.Vector3(0, 0, 0.06)).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, tset, HIT: () => HIT, screenOf: (w, x, y, z) => { const v = termWorld(w === 'M' ? uM : uT, x, y, z).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 drawM(); drawT();
 
 // ---------- スマホ向け：画面の文字を収納できるようにする ----------
