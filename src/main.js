@@ -15,7 +15,12 @@ scene.background = new THREE.Color(0x1d2228);
 const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-function view(p, t) { camera.position.set(...p); controls.target.set(...t); }
+controls.screenSpacePanning = true;
+controls.minDistance = 0.2;
+controls.zoomToCursor = true;
+let fly = null;
+controls.addEventListener('start', () => { fly = null; });
+function view(p, t) { fly = null; camera.position.set(...p); controls.target.set(...t); }
 window.viewTo = view;
 view([-5.6, 2.4, 5.2], [0, 1.4, 0]);
 
@@ -976,8 +981,8 @@ const css = document.createElement('style');
 css.textContent = '.hud{position:fixed;color:#fff;font:13px/1.6 sans-serif;background:#000b;padding:8px 12px;border-radius:8px}.hud button{font-size:13px;padding:4px 8px;margin:2px;cursor:pointer}.hud button.on{background:#3a7;color:#fff}#hud2{left:12px;bottom:12px;max-width:640px}#stt{font-weight:bold;font-size:15px;color:#ffd866}#rd{color:#9fe;font-family:monospace}';
 document.head.appendChild(css);
 const h1 = document.createElement('div'); h1.className = 'hud'; h1.style.cssText = 'top:12px;left:12px';
-h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / ホイール:拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
-  '<button data-v=0>全体</button><button data-v=4>入口から</button><button data-v=5>蓄電池</button><button data-v=6>配電盤</button><button data-v=7>盤面アップ</button><button data-v=1>点検側</button><button data-v=2>操作盤側</button><button data-v=3>発電機端面</button><button data-v=8>内部を見る位置</button><button data-v=9>盤の内部</button>';
+h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
+  '<button data-v=0>全体</button><button data-v=4>入口から</button><button data-v=5>蓄電池</button><button data-v=6>配電盤</button><button data-v=7>盤面アップ</button><button data-v=10>盤の下側</button><button data-v=11>操作盤の下側</button><button data-v=1>点検側</button><button data-v=2>操作盤側</button><button data-v=3>発電機端面</button><button data-v=8>内部を見る位置</button><button data-v=9>盤の内部</button>';
 document.body.appendChild(h1);
 const h2 = document.createElement('div'); h2.className = 'hud'; h2.id = 'hud2';
 h2.innerHTML = '<b>運転</b> <button id=bs>▶ 始動（試験運転）</button><button id=bo>⚡ 停電→自動始動</button><button id=bx>■ 復電・停止</button> <label><input id=snd type=checkbox checked> 音</label> 速度<select id=spd><option value=0.02>超スロー</option><option value=0.05 selected>スロー</option><option value=0.12>普通</option></select><br>' +
@@ -993,8 +998,34 @@ $('bo').onclick = () => { audioInit(); if (S.mode === 'stop') { S.auto = true; S
 $('bx').onclick = () => { if (S.mode !== 'stop' && S.mode !== 'stopping') { S.mains = true; S.brk = false; S.auto = false; go('stopping'); } };
 $('bi').onclick = () => { xray = !xray; applyView(); };
 $('bc').onclick = () => { section = !section; applyView(); };
-const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0]], [[-3.4, 1.8, -3.0], [-1.5, 1.1, -1.0]], [[-6.2, 1.9, 0.4], [-1, 1.5, 0]], [[-5.3, 1.65, -2.8], [0.5, 1.3, 1.0]], [[-3.4, 1.8, 0.4], [-1, 0.7, 2.7]], [[-6.3, 1.6, 1.0], [-9.8, 1.5, 1.0]], [[-8.2, 1.5, 1.25], [-9.8, 1.4, 1.25]], [[-0.4, 2.4, 6.4], [-0.6, 1.6, 0]], [[-7.4, 1.6, -0.2], [-9.9, 1.4, 0.1]]];
-h1.querySelectorAll('button').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
+const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0]], [[-3.4, 1.8, -3.0], [-1.5, 1.1, -1.0]], [[-6.2, 1.9, 0.4], [-1, 1.5, 0]], [[-5.3, 1.65, -2.8], [0.5, 1.3, 1.0]], [[-1, 0.85, 1.25], [-1, 0.7, 2.7]], [[-6.3, 1.6, 1.0], [-9.8, 1.5, 1.0]], [[-8.2, 1.5, 1.25], [-9.8, 1.4, 1.25]], [[-0.4, 2.4, 6.4], [-0.6, 1.6, 0]], [[-7.4, 1.6, -0.2], [-9.9, 1.4, 0.1]]];
+views.push([[-8.3, 0.55, pz(4)], [-9.8, 0.55, pz(4)]], [[-1.05, 0.5, -3.1], [-1.05, 0.5, -1.5]]);
+h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
+// 注視点ごと移動するので、下側へ移ってから拡大できる。
+const cameraPad = document.createElement('div');
+cameraPad.innerHTML = '<span>視点移動 </span><button data-pan="left" aria-label="視点を左へ">←</button><button data-pan="up" aria-label="視点を上へ">↑</button><button data-pan="down" aria-label="視点を下へ">↓</button><button data-pan="right" aria-label="視点を右へ">→</button><button data-zoom="0.8">＋ 拡大</button><button data-zoom="1.25">− 縮小</button>';
+h1.appendChild(cameraPad);
+cameraPad.querySelectorAll('button').forEach(b => b.onclick = () => {
+  if (walk.on) setWalk(false);
+  fly = null;
+  controls.autoRotate = false; $('a').checked = false;
+  const offset = camera.position.clone().sub(controls.target);
+  if (b.dataset.zoom) {
+    offset.setLength(Math.max(controls.minDistance, offset.length() * Number(b.dataset.zoom)));
+    camera.position.copy(controls.target).add(offset);
+  } else {
+    camera.updateMatrix();
+    const vertical = ['up', 'down'].includes(b.dataset.pan);
+    const sign = ['left', 'down'].includes(b.dataset.pan) ? -1 : 1;
+    const shift = new THREE.Vector3().setFromMatrixColumn(camera.matrix, vertical ? 1 : 0)
+      .multiplyScalar(sign * Math.max(0.04, offset.length() * 0.12));
+    camera.position.add(shift); controls.target.add(shift);
+  }
+  controls.update();
+});
+h1.style.maxWidth = 'min(640px, calc(100vw - 48px))';
+h1.style.maxHeight = '38vh'; h1.style.overflowY = 'auto';
+cameraPad.querySelectorAll('button').forEach(b => { b.style.minHeight = '44px'; b.style.minWidth = '44px'; });
 scene.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial) o.material.envMapIntensity = 0.5; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 showStat();
@@ -1024,7 +1055,7 @@ function enterTitle() { if (walk.on) setWalk(false); if (typeof dwBtn !== 'undef
 function enterGame() { started = true; if (typeof dwBtn !== 'undefined') dwBtn.style.display = 'block'; ov.style.display = 'none'; menuBtn.style.display = 'block'; h1.style.display = h2.style.display = 'block'; controls.enabled = true; controls.autoRotate = $('a').checked; }
 $('tStart').onclick = () => { audioInit(); enterGame(); };
 menuBtn.onclick = enterTitle;
-$('tHow').onclick = () => modal('<h2>操作説明</h2>・<b>ドラッグ</b>：画面を回す　<b>ホイール／ピンチ</b>：拡大縮小<br>・左上のボタン：見る場所を切り替えます（点検側、操作盤側、配電盤、内部を見る位置など）<br>・左下の「運転」：<b>始動（試験運転）</b>、<b>停電→自動始動</b>、<b>復電・停止</b><br>・「内部」：<b>透かして見る</b>／<b>断面（半分切る）</b>で、ピストンや回転子の動きが見えます<br>・画面下の説明に、いま何が起きているかが出ます<br>・音が出ます。気になるときは、オプションで切れます<br><span style="color:#9bd">※ 教育用の想像モデルです。内部構造や数値は実機と異なる場合があります。</span>');
+$('tHow').onclick = () => modal('<h2>操作説明</h2>・<b>ドラッグ</b>：画面を回す　<b>ホイール／ピンチ</b>：拡大縮小<br>・<b>右ドラッグ／2本指の移動／矢印ボタン</b>：見る中心を上下左右へ動かします。下側へ移動してから拡大できます。<br>・左上のボタン：見る場所を切り替えます（点検側、操作盤側、配電盤、内部を見る位置など）<br>・左下の「運転」：<b>始動（試験運転）</b>、<b>停電→自動始動</b>、<b>復電・停止</b><br>・「内部」：<b>透かして見る</b>／<b>断面（半分切る）</b>で、ピストンや回転子の動きが見えます<br>・画面下の説明に、いま何が起きているかが出ます<br>・音が出ます。気になるときは、オプションで切れます<br><span style="color:#9bd">※ 教育用の想像モデルです。内部構造や数値は実機と異なる場合があります。</span>');
 $('tOpt').onclick = () => modal('<h2>オプション</h2><label><input id=o_snd type=checkbox ' + (S.sound ? 'checked' : '') + '> 音を鳴らす</label><label>動作の速さ <select id=o_spd><option value=0.02>超スロー</option><option value=0.05>スロー</option><option value=0.12>普通</option></select></label><label><input id=o_shd type=checkbox ' + (renderer.shadowMap.enabled ? 'checked' : '') + '> 影を表示（重いときは切る）</label><label><input id=o_hq type=checkbox ' + (renderer.getPixelRatio() > 1 ? 'checked' : '') + '> 高画質（重いときは切る）</label><label><input id=o_exp type=checkbox ' + ($('std').style.display !== 'none' ? 'checked' : '') + '> 解説文を表示</label>');
 mod.addEventListener('change', e => {
   const t = e.target.id;
@@ -1099,7 +1130,7 @@ const INFO = [
     ['過給機・排気管', [[2.6, 3.1, 2.8], [0.95, 2.8, 0]], '役割：排気ガスの勢いでタービンを回し、空気を押し込んで出力を上げます。排気管は高温なので、保温材で巻いてあります。', '見る点：保温材の破れ、フランジの漏れ（すす）、蛇腹継手の損傷、排気の色。点検直後は火傷に注意。'],
     ['防振装置（空気ばね）', [[-1.0, 0.7, 2.8], [-1.3, 0.3, 0]], '役割：機械の振動を床に伝えないようにします。', '見る点：ゴムのひび・へたり、ボルトの緩み、機械の傾き。'],
     ['室内燃料タンク', [[1.0, 1.9, 4.9], [2.5, 1.4, 2.7]], '役割：エンジンに送る燃料（軽油）を貯めます。下の赤い配管が燃料の配管です。', '見る点：油面計と貯油量、漏れ、防油堤に油がたまっていないか、バルブが「常時開」の札どおりか。', '根拠：軽油は危険物です。貯蔵・取扱いは消防法の規制対象です（要確認）。'],
-    ['蓄電池（始動・制御用）', [[-3.4, 1.8, 0.4], [-1.0, 0.7, 2.7]], '役割：セルモータの始動と、制御電源に使います。鉛蓄電池です。足元の黄色いマットは、電解液がこぼれた時の耐酸マットです。', '見る点：浮動充電中の総電圧（掲示の目安：2.20V／セル×セル数）、電解液面（減っていれば最高液面線まで精製水を補水）、外観の異常、端子の腐食と緩み。', '定期の保守（現場の掲示の目安）：3ヶ月に1回、均等充電（2.40V／セルで7〜8時間）と、全セルの電圧・比重・液温の測定。浮動充電電圧 2.20±0.05V／セル、比重 1.260±0.005（20℃）。比重の温度換算：D20 ＝ Dt ＋ 0.0007（t − 20）。規定値以下のセルがあれば、均等充電を行う。数値は、使う電池の取扱説明書で確認してください。', '12セル（6個×2列）。1番セルに「代表槽」の札があり、右端にプラスとマイナスの端子と、透明なカバー、太いケーブルがつながる。']]],
+    ['蓄電池（始動・制御用）', [[-1, 0.85, 1.25], [-1, 0.7, 2.7]], '役割：セルモータの始動と、制御電源に使います。鉛蓄電池です。足元の黄色いマットは、電解液がこぼれた時の耐酸マットです。', '見る点：浮動充電中の総電圧（掲示の目安：2.20V／セル×セル数）、電解液面（減っていれば最高液面線まで精製水を補水）、外観の異常、端子の腐食と緩み。', '定期の保守（現場の掲示の目安）：3ヶ月に1回、均等充電（2.40V／セルで7〜8時間）と、全セルの電圧・比重・液温の測定。浮動充電電圧 2.20±0.05V／セル、比重 1.260±0.005（20℃）。比重の温度換算：D20 ＝ Dt ＋ 0.0007（t − 20）。規定値以下のセルがあれば、均等充電を行う。数値は、使う電池の取扱説明書で確認してください。', '12セル（6個×2列）。1番セルに「代表槽」の札があり、右端にプラスとマイナスの端子と、透明なカバー、太いケーブルがつながる。']]],
   ['機側の設備', [
     ['操作盤（デスク型）', [[-3.1, 1.8, -3.0], [-1.05, 1.1, -1.5]], '役割：機側の計器盤です。回転計、油圧計、水温計、切替スイッチがあります。', '見る点：始動時と運転中の油圧、水温、回転数。値を記録して、前回と比べます。'],
     ['金網ガード', [[-3.9, 1.7, -2.5], [-2.2, 1.0, -1.1]], '役割：発電機の側面で、回転部や端子に不用意に触れないようにします。', '見る点：施錠、扉の開閉、「危険」表示の状態。']]],
@@ -1126,7 +1157,6 @@ dw.innerHTML = '<div class=hd><span>設備の説明</span><button id=dwClose>▲
   INFO.map(([cat, items], ci) => '<h4>' + cat + '</h4>' + items.map(([nm, , ...tx], ii) => `<button class=it data-c=${ci} data-i=${ii}>${nm}</button><div class=tx data-t=${ci}-${ii} style="display:none">${tx.map(t => '<p style="margin:3px 0">' + t + '</p>').join('')}</div>`).join('')).join('') +
   '<div style="font-size:11px;color:#9cc;margin-top:8px">※ 教育用の説明です。実際の整定値・点検項目は、保安規程と現場の資料に従ってください。</div>';
 window.__desk = { needles: deskNeedles, S };
-let fly = null;
 function flyTo(p, t) { if (walk.on) setWalk(false); fly = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) }; }
 dw.addEventListener('click', e => {
   const b = e.target.closest('.it'); if (!b) return;
