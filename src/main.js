@@ -1417,7 +1417,7 @@ cameraPad.querySelectorAll('button').forEach(b => b.onclick = () => {
 });
 h1.style.maxWidth = 'min(640px, calc(100vw - 48px))';
 h1.style.maxHeight = '38vh'; h1.style.overflowY = 'auto';
-cameraPad.querySelectorAll('button').forEach(b => { b.style.minHeight = '44px'; b.style.minWidth = '44px'; });
+cameraPad.querySelectorAll('button').forEach(b => { protectControl(b); b.style.minHeight = '44px'; b.style.minWidth = '44px'; });
 scene.traverse(o => { if (o.isMesh && o.material && o.material.isMeshStandardMaterial) o.material.envMapIntensity = 0.5; });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 showStat();
@@ -1480,25 +1480,60 @@ function walkStep(dt) {
   camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
 }
 function setWalk(on) {
+  stopMovement();
   walk.on = on; $('bw').textContent = on ? '🎥 全体の視点に戻る' : '🚶 歩く視点'; pad.style.display = on ? 'block' : 'none'; hint.style.display = on ? 'block' : 'none';
   if (on) { walk.saved = [camera.position.clone(), controls.target.clone()]; controls.enabled = false; controls.autoRotate = false; camera.fov = 68; camera.updateProjectionMatrix(); renderer.domElement.style.touchAction = 'none'; setTimeout(() => { hint.style.display = 'none'; }, 6000); }
   else { controls.enabled = true; camera.fov = 45; camera.updateProjectionMatrix(); camera.rotation.order = 'XYZ'; const sv = walk.saved || [new THREE.Vector3(-5.6, 2.4, 5.2), new THREE.Vector3(0, 1.4, 0)]; camera.position.copy(sv[0]); controls.target.copy(sv[1]); camera.up.set(0, 1, 0); camera.lookAt(sv[1]); controls.update(); }
 }
-const pad = document.createElement('div'); pad.className = 'hud'; pad.style.cssText = 'right:14px;bottom:14px;display:none;user-select:none;touch-action:none;padding:6px';
+const pad = document.createElement('div'); pad.className = 'hud'; pad.style.cssText = 'right:14px;bottom:14px;display:none;padding:6px';
 pad.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:4px"><span></span><button data-p="f1">▲</button><span></span><button data-p="s-1">◀</button><button data-p="f-1">▼</button><button data-p="s1">▶</button></div><div style="font-size:11px;text-align:center;color:#bcd">▲▼：前後　◀▶：その場で回る</div>';
 document.body.appendChild(pad);
-pad.querySelectorAll('button').forEach(b => { const [t, v] = [b.dataset.p[0], +b.dataset.p.slice(1)]; const set = on => { walk.pad[t] = on ? v : 0; }; b.style.fontSize = '20px'; b.onpointerdown = e => { e.preventDefault(); set(true); b.setPointerCapture(e.pointerId); }; b.onpointerup = b.onpointercancel = () => set(false); });
+function protectControl(b) {
+  b.style.userSelect = 'none'; b.style.webkitUserSelect = 'none';
+  b.style.touchAction = 'none'; b.style.webkitTouchCallout = 'none';
+  for (const type of ['contextmenu', 'selectstart', 'dragstart']) b.addEventListener(type, e => e.preventDefault());
+}
+const movementStops = new Set();
+function stopMovement() {
+  movementStops.forEach(stop => stop());
+  walk.keys = {}; walk.pad.f = walk.pad.s = 0;
+}
+addEventListener('blur', stopMovement);
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopMovement(); });
+pad.querySelectorAll('button').forEach(b => {
+  const [t, v] = [b.dataset.p[0], +b.dataset.p.slice(1)];
+  let pointer = null;
+  protectControl(b); b.style.fontSize = '20px';
+  const stop = e => {
+    if (pointer === null || (e && e.pointerId !== pointer)) return;
+    const id = pointer; pointer = null; walk.pad[t] = 0;
+    if (b.hasPointerCapture(id)) b.releasePointerCapture(id);
+  };
+  movementStops.add(stop);
+  b.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || pointer !== null) return;
+    e.preventDefault(); stopMovement(); pointer = e.pointerId;
+    b.setPointerCapture(pointer); walk.pad[t] = v;
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave']) b.addEventListener(type, stop);
+  for (const type of ['pointerup', 'pointercancel']) addEventListener(type, stop);
+  b.addEventListener('pointermove', e => {
+    const r = b.getBoundingClientRect();
+    if (!e.buttons || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) stop(e);
+  });
+});
 const hint = document.createElement('div'); hint.className = 'hud'; hint.style.cssText = 'left:50%;top:70px;transform:translateX(-50%);display:none;text-align:center;pointer-events:none';
 hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
 $('bw').onclick = () => setWalk(!walk.on);
-addEventListener('keydown', e => { if (walk.on) { walk.keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); } if (e.key === 'Escape' && walk.on && mod.style.display !== 'flex') { /* メニューは既存処理 */ } });
+addEventListener('keydown', e => { if (walk.on && !document.hidden && !e.target.closest('input,select,textarea,[contenteditable=true]')) { if (e.repeat && !walk.keys[e.code]) return; walk.keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); } if (e.key === 'Escape' && walk.on && mod.style.display !== 'flex') { /* メニューは既存処理 */ } });
 addEventListener('keyup', e => { walk.keys[e.code] = false; });
 { let drag = false, lx = 0, ly = 0; const el = renderer.domElement;
   el.addEventListener('pointerdown', e => { if (walk.on) { drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); } });
   el.addEventListener('pointermove', e => { if (walk.on && drag) { walk.yaw -= (e.clientX - lx) * 0.005; walk.pitch = Math.max(-1.2, Math.min(1.2, walk.pitch - (e.clientY - ly) * 0.004)); lx = e.clientX; ly = e.clientY; } });
-  el.addEventListener('pointerup', () => { drag = false; }); el.addEventListener('pointercancel', () => { drag = false; }); }
+  movementStops.add(() => { drag = false; });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(type, () => { drag = false; }); }
 
 // ================= 盤の扉：クリック／ボタンで開閉 =================
 const OPEN = -1.85;
