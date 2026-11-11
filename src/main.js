@@ -98,11 +98,15 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 8.0), mat.floor);
 floor.rotation.x = -Math.PI / 2; floor.position.set(-4.7, 0, 0.6); floor.receiveShadow = true; room.add(floor);
 const wallMat = M(0xffffff, 0, 1, { map: concreteTex([5, 2]), side: THREE.BackSide });
 const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), wallMat); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
+// 表示を消せる組：wall＝壁・天井まわりと壁ぎわの物、small＝床に置いた小物
+const hideSets = { wall: [walls], small: [] }; let _hn = 0; const grab = (k, n0) => hideSets[k].push(...room.children.slice(n0));
 for (const [x0, x1, z0, z1] of [[-3.6, 3.2, -1.95, -1.85], [-3.6, 3.2, 2.0, 2.1], [-3.6, -3.5, -1.95, 2.1], [3.1, 3.2, -1.95, 2.1]])
   bx(x0, x1, 0, 0.01, z0, z1, mat.black, room);
 const lamp = M(0xffffff, 0, 0.3, { emissive: 0xffffff, emissiveIntensity: 1 });
+_hn = room.children.length;
 for (const z of [-1.6, 1.6, 3.8]) bx(-12.8, -11.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
 for (const z of [-1.6, 1.6]) for (const x of [-10.0, -8.4, -6.8, -5.2, -3.6, -2.0, -0.4, 1.2, 2.8]) bx(x - 0.6, x + 0.6, 4.25, 4.3, z - 0.07, z + 0.07, lamp, room);
+grab('wall', _hn);
 
 
 // ---------- 共通ベース（鋼製架台＋防振装置） ----------
@@ -348,16 +352,22 @@ pipe([[0.45, 1.8, -0.42], [0.6, 1.8, -0.5], [0.6, 0.5, -0.55]], 0.025, mat.red, 
 // ---------- 機械室の付帯設備（ビデオより） ----------
 const conc = M(0x9a9ea2, 0.05, 0.9), beige = M(0xd9d0b4, 0.2, 0.6), duct = M(0x9aa0a4, 0.5, 0.45);
 // 天井のはり
+_hn = room.children.length;
 for (const x of [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0]) bx(x - 0.15, x + 0.15, 4.0, 4.4, -3.4, 4.6, M(0x5a5d60, 0, 0.95), room);
+grab('wall', _hn);
 // 左壁（-z側）の下部ベージュ帯と、床の縞鋼板
+_hn = room.children.length;
 bx(-10.5, 3.6, 0, 1.25, -3.4, -3.37, M(0x9c9d83, 0, 0.9), room);
+grab('wall', _hn);
 bx(-4.1, 3.6, 0, 0.012, -3.3, -2.5, mat.plate, room); bx(-10.4, -9.5, 0, 0.012, -3.3, -1.0, mat.plate, room);
 // 排気管（天井まで→入口側へ）と、風道の曲がり
 pipe([[0.55, 4.3, -0.32], [0.55, 4.05, -0.32], [0.4, 4.05, -0.05], [-0.8, 4.05, -0.05]], 0.2, mat.lag, room);
 pipe([[2.3, 2.8, 0], [2.3, 3.6, -0.6], [1.8, 3.75, -1.8], [0.4, 3.75, -2.9], [-2.5, 3.75, -3.0]], 0.38, duct, room);
 // 背面壁の換気扇
+_hn = room.children.length;
 bx(3.52, 3.6, 2.6, 3.4, -1.9, -1.1, M(0xb5babd, 0.4, 0.6), room);
 { const f = new THREE.Mesh(new THREE.CircleGeometry(0.33, 28), M(0x6e7479, 0.4, 0.6, { side: THREE.DoubleSide })); f.rotation.y = -Math.PI / 2; f.position.set(3.51, 3.0, -1.5); room.add(f); }
+grab('wall', _hn);
 // 燃料タンクの防油堤
 for (const [x0, x1, z0, z1] of [[1.55, 3.45, 2.0, 2.15], [1.55, 3.45, 3.45, 3.6], [1.55, 1.7, 2.0, 3.6], [3.3, 3.45, 2.0, 3.6]]) bx(x0, x1, 0, 0.18, z0, z1, conc, room);
 // 蓄電池設備（写真：鉛蓄電池12セル＝6個×2列、黒い枠、黄色の注液栓、触媒栓、番号札、「代表槽」札、+−端子と透明カバー、ベージュの鋼製架台、黄色の耐酸マット）
@@ -400,10 +410,13 @@ bx(-0.75, 0.75, 0, 0.02, -0.5, 0.5, M(0xd6c94a, 0, 0.9), bat);   // 耐酸マッ
   for (const z of [0.0, 0.1, 0.2]) cyl(0.05, 0.9, beige, -0.78, 0.45, z + 0.3, 'y', bat, 14);
 }
 // 壁の掲示物・スイッチ
+_hn = room.children.length;
 { const n = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.5), M(0xf2f2f0, 0, 0.8)); n.position.set(-0.6, 1.5, 3.57); n.rotation.y = Math.PI; room.add(n); }
 bx(-1.4, -1.28, 1.5, 1.7, 3.55, 3.6, M(0xdcdcdc), room);
 bx(-0.5, -0.38, 1.9, 2.05, 3.55, 3.6, M(0xdcdcdc), room);
+grab('wall', _hn);
 // はしご・白い袋・パレット・塗料缶
+_hn = room.children.length;
 const lad = new THREE.Group(); lad.position.set(-3.7, 0, 2.5); room.add(lad);
 for (const z of [-0.2, 0.2]) bx(-0.03, 0.03, 0, 2.3, z - 0.03, z + 0.03, beige, lad);
 for (let i = 0; i < 8; i++) bx(-0.02, 0.02, 0.25 + i * 0.28, 0.29 + i * 0.28, -0.2, 0.2, beige, lad);
@@ -411,6 +424,7 @@ bx(-4.4, -3.4, 0, 0.1, 1.6, 2.2, M(0xb9a98a, 0, 0.9), room);
 bx(-4.2, -3.6, 0.1, 0.35, 1.7, 2.1, M(0xf4f4f0, 0, 0.9), room);
 for (const [x, z] of [[-4.6, 0.9], [-4.1, 1.2], [-3.4, 0.2]]) cyl(0.13, 0.32, M(0xb8bcc0, 0.8, 0.35), x, 0.16, z, 'y', room, 20);
 cyl(0.13, 0.32, M(0x3a4a6a, 0.5, 0.5), -4.8, 0.16, 1.1, 'y', room, 20);
+grab('small', _hn);
 
 
 // ---------- 盤室側（ビデオ2・3より）：配電盤の並び・給気ガラリ・棚 ----------
@@ -1052,7 +1066,7 @@ function buildCabinet(i, x, nm) {
   bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.28, 2.3, -3.38, -2.88, cream, pnl); bx(x - 0.47, x + 0.47, 0, 0.12, -3.38, -2.88, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.25, 2.3, -2.9, -2.875, cream, pnl); bx(x - 0.47, x + 0.47, 0.1, 0.14, -2.9, -2.875, cream, pnl);
-  const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i);
+  const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i === 3 ? 4 : i === 4 ? 3 : i);   // 利用者の指摘：右端の2面は、内部が左右で入れ替わっていた
   // 扉（表：計器・継電器・スイッチ／裏：計器の背面・配線）
   const dg = new THREE.Group(); dg.position.set(hingeX, 0, -2.875); pnl.add(dg); dg.userData.door = i;
   bx(0.0, W, 0.01, 2.29, -0.03, -0.002, cream, dg);
@@ -1066,6 +1080,7 @@ function buildCabinet(i, x, nm) {
 
 panelNames.forEach((nm, i) => buildCabinet(i, -8.3 + i * 0.95, nm));
 // 盤の右隣（-z壁）：給気ガラリ、鋼製棚、灰色キャビネット、扉　／　盤の左端：ケーブルドラム（写真1・2より）
+_hn = room.children.length;
 const lv = new THREE.Group(); lv.position.set(-3.0, 3.0, -3.36); room.add(lv);
 bx(-0.65, 0.65, -0.5, 0.5, -0.04, 0.04, M(0x6f8f96, 0.4, 0.6), lv);
 for (let i = 0; i < 9; i++) bx(-0.6, 0.6, -0.45 + i * 0.105, -0.4 + i * 0.105, 0.04, 0.1, M(0xe0dccb, 0.2, 0.7), lv);
@@ -1073,19 +1088,26 @@ const rack = new THREE.Group(); rack.position.set(-9.3, 0, -3.08); room.add(rack
 const teal = M(0x79a59f, 0.4, 0.6);
 for (const x of [-0.5, 0.5]) for (const z of [-0.28, 0.28]) bx(x - 0.03, x + 0.03, 0, 2.0, z - 0.03, z + 0.03, teal, rack);
 for (const y of [0.6, 1.2, 1.8]) { bx(-0.5, 0.5, y, y + 0.05, -0.3, 0.3, teal, rack); bx(-0.42, 0.42, y + 0.05, y + 0.3, -0.25, 0.25, M(0x8fb0b0, 0.3, 0.6), rack); }
+grab('wall', _hn);
+_hn = room.children.length;
 bx(-7.5, -6.6, 0, 0.3, -3.3, -2.7, M(0xf0f0ee, 0, 0.8), room);                  // 白い台
+grab('small', _hn);
+_hn = room.children.length;
 bx(-8.75, -7.7, 0, 2.0, -3.4, -2.95, M(0xbfc3b8, 0.2, 0.7), room); bx(-8.22, -8.18, 0, 2.0, -2.97, -2.93, M(0x8a8e84), room); for (const x of [-8.28, -8.12]) bx(x - 0.01, x + 0.01, 0.95, 1.1, -2.98, -2.93, chrome, room);
 bx(-5.95, -4.65, 0, 2.55, -3.4, -3.36, M(0xc8c4a8, 0, 0.9), room); bx(-5.8, -4.8, 0, 2.15, -3.36, -3.3, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.31, -5.29, 0, 2.15, -3.3, -3.29, M(0x888c86), room); for (const x of [-5.36, -5.24]) bx(x - 0.01, x + 0.01, 1.0, 1.15, -3.31, -3.27, chrome, room);
 { const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('入口', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
 { const n2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.42), M(0xf2f2f0, 0, 0.8)); n2.position.set(-0.75, 1.55, -3.285); n2.rotation.y = Math.PI; n2.visible = false; room.add(n2); }
 bx(0.2, 1.1, 0, 0.75, -3.4, -3.05, M(0xe9dfc0, 0.1, 0.7), room); for (let i = 0; i < 6; i++) bx(0.35, 0.95, 0.5 + i * 0.03, 0.52 + i * 0.03, -3.05, -3.04, M(0x9a9482), room); // 温風機
 bx(0.0, 0.14, 1.9, 2.04, -3.4, -3.33, M(0xc0141a, 0, 0.5), room);               // 火災報知機
+grab('wall', _hn);
+_hn = room.children.length;
 cyl(0.28, 0.25, M(0x1a1a1c), -3.6, 0.13, -3.0, 'y', room, 28); cyl(0.28, 0.25, M(0x1a1a1c), -3.6, 0.38, -3.0, 'y', room, 28); cyl(0.2, 0.32, M(0x1d6b40), -4.1, 0.16, -3.0, 'y', room, 20);
 bx(-1.75, -1.35, 0, 0.25, -2.55, -2.15, M(0xd8a95a, 0, 0.9), room);               // 段ボール
 bx(-1.25, -0.85, 0, 0.24, -2.45, -2.05, M(0x2b6dc4, 0, 0.7), room);               // 青いコンテナ
 // 消火器・はしご台車（ステンレス）
 for (const z of [3.2, 3.4]) cyl(0.07, 0.4, M(0xc0141a, 0.4, 0.4), -3.2, 0.2, z, 'y', room, 16);
 for (const z of [3.05, 3.55]) bx(-3.65, -3.6, 0, 2.2, z - 0.02, z + 0.02, M(0xc8ccd0, 0.8, 0.3), room);
+grab('small', _hn);
 
 // ================= 内部構造（透視・断面で表示） =================
 const inner = new THREE.Group(); inner.visible = false; rig.add(inner);
@@ -1342,6 +1364,9 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
+// 邪魔な物を消すボタン（床の小物／壁・天井まわり）。見た目だけを消す。歩く視点の当たり判定は変えない。
+h1.insertAdjacentHTML('beforeend', ' <button id=bhs>🧹 小物を消す</button><button id=bhw>🧱 壁を消す</button>');
+for (const [id, k, t] of [['bhs', 'small', '小物'], ['bhw', 'wall', '壁']]) $(id).onclick = () => { const v = !hideSets[k][0].visible; hideSets[k].forEach(o => { o.visible = v; }); $(id).textContent = (k === 'small' ? '🧹 ' : '🧱 ') + t + (v ? 'を消す' : 'を戻す'); };
 $('bd').onclick = () => { const c = doors.some(d => d.target === 0); doors.forEach(d => { d.target = c ? OPEN : 0; }); };
 
 // ================= 設備の説明（収納できる引き出し） =================
