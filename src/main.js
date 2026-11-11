@@ -1,4 +1,4 @@
-import { createWorker } from './worker.js';
+import { createWorker } from './workers.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -1452,7 +1452,7 @@ function walkStep(dt) {
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
-  worker.update(walk.pos.distanceTo(before));
+  worker.update(walk.pos.distanceTo(before) * Math.sign(f));
   worker.root.visible = walk.third;
   if (walk.third) {
     const target = new THREE.Vector3(walk.pos.x, 1.1, walk.pos.z);
@@ -1534,6 +1534,11 @@ $('personView').onclick = () => {
 };
 protectControl($('personView'));
 $('bw').onclick = () => setWalk(!walk.on);
+h1.insertAdjacentHTML('beforeend', '<label style="display:inline-block;margin:6px">キャラクター <select id="workerChoice" aria-label="キャラクターを選ぶ"><option value="natural">作業員 B（新しい歩行）</option><option value="legacy">作業員 A（保存版）</option></select></label>');
+$('workerChoice').value = worker.selected;
+$('workerChoice').onchange = e => { stopMovement(); worker.select(e.target.value); };
+protectControl($('workerChoice'));
+
 addEventListener('keydown', e => { if (walk.on && !document.hidden && !e.target.closest('input,select,textarea,[contenteditable=true]')) { if (e.repeat && !walk.keys[e.code]) return; walk.keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); } if (e.key === 'Escape' && walk.on && mod.style.display !== 'flex') { /* メニューは既存処理 */ } });
 addEventListener('keyup', e => { walk.keys[e.code] = false; });
 { let drag = false, lx = 0, ly = 0; const el = renderer.domElement;
