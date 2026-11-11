@@ -1535,7 +1535,7 @@ function tipShow(k, x, y, pin) {
   }); el.addEventListener('pointerleave', () => { tipEl.style.display = 'none'; }); }
 $('bc').insertAdjacentHTML('afterend', ' <span style="font-size:12px;color:#9fe">▶ 部品にポインタを乗せる／タップで説明</span>');
 
-// ================= 継電器試験（日新電機 PRT-3M／PRT-3TR を模した試験機） =================
+// ================= 継電器試験（PRT-3M／PRT-3TR を模した試験機） =================
 // 銘板・パネル配置・端子名は、実機写真（銘板の結線図・操作の説明）に合わせています。
 // 内部の挙動（電流の求め方、継電器の特性、判定値）は、教材用の簡略モデルです。
 const OUTR = [5, 10, 30, 60, 130, 250], RSR = [0, 0.25, 0.5, 1, 2, 5], VRNG = [75, 150, 300], AMR = [0, 0.5, 1.5, 5, 15, 50];
@@ -1554,6 +1554,8 @@ const RDEF = {
   '27RR1': { type: 'ovr', panel: 2, name: '過電圧継電器 27RR1', Vs: 120, T: 1.0 },
   '27RR2': { type: 'ovr', panel: 2, name: '過電圧継電器 27RR2', Vs: 120, T: 1.0 },
   '59G': { type: 'ovr', panel: 3, name: '過電圧継電器 59G（発電機盤）', Vs: 125, T: 1.0 },
+  // 64G：零相電圧の入力に試験電圧を入れて、過電圧継電器と同じ手順で試験する扱い（教材での簡略化）。整定 10%（110V 基準で 11V）・0.5秒は架空
+  '64G': { type: 'ovr', panel: 3, name: '地絡過電圧継電器 64G（発電機盤・整定は架空）', Vs: 11, T: 0.5 },
 };
 const DEV = { good: { Is: 1.015, T: 1.03, Inst: 1.025, V: 1.006, TV: 1.02 }, bad: { Is: 1.12, T: 1.27, Inst: 1.22, V: 0.9, TV: 1.28 } };
 const TOL = { op: 0.05, inst: 0.15, time: 0.10, timeMin: 0.05 };
@@ -1578,7 +1580,7 @@ function mkUnit(W, H, name) {
 }
 const uM = mkUnit(1000, 700, 'PRT-3M'), uT = mkUnit(1000, 720, 'PRT-3TR');
 tset.add(uM); tset.add(uT);
-uM.rotation.y = uT.rotation.y = Math.PI / 2; uM.position.set(0, 0.78, -0.27); uT.position.set(0, 0.78, 0.27);
+uM.rotation.y = uT.rotation.y = Math.PI / 2; uM.position.set(0, 0.78, 0.27); uT.position.set(0, 0.78, -0.27); // 盤に向かって、左が測定箱・右が電源箱（利用者の指示）
 tset.visible = false;
 const tableBlock = [0, 0, 0, 0];
 function placeSet() {
@@ -1709,8 +1711,10 @@ const sets = () => {
     r.push(['OUTPUT RANGE と SERIES RESISTOR：最大電流が ' + need2.toFixed(1) + 'A 以上（今：' + imax.toFixed(1) + 'A）', imax >= need2 && OUTR[RT.rangeV] <= 30]);
     if (t.kind !== 'pick') r.push(['COUNTER RANGE = 10S', RT.cnt === 1]);
   } else {
-    r.push(['OUTPUT RANGE = 130V または 250V（電圧試験は高い側）', OUTR[RT.rangeV] >= 130]);
-    r.push(['VOLTMETER RANGE：' + (pt > 150 ? '300V' : '150V'), VRNG[RT.vr] >= pt && VRNG[RT.vr] <= (pt > 150 ? 300 : 150)]);
+    const lowV = cur().Vs < 50; // 64G のように整定の電圧が低いものは、低いレンジで細かく合わせる
+    if (lowV) { r.push(['OUTPUT RANGE = 30V または 60V（整定の電圧が低いので、低い側で細かく合わせる）', OUTR[RT.rangeV] >= 30 && OUTR[RT.rangeV] <= 60]); r.push(['VOLTMETER RANGE：75V', VRNG[RT.vr] === 75]); }
+    else { r.push(['OUTPUT RANGE = 130V または 250V（電圧試験は高い側）', OUTR[RT.rangeV] >= 130]);
+    r.push(['VOLTMETER RANGE：' + (pt > 150 ? '300V' : '150V'), VRNG[RT.vr] >= pt && VRNG[RT.vr] <= (pt > 150 ? 300 : 150)]); }
     if (t.kind !== 'pick') r.push(['COUNTER RANGE = 10S', RT.cnt === 1]);
     if (RT.test === 'uv_time') r.push(['UV TIME = TEST（STARTで電圧を0Vへ急変）※教材での解釈', RT.uvt === 0]);
   }
@@ -2013,7 +2017,7 @@ function rtClose() {
   rtp.style.display = 'none'; dwBtn.style.display = 'block';
 }
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
-window.__rt = { RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
+window.__rt = { tset, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 drawM(); drawT();
 
 // ---------- スマホ向け：画面の文字を収納できるようにする ----------
