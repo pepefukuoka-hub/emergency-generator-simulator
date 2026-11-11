@@ -1,3 +1,4 @@
+import { createWorker } from './worker.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -1464,7 +1465,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (mod.st
 new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String(S.scale); }).observe(mod, { childList: true });
 
 // ================= 歩く視点（一人称） =================
-const walk = { on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
+const worker = createWorker(); scene.add(worker.root); worker.root.visible = false;
+const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
 const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
@@ -1474,13 +1476,42 @@ function walkStep(dt) {
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
   walk.yaw -= sd * 1.6 * dt;   // 左右：その場で回る
   const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
+  const before = walk.pos.clone();
   const dx = fx * f * sp, dz = fz * f * sp;
   if (!hitAt(walk.pos.x + dx, walk.pos.z)) walk.pos.x += dx; if (!hitAt(walk.pos.x, walk.pos.z + dz)) walk.pos.z += dz;
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
-  camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+  worker.root.position.set(walk.pos.x, 0, walk.pos.z);
+  worker.root.rotation.y = walk.yaw;
+  worker.update(walk.pos.distanceTo(before));
+  worker.root.visible = walk.third;
+  if (walk.third) {
+    const target = new THREE.Vector3(walk.pos.x, 1.1, walk.pos.z);
+    // 背後が壁際なら斜め後ろ・横の空いている方向へ回す。
+    let best = null;
+    for (const angle of [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2]) {
+      const offset = new THREE.Vector3(Math.sin(walk.yaw + angle) * 2.7,
+        1.25 - walk.pitch * 1.2, Math.cos(walk.yaw + angle) * 2.7);
+      let fraction = 1;
+      for (let i = 1; i <= 50; i++) {
+        const t = i / 50;
+        if (hitAt(target.x + offset.x * t, target.z + offset.z * t)) {
+          fraction = Math.max(0.02, (i - 1) / 50); break;
+        }
+      }
+      if (!best || fraction > best.fraction) best = { offset, fraction };
+      if (fraction >= 0.8) break;
+    }
+    camera.position.copy(target).addScaledVector(best.offset, best.fraction);
+    camera.position.y = Math.max(camera.position.y, 2.15);
+    camera.lookAt(target);
+
+  } else {
+    camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+  }
 }
 function setWalk(on) {
   stopMovement();
+  fly = null; worker.root.visible = on && walk.third; $('personView').style.display = on ? '' : 'none';
   walk.on = on; $('bw').textContent = on ? '🎥 全体の視点に戻る' : '🚶 歩く視点'; pad.style.display = on ? 'block' : 'none'; hint.style.display = on ? 'block' : 'none';
   if (on) { walk.saved = [camera.position.clone(), controls.target.clone()]; controls.enabled = false; controls.autoRotate = false; camera.fov = 68; camera.updateProjectionMatrix(); renderer.domElement.style.touchAction = 'none'; setTimeout(() => { hint.style.display = 'none'; }, 6000); }
   else { controls.enabled = true; camera.fov = 45; camera.updateProjectionMatrix(); camera.rotation.order = 'XYZ'; const sv = walk.saved || [new THREE.Vector3(-5.6, 2.4, 5.2), new THREE.Vector3(0, 1.4, 0)]; camera.position.copy(sv[0]); controls.target.copy(sv[1]); camera.up.set(0, 1, 0); camera.lookAt(sv[1]); controls.update(); }
@@ -1526,6 +1557,12 @@ const hint = document.createElement('div'); hint.className = 'hud'; hint.style.c
 hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
+pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button>');
+$('personView').onclick = () => {
+  stopMovement(); walk.third = !walk.third; walk.pitch = -0.05;
+  $('personView').textContent = walk.third ? '後ろから見る → 本人の目線' : '本人の目線 → 後ろから見る';
+};
+protectControl($('personView'));
 $('bw').onclick = () => setWalk(!walk.on);
 addEventListener('keydown', e => { if (walk.on && !document.hidden && !e.target.closest('input,select,textarea,[contenteditable=true]')) { if (e.repeat && !walk.keys[e.code]) return; walk.keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); } if (e.key === 'Escape' && walk.on && mod.style.display !== 'flex') { /* メニューは既存処理 */ } });
 addEventListener('keyup', e => { walk.keys[e.code] = false; });
