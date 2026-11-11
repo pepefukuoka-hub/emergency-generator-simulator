@@ -399,6 +399,16 @@ bx(-0.75, 0.75, 0, 0.02, -0.5, 0.5, M(0xd6c94a, 0, 0.9), bat);   // 耐酸マッ
     if (r === 0) { const sp = new THREE.Mesh(new THREE.PlaneGeometry(CW - 0.03, 0.05), new THREE.MeshStandardMaterial({ map: tex('蓄電池', 128, 32, '#00000000', '#e8c21a', 20), transparent: true })); sp.position.set(xx, Y0 + 0.07, z - CD / 2 - 0.002); sp.rotation.y = Math.PI; bat.add(sp); }
     bat.add(lab);
   }
+  // 壁の掲示「蓄電池保守点検要領」（写真：蓄電池の後ろの壁、端子側の上。タップすると全文を読める。連絡先・会社名は入れない）
+  { const NOTE = ['１．日常保守の管理ポイント', '　(1) 浮動充電中の蓄電池総電圧が適正値（2.20V／セル×セル数）であることを確認する。', '　(2) 電解液面が適正であることを確認する。減液している場合は最高液面線まで精製水を補水する。', '　(3) 蓄電池の外観を調査し、異常のないことを確認する。', '２．定期の保守', '　(1) 3ヶ月に1度は均等充電を行う。（2.40V／セルで7〜8時間）', '　(2) 浮動充電中の全セルの電圧・電解液比重及び液温を3ヶ月に1回測定し、異常のないことを確認する。', '　　　浮動充電電圧：2.20±0.05V／セル', '　　　電解液比重：1.260±0.005（20℃）', '　　上記規定値以下のセルがある場合は均等充電を行う。', '　(a) 比重の温度換算式　D20 = Dt + 0.0007（t − 20）', '　　　D20：20℃に換算した比重　Dt：測定時（t℃）における比重', '　　　t：測定時の電解液温度　0.0007：温度換算係数', '３．注意事項', '　(1) 蓄電池及びその周囲は清潔にし、乾燥状態を保ってください。', '　(2) 蓄電池には火気を近づけないでください。', '　(3) 電解液が目、皮膚や衣服に付いた時は、直ちに大量の水で洗い流し、特に目に入った時は医師の診察を受けてください。', '４．その他', '　(1) その他詳細は取扱説明書をご覧ください。'];
+    window.__batNote = NOTE;
+    const nt = canvasTex(724, 1024, (g, W, H) => { g.fillStyle = '#f1f1ec'; g.fillRect(0, 0, W, H); g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '34px sans-serif'; g.fillText('蓄 電 池 保 守 点 検 要 領', W / 2, 90); g.fillRect(W / 2 - 230, 102, 460, 2); g.textAlign = 'left'; let y = 160; for (const l of NOTE) { const head = !l.startsWith('　'); if (head) y += 14; g.font = head ? '22px sans-serif' : '13.5px sans-serif'; g.fillText(l, 56, y); y += head ? 36 : 30; } g.strokeStyle = '#333'; g.lineWidth = 1.5; g.strokeRect(520, 500, 60, 110); g.beginPath(); g.moveTo(550, 510); g.lineTo(550, 590); g.stroke(); g.beginPath(); g.setLineDash([4, 3]); g.moveTo(550, 530); g.lineTo(640, 530); g.stroke(); g.setLineDash([]); g.font = '12px sans-serif'; g.fillText('(b) 比重の測り方', 520, 490); });
+    nt.anisotropy = 8;
+    const nb = new THREE.Group(); nb.position.set(-0.72, 1.62, 1.895); nb.rotation.y = Math.PI; bat.add(nb); nb.userData.note = true;
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.64), new THREE.MeshStandardMaterial({ map: nt, roughness: 0.35 })); nb.add(sh);
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.66, 0.006), M(0xe6e6e2, 0, 0.4)); fr.position.z = -0.004; nb.add(fr);
+    for (const x of [-0.14, 0.14]) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.012), M(0xb9bdc2, 0.8, 0.35)); c.position.set(x, 0.335, 0); nb.add(c); }
+    window.__batNoteObj = nb; }
   // 「代表槽」の札（1番セルの前面）
   { const t = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.035), new THREE.MeshStandardMaterial({ map: tex('代表槽', 128, 40, '#8fc7ff', '#111', 24), roughness: 0.6 })); t.position.set(-0.5, Y0 + 0.2, -0.2 - 0.002); t.rotation.y = Math.PI; bat.add(t); }
   // +−端子と透明カバー、太いケーブル（右端）
@@ -1353,6 +1363,7 @@ ov.innerHTML = '<div class=ttl><div class=sub>実機写真ベース 3D 教育用
 document.body.appendChild(ov);
 const mod = document.createElement('div'); mod.id = 'mod'; document.body.appendChild(mod);
 const menuBtn = document.createElement('button'); menuBtn.id = 'menuBtn'; menuBtn.textContent = '☰ メニュー'; document.body.appendChild(menuBtn);
+function showBatNote() { modal('<h2>蓄電池保守点検要領（壁の掲示）</h2><div style="font-size:13px;line-height:1.75">' + window.__batNote.map(l => l.startsWith('　') ? '<div style="padding-left:' + (l.startsWith('　　') ? 2.6 : 1.2) + 'em">' + l.trim() + '</div>' : '<div style="margin-top:10px;font-weight:bold;color:#ffd54a">' + l + '</div>').join('') + '</div><div style="margin-top:12px;font-size:12px;color:#9fc">※ 蓄電池の横に掲示してある要領の文面です（連絡先・会社名は省略）。数値は、この掲示の一例です。実際は、設置してある蓄電池の取扱説明書と、保安規程の点検基準に従ってください。</div>'); }
 function modal(html) { mod.innerHTML = '<div class=box>' + html + '<div style="text-align:right"><button id=mClose>閉じる</button></div></div>'; mod.style.display = 'flex'; $('mClose').onclick = () => { mod.style.display = 'none'; }; }
 let started = false; h1.style.display = h2.style.display = 'none'; controls.enabled = false; controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
 function enterTitle() { if (walk.on) setWalk(false); if (typeof dwBtn !== 'undefined') { dwBtn.style.display = dw.style.display = 'none'; } ov.style.display = 'flex'; menuBtn.style.display = 'none'; h1.style.display = h2.style.display = 'none'; controls.enabled = false; controls.autoRotate = true; if (!started) view(...views[0]); $('tStart').textContent = started ? '▶ つづける' : '▶ スタート'; }
@@ -1419,6 +1430,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
   el.addEventListener('pointerup', e => {
     if (Math.hypot(e.clientX - dx, e.clientY - dy) > 6 || performance.now() - t0 > 600 || ov.style.display !== 'none') return;
     const r = el.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera);
+    if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
@@ -1437,7 +1449,7 @@ const INFO = [
     ['過給機・排気管', [[2.6, 3.1, 2.8], [0.95, 2.8, 0]], '役割：排気ガスの勢いでタービンを回し、空気を押し込んで出力を上げます。排気管は高温なので、保温材で巻いてあります。', '見る点：保温材の破れ、フランジの漏れ（すす）、蛇腹継手の損傷、排気の色。点検直後は火傷に注意。'],
     ['防振装置（空気ばね）', [[-1.0, 0.7, 2.8], [-1.3, 0.3, 0]], '役割：機械の振動を床に伝えないようにします。', '見る点：ゴムのひび・へたり、ボルトの緩み、機械の傾き。'],
     ['室内燃料タンク', [[1.0, 1.9, 4.9], [2.5, 1.4, 2.7]], '役割：エンジンに送る燃料（軽油）を貯めます。下の赤い配管が燃料の配管です。', '見る点：油面計と貯油量、漏れ、防油堤に油がたまっていないか、バルブが「常時開」の札どおりか。', '根拠：軽油は危険物です。貯蔵・取扱いは消防法の規制対象です（要確認）。'],
-    ['蓄電池（始動・制御用）', [[-3.4, 1.8, 0.4], [-1.0, 0.7, 2.7]], '役割：セルモータの始動と、制御電源に使います。鉛蓄電池です。足元の黄色いマットは、電解液がこぼれた時の耐酸マットです。', '見る点：浮動充電中の総電圧（掲示の目安：2.20V／セル×セル数）、電解液面（減っていれば最高液面線まで精製水を補水）、外観の異常、端子の腐食と緩み。', '定期の保守（現場の掲示の目安）：3ヶ月に1回、均等充電（2.40V／セルで7〜8時間）と、全セルの電圧・比重・液温の測定。浮動充電電圧 2.20±0.05V／セル、比重 1.260±0.005（20℃）。比重の温度換算：D20 ＝ Dt ＋ 0.0007（t − 20）。規定値以下のセルがあれば、均等充電を行う。数値は、使う電池の取扱説明書で確認してください。', '12セル（6個×2列）。1番セルに「代表槽」の札があり、右端にプラスとマイナスの端子と、透明なカバー、太いケーブルがつながる。']]],
+    ['蓄電池（始動・制御用）', [[-3.4, 1.8, 0.4], [-1.0, 0.7, 2.7]], '役割：セルモータの始動と、制御電源に使います。鉛蓄電池です。後ろの壁の掲示（蓄電池保守点検要領）は、タップすると全文が読めます。足元の黄色いマットは、電解液がこぼれた時の耐酸マットです。', '見る点：浮動充電中の総電圧（掲示の目安：2.20V／セル×セル数）、電解液面（減っていれば最高液面線まで精製水を補水）、外観の異常、端子の腐食と緩み。', '定期の保守（現場の掲示の目安）：3ヶ月に1回、均等充電（2.40V／セルで7〜8時間）と、全セルの電圧・比重・液温の測定。浮動充電電圧 2.20±0.05V／セル、比重 1.260±0.005（20℃）。比重の温度換算：D20 ＝ Dt ＋ 0.0007（t − 20）。規定値以下のセルがあれば、均等充電を行う。数値は、使う電池の取扱説明書で確認してください。', '12セル（6個×2列）。1番セルに「代表槽」の札があり、右端にプラスとマイナスの端子と、透明なカバー、太いケーブルがつながる。']]],
   ['機側の設備', [
     ['操作盤（デスク型）', [[-3.1, 1.8, -3.0], [-1.05, 1.1, -1.5]], '役割：機側の計器盤です。回転計、油圧計、水温計、切替スイッチがあります。', '見る点：始動時と運転中の油圧、水温、回転数。値を記録して、前回と比べます。'],
     ['金網ガード', [[-3.9, 1.7, -2.5], [-2.2, 1.0, -1.1]], '役割：発電機の側面で、回転部や端子に不用意に触れないようにします。', '見る点：施錠、扉の開閉、「危険」表示の状態。']]],
