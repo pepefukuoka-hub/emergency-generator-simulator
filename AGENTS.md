@@ -40,7 +40,7 @@ npm run dev      # 監視ビルド
 | 機械室（`room`） | 床・壁・天井・配管・棚・ドア。配電盤の列は `pnl` グループ |
 | 発電機（`gen` → `rig`） | 発電機本体・エンジン・ファン・操作盤・金網ガード。`rig` は振動する（防振ゴムは `gen` 直下） |
 | 盤の3D部品 | `relay3D / meter3D / knob3D / handle3D / block3D / push3D`、`buildDevices()`、`RELAYS`（継電器の登録） |
-| 盤の扉と内部 | `buildCabinet(i, x, name)`、`cabinetInside()`、`doors[]` |
+| 盤の扉と内部 | `buildCabinet(i, x, name)`、`cabinetInside()`、`doors[]`。中身は盤ごとの `insideAux / insideXfer / insideGen / insideAuto`（扉を開けた写真から） |
 | 内部構造 | 透かす／断面（`inner`、`cyls`、`cutPlane`）。ピストン・クランク・回転子・冷却水などの粒子 |
 | 音 | Web Audio の合成音（`audioInit / audioUpdate`） |
 | 運転シーケンス | `go(mode)`、`stepState(dt)`。stop→blackout→crank→accel→run→xfer→supply→stopping |
@@ -94,7 +94,7 @@ npm run dev      # 監視ビルド
 ## 10. 既知の課題・次にやること（候補）
 - 試験機のリード線が、机・盤に重なって見えることがある。
 - 高圧配電盤 GF2/GF1 の扉の裏（ケーブルダクト・変流器など）は、未作成。
-- 発電機の内部・盤の内部は、写真を見て似せたもの。細部は実機と違う。
+- 発電機の内部・盤の内部は、写真を見て似せたもの。細部は実機と違う。盤の内部は、扉を開けた写真4枚（補機盤・電源自動切換盤・発電機盤・自動操作盤）に合わせてある。扉の裏は、表の部品の位置から作った背面で、写真の細部までは合わせていない。
 - 実機・実スマホでの操作感は、未確認。
 - 継電器試験の判定値・操作順は、取扱説明書・JEM-TR 156 で、要確認。
 
