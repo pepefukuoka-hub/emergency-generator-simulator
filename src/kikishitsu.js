@@ -116,7 +116,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       handle(c, w, 250); louver(c, 60, h - 72, 136, 36);
     },
   };
-  const FINE = ['cct', 'rgl', 'paper', 'ccr'];
+  const FINE = ['cct', 'rgl', 'paper', 'ccr', 'trp'];
   const BR = '#6b5b4e', BR2 = '#75655a', GRG = '#cfc8ba';
   const base2 = (c, w, h) => { c.fillStyle = GRG; c.fillRect(0, 0, w, h); c.strokeStyle = '#9a9488'; c.lineWidth = 1.5; c.strokeRect(2, 2, w - 4, h - 4); };
   const meter2 = (c, x, y, s, t, ang) => {   // 角形の計器（上が白い目盛板、下が黒）
@@ -216,6 +216,46 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     noTag(c, no[0], 4); cpanel(c, w, U * 0.8, U * 0.14, d.up.title, d.up.type); latch(c, w - 24, U * 0.47);
     noTag(c, no[1], U + 4); cpanel(c, w, U * 1.05, U * 0.14, d.lo.title, d.lo.type); latch(c, w - 24, U * 1.47); cross(c, 50, U * 1.65, 150, U * 0.25);
   };
+  // 変圧器盤（正面の写真4枚より）。部品の位置は、扉の幅・高さに対する割合で書く。メーカーの表示は入れない
+  DRAW.trp = (no, d) => (c, w, h) => {
+    const X = f => f * w, Y = f => f * h;
+    c.fillStyle = '#d6d4cb'; c.fillRect(0, 0, w, h);
+    const gr = c.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(0,0,0,.06)'); gr.addColorStop(0.15, 'rgba(255,255,255,.05)'); gr.addColorStop(1, 'rgba(0,0,0,.05)'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.strokeStyle = '#8e8b82'; c.lineWidth = 1.5; c.strokeRect(1, 1, w - 2, h - 2);
+    if (d.plate) { c.fillStyle = '#f7f7f3'; c.fillRect(X(0.24), Y(0.03), X(0.52), Y(0.028)); c.strokeStyle = '#999'; c.lineWidth = 0.6; c.strokeRect(X(0.24), Y(0.03), X(0.52), Y(0.028)); c.fillStyle = '#222'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, d.plate, X(0.5), Y(0.045), X(0.48), 14, false); c.fillStyle = '#aaa'; for (const fx of [0.255, 0.745]) for (const fy of [0.036, 0.053]) { c.beginPath(); c.arc(X(fx), Y(fy), 1, 0, 7); c.fill(); } }
+    noTag(c, no, 4);
+    const lbl = (fx, fy, t, fw = 0.12) => { c.fillStyle = '#f2f2ee'; c.fillRect(X(fx - fw / 2), Y(fy) - 3.5, X(fw), 7); c.strokeStyle = '#aaa'; c.lineWidth = 0.4; c.strokeRect(X(fx - fw / 2), Y(fy) - 3.5, X(fw), 7); c.fillStyle = '#333'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, t, X(fx), Y(fy) + 0.3, X(fw) - 2, 5, false); };
+    const lamp = (fx, fy, col, on, r = 4) => { const x = X(fx), y = Y(fy); c.fillStyle = '#e8e8e4'; c.fillRect(x - r, y - r - 5, 2 * r, 4); c.fillStyle = '#2a2a2a'; c.beginPath(); c.arc(x, y, r * 1.3, 0, 7); c.fill(); c.fillStyle = on ? col : (col === '#3ce05a' ? '#1f5a2a' : '#5a1f1f'); c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); if (on) { c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(x - 1.3, y - 1.3, 1.3, 0, 7); c.fill(); } };
+    const wm = (fx, fy, fs, unit, max, ang) => {   // 角形の広角計器（黒い枠・白い丸い目盛板・240°）
+      const s2 = X(fs), x = X(fx) - s2 / 2, y = Y(fy) - s2 / 2, cx = x + s2 / 2, cy = y + s2 / 2, r = s2 * 0.42;
+      c.fillStyle = '#121314'; c.fillRect(x, y, s2, s2); c.fillStyle = '#fbfbf7'; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fill();
+      c.strokeStyle = '#222'; c.lineWidth = 0.5; c.beginPath(); c.arc(cx, cy, r * 0.82, Math.PI * 0.75, Math.PI * 2.25); c.stroke();
+      for (let i = 0; i <= 30; i++) { const a = Math.PI * (0.75 + 1.5 * i / 30), r0 = r * (i % 5 ? 0.77 : 0.72); c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); c.lineTo(cx + Math.cos(a) * r * 0.82, cy + Math.sin(a) * r * 0.82); c.stroke(); }
+      c.fillStyle = '#222'; c.font = (s2 * 0.1) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      for (let i = 0; i <= 6; i++) { const a = Math.PI * (0.75 + 1.5 * i / 6); c.fillText(String(Math.round(max * i / 6)), cx + Math.cos(a) * r * 0.56, cy + Math.sin(a) * r * 0.56); }
+      c.font = 'bold ' + (s2 * 0.13) + 'px sans-serif'; c.fillText(unit, cx, cy + r * 0.62);
+      const a = Math.PI * (0.75 + 1.5 * ang); c.strokeStyle = '#111'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.85, cy + Math.sin(a) * r * 0.85); c.stroke();
+      c.fillStyle = '#e9e9e4'; c.beginPath(); c.arc(cx, cy, r * 0.17, 0, 7); c.fill(); c.strokeStyle = '#999'; c.lineWidth = 0.5; c.stroke();
+    };
+    const cs = (fx, fy) => { const x = X(fx), y = Y(fy), a = 8; c.fillStyle = '#b9bbbd'; c.fillRect(x - a, y - a, 2 * a, 2 * a); c.strokeStyle = '#666'; c.lineWidth = 0.5; c.strokeRect(x - a, y - a, 2 * a, 2 * a); c.fillStyle = '#141414'; c.beginPath(); for (let i = 0; i < 12; i++) { const r = i % 2 ? 4 : 6.2, t = i * Math.PI / 6; c.lineTo(x + Math.cos(t) * r, y + Math.sin(t) * r); } c.fill(); c.fillStyle = '#fff'; c.fillRect(x - 0.5, y - 5, 1, 4); };
+    const pb = (fx, fy, t) => { const x = X(fx), y = Y(fy); if (t) lbl(fx, fy - 0.015, t, 0.08); c.fillStyle = '#d0d0cc'; c.beginPath(); c.arc(x, y, 5.5, 0, 7); c.fill(); c.fillStyle = '#111'; c.beginPath(); c.arc(x, y, 4.3, 0, 7); c.fill(); };
+    const ann = (fx, fy, n, wh) => { const ww = 9, x = X(fx) - (n * ww) / 2 - 2; c.fillStyle = '#151515'; c.fillRect(x, Y(fy) - 6, n * ww + 4, 12); for (let i = 0; i < n; i++) { c.fillStyle = wh && i === n - 1 ? '#efefe8' : '#f2c9c4'; c.fillRect(x + 2.5 + i * ww, Y(fy) - 4.5, ww - 1.5, 9); c.fillStyle = '#9a6a66'; for (let k = 0; k < 3; k++) c.fillRect(x + 3.5 + i * ww, Y(fy) - 3 + k * 2.4, ww - 3.5, 0.6); } };
+    const relay = (fx, fy, fw, fh, dark) => { const x = X(fx - fw / 2), y = Y(fy), ww = X(fw), hh = Y(fh); c.fillStyle = dark ? '#1c1d20' : '#b4b6b8'; c.fillRect(x, y, ww, hh); c.fillStyle = dark ? '#2d3034' : '#8c9196'; c.fillRect(x + 1.5, y + 1.5, ww - 3, hh - 3); c.fillStyle = dark ? '#c9ccc4' : '#d9dad6'; c.fillRect(x + 3, y + 3, ww - 6, hh * 0.6);
+      c.fillStyle = '#777'; for (let k = 0; k < 7; k++) c.fillRect(x + 5, y + 6 + k * hh * 0.07, ww * (0.4 + (k % 3) * 0.15), 0.6); c.fillStyle = '#2a2a2a'; c.beginPath(); c.arc(x + ww * 0.45, y + hh * 0.18, 2, 0, 7); c.fill(); c.fillStyle = '#4ccb5a'; c.beginPath(); c.arc(x + ww * 0.3, y + hh * 0.72, 1.2, 0, 7); c.fill(); c.fillStyle = '#c33'; c.beginPath(); c.arc(x + ww * 0.6, y + hh * 0.72, 1.2, 0, 7); c.fill(); c.fillStyle = '#ccc'; c.fillRect(x + ww * 0.3, y + hh - 4, ww * 0.4, 2.5); };
+    const dm = (fx, fy) => { const x = X(fx) - 8, y = Y(fy); c.fillStyle = '#2b2d30'; c.fillRect(x, y, 16, 30); c.fillStyle = '#c5d6b4'; c.fillRect(x + 2, y + 5, 12, 9); c.fillStyle = '#4b5a40'; for (let k = 0; k < 3; k++) c.fillRect(x + 3, y + 6.5 + k * 2.6, 10, 1); c.fillStyle = '#ddd'; c.fillRect(x + 2, y + 16, 12, 9); c.fillStyle = '#999'; c.fillRect(x + 7, y + 29, 2, 4); };
+    const sel = (fx, fy, on) => { const x = X(fx), y = Y(fy); c.fillStyle = '#f2f2ee'; c.fillRect(x - 9, y - 19, 18, 9); c.strokeStyle = '#aaa'; c.lineWidth = 0.4; c.strokeRect(x - 9, y - 19, 18, 9); c.fillStyle = '#777'; c.fillRect(x - 7, y - 17, 14, 0.7); c.fillRect(x - 6, y - 13.5, 12, 0.7);
+      c.fillStyle = '#c8c9cb'; c.fillRect(x - 7.5, y - 7.5, 15, 15); c.strokeStyle = '#222'; c.lineWidth = 1; c.strokeRect(x - 7.5, y - 7.5, 15, 15); c.fillStyle = '#121212'; c.beginPath(); c.arc(x, y + 0.5, 4.2, 0, 7); c.fill(); c.fillStyle = '#eee'; c.fillRect(x - 0.5, y - 3.6, 1, 3.4); c.fillStyle = '#d22'; c.beginPath(); c.moveTo(x + 9, y - 1.5); c.lineTo(x + 9, y + 1.5); c.lineTo(x + 7.8, y); c.fill();
+      lamp(fx - 0.03, fy + 0.035, '#3ce05a', !on, 3.6); lamp(fx + 0.03, fy + 0.035, '#ff3b30', on, 3.6); };
+    const handle = (fx, fy) => { const x = X(fx), y = Y(fy); c.fillStyle = '#e6e8ea'; c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill(); c.strokeStyle = '#888'; c.lineWidth = 0.6; c.stroke(); c.fillStyle = '#cfd3d6'; c.beginPath(); c.moveTo(x - 2.5, y); c.lineTo(x + 2.5, y); c.lineTo(x + 1.5, y + 26); c.lineTo(x - 1, y + 26); c.fill(); c.strokeStyle = '#8a8d90'; c.stroke(); };
+    const louver = (y0, y1, x0 = 0.19, x1 = 0.86) => { const cols = 10, cw = (X(x1) - X(x0)) / cols; c.fillStyle = '#d0cec5'; c.fillRect(X(x0), Y(y0), X(x1) - X(x0), Y(y1) - Y(y0)); c.fillStyle = '#4d4b46'; for (let i = 0; i < cols; i++) for (let y = Y(y0) + 2; y < Y(y1) - 1; y += 3.2) c.fillRect(X(x0) + i * cw + 1.2, y, cw - 2.4, 1.3); };
+    for (const e of d.parts) {
+      const [t, ...a] = e;
+      if (t === 'wm') wm(...a); else if (t === 'lbl') lbl(...a); else if (t === 'lamp') lamp(...a); else if (t === 'cs') cs(...a); else if (t === 'pb') pb(...a); else if (t === 'ann') ann(...a);
+      else if (t === 'relay') relay(...a); else if (t === 'dm') dm(...a); else if (t === 'sel') sel(...a); else if (t === 'handle') handle(...a); else if (t === 'louver') louver(...a);
+      else if (t === 'round') { const x = X(a[0]), y = Y(a[1]), r = X(a[2]); c.fillStyle = '#c9cdd0'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.fillStyle = '#16181a'; c.beginPath(); c.arc(x, y, r * 0.78, 0, 7); c.fill(); c.strokeStyle = '#555'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x - r * 0.1, y - r * 0.5); c.moveTo(x, y); c.lineTo(x + r * 0.05, y + r * 0.45); c.stroke(); }
+      else if (t === 'paper') { sheet(c, X(a[0]), Y(a[1]), X(a[2] - a[0]), Y(a[3] - a[1])); c.fillStyle = '#444'; c.fillRect(X(a[0] + 0.05), Y(a[1] + 0.012), X(a[2] - a[0] - 0.1), 1.2); }
+    }
+  };
   DRAW.plain = () => (c, w, h) => { c.fillStyle = GRG; c.fillRect(0, 0, w, h); };
   // 盤1面：本体の箱＋正面の絵。dir は正面の向き。
   function cab(x0, x1, z0, z1, h, dir, kind, no, name, back) {
@@ -245,9 +285,31 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   }
 
   // A 変圧器盤の列（No.52・28〜21）。正面は −X（南向き。ビデオで西の端の2面の正面と、後ろの北壁の換気扇が見えた）。盤面は丸い計器2つ・スイッチと表示灯の列・下に通気口（ビデオより）
-  row(442, 895, xc(680) - 0.1, xc(680) - 1.9, 2.3, 'x-', 'ups', [
-    ['52', '急速充電器用変圧器盤'], ['28', '道路駐車場照明変圧器盤'], ['27', '所内動力変圧器盤'], ['26', '所内照明変圧器盤'], ['25', 'エプロン照明変圧器盤'],
-    ['24', '照明変圧器盤-2'], ['23', '照明変圧器盤-1'], ['22', 'No.2 CCR変圧器盤'], ['21', 'No.1 CCR変圧器盤']]);
+  { const xa = xc(680) - 0.1, xb = xc(680) - 1.9;
+    row(442, 895, xa, xb, 2.3, 'x-', 'trp', []);
+    // 計器・表示・スイッチ・継電器の組（No.27 の写真の並び）。no26 は所内照明（写真の端から。電圧の札は 210-105V）
+    const std = (v, ann) => [['lbl', 0.5, 0.135, v], ['wm', 0.43, 0.17, 0.12, 'A', 300, 0.06], ['wm', 0.57, 0.17, 0.12, 'V', 300, 0.68], ['ann', 0.5, 0.29, ann, false],
+      ['pb', 0.43, 0.32, '故障復帰'], ['pb', 0.57, 0.32, 'ランプテスト'], ['lbl', 0.5, 0.40, v], ['cs', 0.44, 0.42], ['cs', 0.57, 0.42], ['relay', 0.51, 0.47, 0.13, 0.085, false]];
+    const circ = (ys, xs, offs) => ys.flatMap((y, r) => xs[r].map((x, k) => ['sel', x, y, !(offs && offs[r] && offs[r].includes(k))]));
+    const P = [
+      [0.85, '52', { plate: '急速充電器用変圧器盤', parts: [['wm', 0.34, 0.14, 0.15, 'A', 300, 0.07], ['wm', 0.72, 0.145, 0.15, 'V', 300, 0.68], ['lbl', 0.5, 0.207, '負荷開閉器', 0.14], ['lamp', 0.45, 0.225, '#3ce05a', false], ['lamp', 0.56, 0.225, '#ff3b30', true],
+        ['dm', 0.5, 0.27], ['cs', 0.35, 0.48], ['cs', 0.71, 0.48], ['lbl', 0.5, 0.515, '急速充電器用', 0.15], ['cs', 0.5, 0.545], ['lamp', 0.45, 0.565, '#3ce05a', false], ['lamp', 0.56, 0.565, '#ff3b30', true], ['pb', 0.5, 0.592], ['pb', 0.5, 0.625],
+        ['relay', 0.43, 0.655, 0.12, 0.06, true], ['relay', 0.6, 0.643, 0.13, 0.08, true], ['handle', 0.88, 0.535], ['louver', 0.735, 0.96]] }],
+      [1.1, '28', { plate: '道路駐車場照明変圧器盤', parts: [['lbl', 0.5, 0.135, '210V'], ['wm', 0.44, 0.17, 0.11, 'A', 400, 0.3], ['wm', 0.57, 0.17, 0.11, 'V', 300, 0.68], ['ann', 0.51, 0.29, 5, true],
+        ['pb', 0.44, 0.32, '故障復帰'], ['pb', 0.57, 0.32, 'ランプテスト'], ['lbl', 0.51, 0.40, '210V'], ['cs', 0.45, 0.42], ['cs', 0.58, 0.42], ['relay', 0.52, 0.47, 0.1, 0.085, false], ['handle', 0.9, 0.55],
+        ...circ([0.66, 0.77], [[0.27, 0.39, 0.51, 0.63, 0.75], [0.27, 0.39, 0.51, 0.63, 0.75]])] }],
+      [1.1, '', { parts: [['paper', 0.3, 0.3, 0.52, 0.46], ['round', 0.83, 0.48, 0.09], ['handle', 0.12, 0.55],
+        ...circ([0.68, 0.77], [[0.29, 0.41, 0.53, 0.65, 0.77], [0.3, 0.42, 0.54, 0.65]], [[], [1, 2, 3]])] }],
+      [1.0, '27', { plate: '所内動力変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '26', { plate: '所内照明変圧器盤', parts: [...std('210-105V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '25', { plate: 'エプロン照明変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '24', { plate: '照明変圧器盤-2', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '23', { plate: '照明変圧器盤-1', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '22', { plate: 'No.2 CCR変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '21', { plate: 'No.1 CCR変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }]];
+    const tot = P.reduce((a, p) => a + p[0], 0), za = zc(442), zb = zc(895); let z = za;
+    for (const [u, no, d] of P) { const z1 = z + (zb - za) * u / tot; cab(xb, xa, z + 0.004, z1 - 0.004, 2.3, 'x-', 'trp', no, d); z = z1; }
+  }
   // B 定電流調整器（CCR）の列。上下2段。正面は +X（北向き。図面の三角の印の側。CCT の写真で確かめた向きと同じ）。南の面は背面で、パンチングの通気口と名札（ビデオ）。正面の盤面は写真5枚に合わせた（DRAW.ccr）
   { const u = (t, type) => ({ title: t, type }), st = (a, b, up, lo) => [[a, b], { up, lo }];
     row(640, 930, xc(870) - 0.05, xc(870) - 1.05, 2.3, 'x+', 'ccr', [
