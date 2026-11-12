@@ -116,13 +116,84 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       handle(c, w, 250); louver(c, 60, h - 72, 136, 36);
     },
   };
+  const FINE = ['cct', 'rgl', 'paper'];
+  const BR = '#6b5b4e', BR2 = '#75655a', GRG = '#cfc8ba';
+  const base2 = (c, w, h) => { c.fillStyle = GRG; c.fillRect(0, 0, w, h); c.strokeStyle = '#9a9488'; c.lineWidth = 1.5; c.strokeRect(2, 2, w - 4, h - 4); };
+  const meter2 = (c, x, y, s, t, ang) => {   // 角形の計器（上が白い目盛板、下が黒）
+    c.fillStyle = '#17181a'; c.fillRect(x, y, s, s * 0.95); c.fillStyle = '#f3f3ee'; c.fillRect(x + 1.5, y + 1.5, s - 3, s * 0.58);
+    c.strokeStyle = '#444'; c.lineWidth = 0.6; c.beginPath(); c.arc(x + s / 2, y + s * 0.74, s * 0.5, Math.PI * 1.22, Math.PI * 1.78); c.stroke();
+    c.strokeStyle = ang < 0.25 ? '#c22' : '#222'; c.lineWidth = 0.9; const a = Math.PI * (1.22 + 0.56 * ang); c.beginPath(); c.moveTo(x + s / 2, y + s * 0.6); c.lineTo(x + s / 2 + Math.cos(a) * s * 0.44, y + s * 0.74 + Math.sin(a) * s * 0.44); c.stroke();
+    c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = 'bold ' + s * 0.2 + 'px sans-serif'; c.fillText(t, x + s / 2, y + s * 0.44);
+  };
+  const tag = (c, t, x, y, wd, ht, px) => { c.fillStyle = '#f4f4ee'; c.fillRect(x - wd / 2, y - ht / 2, wd, ht); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, t, x, y + 0.5, wd - 2, px); };
+  const led = (c, x, y, col) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, 1.6, 0, 7); c.fill(); };
+  const sknob = (c, x, y, r, a) => { c.fillStyle = '#111'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.strokeStyle = '#eee'; c.lineWidth = r * 0.45; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.sin(a) * r, y - Math.cos(a) * r); c.stroke(); c.fillStyle = '#d22'; c.beginPath(); c.moveTo(x - 2, y - r - 5); c.lineTo(x + 2, y - r - 5); c.lineTo(x, y - r - 1); c.fill(); };
+  // 回路1つ分の計器パネル：名札、出力電流計・絶縁抵抗計、表示灯4つ、遠方／直接の切換、OFF・ON・RESET（写真より。文字の細部は要確認）
+  const sub = (c, x, y, wd, ht, name) => {
+    c.fillStyle = BR2; c.fillRect(x, y, wd, ht); c.strokeStyle = '#4e4138'; c.lineWidth = 1; c.strokeRect(x, y, wd, ht);
+    const s = Math.min(wd * 0.29, ht * 0.56), my = y + ht * 0.2;
+    tag(c, name, x + wd * 0.36, y + ht * 0.1, wd * 0.34, ht * 0.11, 7);
+    meter2(c, x + wd * 0.05, my, s, 'A', 0.6); meter2(c, x + wd * 0.05 + s + 4, my, s, 'MΩ', 0.12);
+    tag(c, '出力電流', x + wd * 0.05 + s / 2, my + s + 6, s * 0.7, 6, 4.5); tag(c, '絶縁抵抗', x + wd * 0.05 + s * 1.5 + 4, my + s + 6, s * 0.7, 6, 4.5);
+    const lx = x + wd * 0.76; c.fillStyle = '#eee'; c.font = '4px sans-serif'; c.textAlign = 'right';
+    ['受電', '開路', '過電流', '接地'].forEach((t, i) => { const ly = y + ht * (0.3 + i * 0.16); c.fillStyle = '#eee'; c.fillText(t, lx - 4, ly); led(c, lx, ly, i ? '#40382f' : '#e8d24a'); });
+    const bx2 = x + wd * 0.89; sknob(c, bx2, y + ht * 0.2, 4.5, -0.7);
+    c.textAlign = 'center'; [['OFF', '#d9d6cc'], ['ON', '#f0a43a'], ['RESET', '#d9d6cc']].forEach(([t, col], i) => { const by = y + ht * (0.4 + i * 0.18); c.fillStyle = '#222'; c.fillRect(bx2 - 6.5, by - 5, 13, 10); c.fillStyle = col; c.fillRect(bx2 - 5.5, by - 4, 11, 8); c.fillStyle = '#222'; c.font = '3.4px sans-serif'; c.fillText(t, bx2, by + 0.5); });
+  };
+  const sheet = (c, x, y, wd, ht) => { c.fillStyle = '#fbfbf8'; c.fillRect(x, y, wd, ht); c.strokeStyle = '#bbb'; c.lineWidth = 0.5; c.strokeRect(x, y, wd, ht); c.fillStyle = '#888'; c.fillRect(x + wd * 0.25, y + ht * 0.06, wd * 0.5, 1.4); c.fillStyle = '#b5b5b5'; for (let j = y + ht * 0.14; j < y + ht * 0.92; j += 3.2) c.fillRect(x + wd * 0.1, j, wd * (0.5 + ((j * 7 | 0) % 4) * 0.08), 0.8); };
+  const latch = (c, x, y) => { c.fillStyle = '#e3e5e6'; c.fillRect(x, y, 7, 26); c.strokeStyle = '#777'; c.lineWidth = 0.7; c.strokeRect(x, y, 7, 26); c.fillStyle = '#888'; c.beginPath(); c.arc(x + 3.5, y + 19, 2, 0, 7); c.fill(); c.fillStyle = '#f1d21c'; c.fillRect(x - 1, y + 29, 9, 8); };
+  const cross = (c, x, y, wd, ht) => { c.fillStyle = '#d5cfc2'; c.fillRect(x, y, wd, ht); c.fillStyle = '#5d564c'; for (let j = 3, r = 0; j < ht - 2; j += 3.4, r++) for (let i = 3 + (r % 2 ? 1.7 : 0); i < wd - 2; i += 3.4) { c.fillRect(x + i - 1, y + j - 0.35, 2, 0.7); c.fillRect(x + i - 0.35, y + j - 1, 0.7, 2); } };
+  const noTag = (c, no, y) => { if (!no) return; c.fillStyle = '#1b3a6b'; c.fillRect(6, y, 40, 14); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, 'No.' + no, 26, y + 7.5, 37, 10); };
+  // CCT の上下2段（写真より）。上段：名札・貼り紙・下に茶色の帯（計器）。下段：上に茶色の帯（計器）・名札・下に十字パンチングの通気口
+  DRAW.cct = (no, d) => (c, w, h) => {
+    const U = h / 2; base2(c, w, h);
+    c.fillStyle = BR; c.fillRect(2, U * 0.72, w - 4, U * 0.52); c.strokeStyle = '#3c332c'; c.lineWidth = 2; c.beginPath(); c.moveTo(0, U); c.lineTo(w, U); c.stroke();
+    tag(c, d.up.title, w / 2, 26, 150, 22, 15); c.strokeStyle = '#777'; c.lineWidth = 0.6; c.strokeRect(w / 2 - 75, 15, 150, 22); noTag(c, no[0], 4);
+    if (d.up.sel) for (let i = 0; i < 3; i++) sheet(c, 22 + i * 70, U * 0.4, 62, U * 0.26); else { sheet(c, 22, U * 0.45, 118, U * 0.24); sheet(c, 150, U * 0.43, 62, U * 0.26); }
+    latch(c, w - 26, U * 0.42);
+    const py = U * 0.76, ph = U * 0.2;
+    if (d.up.circ) d.up.circ.forEach((n, i) => sub(c, 12 + i * 118, py, 114, ph, n));
+    if (d.up.sel) {   // ケーブル切替盤の切換スイッチ：左に回路名4つ、中央につまみ、上に OFF
+      const x = 70, wd = 116; c.fillStyle = BR2; c.fillRect(x, py, wd, ph); c.strokeStyle = '#4e4138'; c.lineWidth = 1; c.strokeRect(x, py, wd, ph);
+      const kx = x + wd * 0.52, ky = py + ph * 0.55; c.strokeStyle = '#ddd'; c.lineWidth = 0.6; c.font = '4.6px sans-serif'; c.textBaseline = 'middle';
+      d.up.sel.forEach((t, i) => { const ly = py + ph * (0.3 + i * 0.14); c.fillStyle = '#eee'; c.textAlign = 'left'; c.fillText(t, x + 34, ly - 2.5); led(c, x + 30, ly, '#5fae5f'); c.beginPath(); c.moveTo(x + 32, ly); c.lineTo(x + 52, ly); c.lineTo(kx, ky); c.lineTo(x + wd - 26, ly); c.lineTo(x + wd - 16, ly); c.stroke(); led(c, x + wd - 14, ly, '#5fae5f'); });
+      c.fillStyle = '#eee'; c.textAlign = 'center'; c.fillText('OFF', kx, py + ph * 0.1); sknob(c, kx, ky, 5, 0);
+    }
+    const qy = U + U * 0.03;
+    d.lo.circ.forEach((n, i) => sub(c, 12 + i * 118, qy, 114, ph, n));
+    if (d.lo.blank) { c.fillStyle = BR2; c.fillRect(130, qy, 114, ph); c.strokeStyle = '#4e4138'; c.strokeRect(130, qy, 114, ph); }
+    tag(c, d.lo.title, w / 2, U * 1.3, 130, 20, 14); c.strokeStyle = '#777'; c.lineWidth = 0.6; c.strokeRect(w / 2 - 65, U * 1.3 - 10, 130, 20); noTag(c, no[1], U * 1.3 - 28);
+    latch(c, w - 26, U * 1.44); cross(c, 50, U * 1.62, 156, U * 0.26);
+  };
+  // RGL（下段だけの低い盤）：左に絶縁抵抗計・出力電流計を縦に、右に表示灯・切換・押しボタン（写真より。ボタンの文字は読めず、推測）
+  DRAW.rgl = (no, name) => (c, w, h) => {
+    base2(c, w, h); c.fillStyle = BR; c.fillRect(2, 2, w - 4, h * 0.24);
+    const s = h * 0.09; tag(c, '絶縁抵抗', 40, h * 0.025, s * 0.8, 6, 4.5); meter2(c, 40 - s / 2, h * 0.04, s, 'MΩ', 0.12); meter2(c, 40 - s / 2, h * 0.04 + s + 4, s, 'A', 0.55); tag(c, '出力電流', 40, h * 0.04 + s * 2 + 8, s * 0.8, 6, 4.5);
+    const x = 88, y = h * 0.045, wd = 150, ht = h * 0.16; c.fillStyle = BR2; c.fillRect(x, y, wd, ht); c.strokeStyle = '#4e4138'; c.lineWidth = 1; c.strokeRect(x, y, wd, ht);
+    c.fillStyle = '#eee'; c.font = '4.4px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    [['過電流', 18], ['開路', 30], ['接地', 50]].forEach(([t, dx]) => { c.fillStyle = '#eee'; c.fillText(t, x + dx, y + ht * 0.28); led(c, x + dx, y + ht * 0.38, '#40382f'); });
+    c.fillStyle = '#eee'; c.fillText('遠方', x + 18, y + ht * 0.52); c.fillText('直接', x + 46, y + ht * 0.52); sknob(c, x + 32, y + ht * 0.76, 5, -0.7);
+    for (let i = 0; i < 2; i++) { c.fillStyle = '#f0a43a'; c.fillRect(x + 70 + i * 13, y + ht * 0.14, 11, 8); }
+    ['OFF', 'ON', 'RESET'].forEach((t, i) => { c.fillStyle = '#222'; c.fillRect(x + 82 + i * 14, y + ht * 0.46, 13, 10); c.fillStyle = i === 1 ? '#f0a43a' : '#d9d6cc'; c.fillRect(x + 83 + i * 14, y + ht * 0.46 + 1, 11, 8); c.fillStyle = '#222'; c.font = '3.4px sans-serif'; c.fillText(t, x + 88.5 + i * 14, y + ht * 0.46 + 5.5); });
+    for (let i = 0; i < 4; i++) { c.fillStyle = '#222'; c.fillRect(x + 78 + i * 14, y + ht * 0.72, 13, 10); c.fillStyle = i === 1 ? '#f0a43a' : '#d9d6cc'; c.fillRect(x + 79 + i * 14, y + ht * 0.72 + 1, 11, 8); }
+    tag(c, name, w / 2, h * 0.33, 110, 22, 16); c.strokeStyle = '#777'; c.lineWidth = 0.6; c.strokeRect(w / 2 - 55, h * 0.33 - 11, 110, 22); noTag(c, no, h * 0.26);
+    latch(c, w - 30, h * 0.48); cross(c, 50, h * 0.66, 156, h * 0.26);
+  };
+  // 紙を貼った無地の面（写真：操作手順の掲示が並ぶ。下に縦長の通気口）
+  DRAW.paper = (no, name) => (c, w, h) => {
+    base2(c, w, h); noTag(c, no, 4);
+    for (let r = 0; r < 5; r++) { sheet(c, 24, h * (0.06 + r * 0.155), 100, h * 0.14); sheet(c, 132, h * (0.06 + r * 0.155), 100, h * 0.14); }
+    c.fillStyle = '#4c473f'; for (let k = 0; k < 3; k++) for (let i = 0; i < 9; i++) c.fillRect(30 + i * 7, h * (0.86 + k * 0.04), 3, h * 0.03);
+  };
+  DRAW.plain = () => (c, w, h) => { c.fillStyle = GRG; c.fillRect(0, 0, w, h); };
   // 盤1面：本体の箱＋正面の絵。dir は正面の向き。
-  function cab(x0, x1, z0, z1, h, dir, kind, no, name) {
+  function cab(x0, x1, z0, z1, h, dir, kind, no, name, back) {
     box(x0, x1, 0.06, h, z0, z1, body); box(x0 + 0.02, x1 - 0.02, 0, 0.06, z0 + 0.02, z1 - 0.02, plinth);
-    const m = M(0xffffff, 0.2, 0.55, { map: canvasTex(256, Math.round(256 * (h - 0.06) / (dir[0] === 'x' ? z1 - z0 : x1 - x0)), DRAW[kind](no, name)) });
-    const e = 0.004, hh = h - 0.06, cy = 0.06 + hh / 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    if (dir === 'x+') plane(z1 - z0, hh, m, x1 + e, cy, cz, dir); else if (dir === 'x-') plane(z1 - z0, hh, m, x0 - e, cy, cz, dir);
-    else if (dir === 'z+') plane(x1 - x0, hh, m, cx, cy, z1 + e, dir); else plane(x1 - x0, hh, m, cx, cy, z0 - e, dir);
+    const e = 0.004, hh = h - 0.06, cy = 0.06 + hh / 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wd = dir[0] === 'x' ? z1 - z0 : x1 - x0;
+    const tex = (k, a, b) => { const R = FINE.includes(k) ? 2 : 1, d = DRAW[k](a, b); return M(0xffffff, 0.2, 0.55, { map: canvasTex(256 * R, Math.round(256 * hh / wd) * R, (c, w, hc) => { c.save(); c.scale(R, R); d(c, w / R, hc / R); c.restore(); }) }); };
+    const put = (m, d) => { if (d === 'x+') plane(wd, hh, m, x1 + e, cy, cz, d); else if (d === 'x-') plane(wd, hh, m, x0 - e, cy, cz, d); else if (d === 'z+') plane(wd, hh, m, cx, cy, z1 + e, d); else plane(wd, hh, m, cx, cy, z0 - e, d); };
+    put(tex(kind, no, name), dir);
+    if (back) put(tex('stack', back[0], back[1]), { 'x+': 'x-', 'x-': 'x+', 'z+': 'z-', 'z-': 'z+' }[dir]);
   }
   const rackTex = canvasTex(64, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#b8bcbf'; c.fillRect(0, 0, w, 5); c.fillRect(0, h - 5, w, 5); c.fillRect(8, 0, 6, h); c.fillRect(40, 0, 6, h); }, [1, 1]);
   // ケーブルラック（盤の列の上。ビデオより。高さ・幅は推測）
@@ -136,7 +207,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   // 盤の列（Z方向に並ぶ）。items は図の左（−Z）から順。pit＝正面の床の縞鋼板（ピットのふた）
   function row(px0, px1, xa, xb, h, dir, kind, items, o = {}) {
     const z0 = zc(px0), z1 = zc(px1), n = items.length, x0 = Math.min(xa, xb), x1 = Math.max(xa, xb);
-    items.forEach(([no, name, k], i) => cab(x0, x1, z0 + (z1 - z0) * i / n + 0.004, z0 + (z1 - z0) * (i + 1) / n - 0.004, h, dir, k || kind, no, name));
+    items.forEach(([no, name, k], i) => cab(x0, x1, z0 + (z1 - z0) * i / n + 0.004, z0 + (z1 - z0) * (i + 1) / n - 0.004, h, dir, k || kind, no, name, o.back && [no, name]));
     blocks.push([x0, x1, z0, z1]);
     if (o.pit !== false) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.008, z1 - z0), plateMat); p.position.set(dir === 'x+' ? x1 + 0.45 : x0 - 0.45, 0.004, (z0 + z1) / 2); g.add(p); }
     if (o.rack !== false) rack((x0 + x1) / 2, z0 - 0.3, z1 + 0.3);
@@ -146,15 +217,25 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   row(442, 895, xc(680) - 0.1, xc(680) - 1.9, 2.3, 'x-', 'ups', [
     ['52', '急速充電器用変圧器盤'], ['28', '道路駐車場照明変圧器盤'], ['27', '所内動力変圧器盤'], ['26', '所内照明変圧器盤'], ['25', 'エプロン照明変圧器盤'],
     ['24', '照明変圧器盤-2'], ['23', '照明変圧器盤-1'], ['22', 'No.2 CCR変圧器盤'], ['21', 'No.1 CCR変圧器盤']]);
-  // B 定電流調整器（CCR）の列。上下2段。正面は −X（南向き。ビデオで、東を向いた通路の左手に正面が見えた）。上段・下段は、図面の番号の上の行・下の行
-  row(640, 930, xc(870) - 0.05, xc(870) - 1.05, 2.3, 'x-', 'stack', [
+  // B 定電流調整器（CCR）の列。上下2段。正面は +X（北向き。図面の三角の印の側。CCT の写真で確かめた向きと同じ）。南の面は背面で、パンチングの通気口と名札（ビデオ）。正面の盤面は写真待ちで、今は背面と同じ絵
+  row(640, 930, xc(870) - 0.05, xc(870) - 1.05, 2.3, 'x+', 'stack', [
     [['31', '32'], ['CCR 予備器-4', 'CCR PAPI']], [['49', '50'], ['操作部 ALS-2', 'CCR ALS-2']], [['47', '48'], ['操作部 REDL-2', 'CCR REDL-2']],
     [['46', '52'], ['CCR 予備器-2', 'CCR 予備器-3']], [['41', '42'], ['操作部 RTZL', 'CCR RTZL']], [['43', '44'], ['操作部 RCLL-2', 'CCR RCLL-2']],
-    [['39', '40'], ['操作部 ALS-1', 'CCR 予備器-1']], [['37', '38'], ['操作部 ALS-1', 'CCR ALS-1']], [['35', '36'], ['操作部 RCLL-1', 'CCR RCLL-1']], [['33', '34'], ['操作部 REDL-1', 'CCR REDL-1']]]);
-  // C 伝送ユニット盤・ケーブル切替盤・CCT（No.87・57・58・53〜56・45・51）。正面は −X（ビデオより。上がケーブル切替盤、下が予備器）
-  row(420, 462, xc(875) - 0.05, xc(875) - 1.25, 2.1, 'x-', 'ctl', [['87', '伝送ユニット盤']], { rack: false });
-  row(465, 560, xc(875) - 0.05, xc(875) - 1.05, 2.3, 'x-', 'stack', [
-    [['57', '58'], ['ケーブル切替盤', 'CCT 予備器']], [['53,54', '55,56'], ['CCT TEDL-1・2', 'CCT TCLL-1・2']], [['45', '51'], ['ケーブル導入盤', 'CCT RGL']]]);
+    [['39', '40'], ['操作部 ALS-1', 'CCR 予備器-1']], [['37', '38'], ['操作部 ALS-1', 'CCR ALS-1']], [['35', '36'], ['操作部 RCLL-1', 'CCR RCLL-1']], [['33', '34'], ['操作部 REDL-1', 'CCR REDL-1']]], { back: true });
+  // C 伝送ユニット盤・ケーブル切替盤・CCT。正面は +X（北向き。写真4枚より）。西から、紙を貼った盤（No.87 と推測）、
+  //   ケーブル切替盤／予備器、TEDL-1・2／TCLL-1・2、細い無地の柱、RGL（下段だけの低い盤）。南の面は背面（ビデオ）
+  { const xa = xc(875) - 0.05, xb = xa - 1.0, o = { rack: false };
+    row(420, 465, xa, xb, 2.3, 'x+', 'paper', [['87', '伝送ユニット盤']], o);
+    row(465, 562, xa, xb, 2.3, 'x+', 'cct', [], { pit: true, rack: true });
+    const put = (a, b, h, kind, no, d, back) => { cab(xb, xa, zc(a) + 0.004, zc(b) - 0.004, h, 'x+', kind, no, d, back); };
+    put(465, 496, 2.3, 'cct', ['57', '58'], { up: { title: 'ケーブル切替盤', sel: ['TEDL-1', 'TEDL-2', 'TCLL-1', 'TCLL-2'] }, lo: { title: '予備器', circ: ['予備器'], blank: true } }, [['57', '58'], ['ケーブル切替盤', '予備器']]);
+    put(496, 528, 2.3, 'cct', ['53,54', '55,56'], { up: { title: 'TEDL-1 , TEDL-2', circ: ['TEDL-1', 'TEDL-2'] }, lo: { title: 'TCLL-1 , TCLL-2', circ: ['TCLL-1', 'TCLL-2'] } }, [['53,54', '55,56'], ['TEDL-1・2', 'TCLL-1・2']]);
+    put(528, 534, 2.3, 'plain', '', '');
+    put(534, 562, 1.22, 'rgl', '51', 'RGL');
+    // RGL の天板の通気口（写真）
+    const zt = (zc(534) + zc(562)) / 2, sl = M(0x2b2d2f, 0.3, 0.8);
+    for (const dx of [-0.25, 0.2]) for (const dz of [-0.2, 0, 0.2]) for (let k = 0; k < 4; k++) box(xa - 0.5 + dx + k * 0.035, xa - 0.5 + dx + k * 0.035 + 0.018, 1.22, 1.222, zt + dz - 0.07, zt + dz + 0.07, sl);
+  }
   // D CCR用UPS（No.62・63。図面では破線）。背中合わせの2列
   for (const [a, b, no, nm] of [[425, 458, '62-1', 'CCR-U No.1入出力盤'], [458, 492, '62-2', 'CCR-U No.1UPS盤'], [520, 556, '62-3', 'CCR-U No.1蓄電池盤']])
     row(a, b, xc(1020) + 0.5, xc(1020) - 0.5, 1.95, 'x+', 'ups', [[no, nm]], { pit: false, rack: false });
@@ -202,15 +283,16 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     全体: [[-17.5, 15, -15], [-4.5, 0, -15]],
     入口から: [[-5.3, 1.65, -4.3], [-6.6, 1.2, -14]],
     受配電盤: [[-6.9, 1.7, -3.9], [-6.9, 1.2, -8.5]],
-    CCRの列: [[-6.6, 1.7, -21.5], [-5.4, 1.2, -13]],
+    CCRの列: [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]],
+    CCT: [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]],
     変圧器盤: [[-2.6, 1.8, -10.6], [-0.9, 1.2, -17]],
   };
   const info = ['機器室（配置図からの想像モデル）', [
     ['受電・饋電盤の列（No.2〜6・74）', [[-7.2, 1.7, -4.2], [-5.0, 1.2, -7.6]], '役割：高圧で受電して、各系統へ送り出す盤の列です。図面の名称は、引込計器盤、受電盤、VT盤・ZPD盤、饋電盤、電力インタフェース盤です。', '見る点：計器の指示、表示灯、継電器の動作表示、異音・異臭、盤内の過熱の跡。', '根拠：点検の周期と項目は、保安規程（電気事業法 第42条）で定めます。', '※ 盤面の絵は推測です。実物の盤面の写真があれば、合わせ直します。'],
     ['配電盤・コンデンサ盤の列（No.7〜14）', [[-6.6, 1.7, -4.2], [-9.2, 1.2, -7.6]], '役割：電源切換盤で、商用と発電機の電源を切り換え、配電盤から負荷へ送ります。コンデンサ盤は力率の改善用です。', '見る点：切換の状態表示、コンデンサのふくらみ・油漏れ・異音、直列リアクトルの過熱。', '※ 盤面の絵は推測です。'],
     ['変圧器盤の列（No.21〜28・52）', [[-3.0, 1.8, -10.4], [-0.9, 1.2, -17]], '役割：CCR用、照明用、所内動力用などの変圧器を納めた盤です。', '見る点：温度計の指示、うなり音の変化、通気口のほこり、油入なら油面と漏れ。', '※ 盤の中身（変圧器の種類・容量）は、図面からは読めず、未確認です。'],
-    ['定電流調整器（CCR）の列（No.31〜52）', [[-6.6, 1.7, -21.5], [-5.4, 1.2, -13]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。回路名は ALS・REDL・RCLL・RTZL・PAPI など、図面の表記のままです。', '見る点：出力電流の指示、タップの表示、故障表示、通気口の詰まり、予備器への切換ができるか。', '※ 上下の並びは、図面の番号とビデオに合わせました。「操作部」という呼び名は推測です。形式名は表示していません。出力電流の値は、現場の資料で確認してください。'],
-    ['ケーブル切替盤・CCT（No.45・51・53〜58・87）', [[-6.9, 1.7, -23.6], [-5.2, 1.2, -20.8]], '役割：図面の名称は、ケーブル導入盤、ケーブル切替盤、CCT（TEDL・TCLL・RGL・予備器）、伝送ユニット盤です。', '※ CCT の中身は、図面からは読めず、未確認です。'],
+    ['定電流調整器（CCR）の列（No.31〜52）', [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。回路名は ALS・REDL・RCLL・RTZL・PAPI など、図面の表記のままです。', '見る点：出力電流の指示、タップの表示、故障表示、通気口の詰まり、予備器への切換ができるか。', '※ 正面は北向きです。南の面は背面で、通気口と名札があります（ビデオ）。正面の盤面は、写真がまだ無く、背面と同じ絵にしてあります。「操作部」という呼び名は推測です。形式名は表示していません。出力電流の値は、現場の資料で確認してください。'],
+    ['ケーブル切替盤・CCT（No.51・53〜58・87）', [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]], '並び（写真より。正面は北向き）：西から、掲示を貼った盤、ケーブル切替盤（上）と予備器（下）、TEDL-1・2（上）と TCLL-1・2（下）、RGL（下段だけの低い盤）。', '回路ごとの計器パネル：出力電流計（A）、絶縁抵抗計（MΩ）、表示灯（受電・開路・過電流・接地）、遠方／直接の切換、OFF・ON・RESET の押しボタン。', 'ケーブル切替盤：切換スイッチで、TEDL-1・2、TCLL-1・2 のどれか1回路を、予備器へ切り換えます。ふだんは OFF です。', '見る点：出力電流の指示、絶縁抵抗計の指示（低下の傾向）、開路・過電流・接地の表示、切換スイッチの位置、通気口の詰まり。', '※ 表示灯とボタンの文字は、写真から読んだもので、細部は要確認です。ケーブル導入盤（No.45）の位置は、写真では分からず、作っていません。形式名は表示していません。'],
     ['監視用UPS（No.61-1〜3）', [[0.3, 1.7, -8.6], [0.3, 1.1, -5.4]], '役割：監視・制御の機器へ、停電のときも電気を送り続けます。インバータ盤、直流電源盤、蓄電池盤の3面です。', '見る点：入出力の電圧・電流、故障表示、蓄電池の電圧・液面・温度、ファンの音。', '※ 正面の向きは推測です。'],
     ['CCR用UPS（No.62・63）', [[-6.2, 1.8, -17.2], [-8.6, 1.0, -21]], '役割：図面の名称は、CCR-U の入出力盤、UPS盤、蓄電池盤（No.1・No.2）です。図面では破線で描かれています。', '※ 破線の意味（将来分か、扉の開く範囲か）は未確認です。並びは簡略化しています。'],
     ['論理制御盤・灯火インタフェース盤（No.71〜73）', [[-8.5, 1.7, -24.2], [-8.5, 1.1, -26.4]], '役割：監視室の操作卓と、機器室の盤の間で、灯火の入・切と光度の指令、状態の信号を受け渡します。', '見る点：故障表示、電源表示、通信の異常表示。'],
