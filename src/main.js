@@ -1436,14 +1436,18 @@ h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) s
 h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
-cameraPad.innerHTML = '<span>視点移動 </span><button data-pan="left" aria-label="視点を左へ">←</button><button data-pan="up" aria-label="視点を上へ">↑</button><button data-pan="down" aria-label="視点を下へ">↓</button><button data-pan="right" aria-label="視点を右へ">→</button><button data-zoom="0.8">＋ 拡大</button><button data-zoom="1.25">− 縮小</button>';
+cameraPad.className = 'campad';
+cameraPad.innerHTML = '<div class=cpl>見る位置を動かす</div><div><button data-move="1" aria-label="前へ進む">⬆ 前へ</button><button data-move="-1" aria-label="後ろへ下がる">⬇ 後ろへ</button><button data-zoom="0.8">＋ 拡大</button><button data-zoom="1.25">− 縮小</button></div><div>' + '<button data-pan="left" aria-label="視点を左へ">← 左</button><button data-pan="up" aria-label="視点を上へ">↑ 上</button><button data-pan="down" aria-label="視点を下へ">↓ 下</button><button data-pan="right" aria-label="視点を右へ">右 →</button></div>';
 h1.appendChild(cameraPad);
 cameraPad.querySelectorAll('button').forEach(b => b.onclick = () => {
   if (walk.on) setWalk(false);
   fly = null;
   controls.autoRotate = false; $('a').checked = false;
   const offset = camera.position.clone().sub(controls.target);
-  if (b.dataset.zoom) {
+  if (b.dataset.move) {   // 前へ・後ろへ：見ている向きに、注視点ごと進む
+    const dir = offset.clone().normalize().negate(), st = Math.min(1.5, Math.max(0.3, offset.length() * 0.25)) * Number(b.dataset.move);
+    camera.position.addScaledVector(dir, st); controls.target.addScaledVector(dir, st);
+  } else if (b.dataset.zoom) {
     offset.setLength(Math.max(controls.minDistance, offset.length() * Number(b.dataset.zoom)));
     camera.position.copy(controls.target).add(offset);
   } else {
@@ -1512,12 +1516,21 @@ const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.1
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
 BLOCKS.push(...kiki.blocks);
 const inRect = (r, x, z) => x >= r[0] && x <= r[1] && z >= r[2] && z <= r[3];
-const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
+const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || (roomDoor.cur > -1.0 && Math.abs(z + 3.4) < PR && x > -5.9 && x < -4.7) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
 window.__walk = { walk, hitAt, goThroughDoor: () => goThroughDoor(), step: dt => walkStep(dt), setWalk: on => setWalk(on) };
 // 発電機室と機器室の間のドア（中心）。ボタンで、ドアの向こうへ移る
 const DOOR = { x: -5.3, z: -3.4 };
+// ドアの扉（蝶番は X −5.8。発電機室側 +Z へ開く）。タップで開け閉め。閉まっていると通れない
+const roomDoor = (() => {
+  const g = new THREE.Group(); g.position.set(-5.8, 0, -3.4); scene.add(g);
+  const dm = M(0xa9aeb2, 0.4, 0.5), hm = M(0xdfe2e4, 0.9, 0.25);
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.98, 2.12, 0.045), dm); leaf.position.set(0.5, 1.06, 0); g.add(leaf);
+  for (const z of [0.04, -0.04]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.025, 0.025), hm); h.position.set(0.86, 1.0, z); g.add(h); const r = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16), hm); r.rotation.x = Math.PI / 2; r.position.set(0.9, 1.0, z * 0.6); g.add(r); }
+  return { g, cur: 0, target: 0, OPEN: -1.65, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+})();
+window.__roomDoor = roomDoor;
 function goThroughDoor() {
-  stopMovement();
+  stopMovement(); roomDoor.target = roomDoor.OPEN;
   const toKiki = walk.pos.z >= DOOR.z;
   walk.pos.set(DOOR.x, 1.65, toKiki ? -4.3 : -2.6); walk.yaw = toKiki ? 0 : Math.PI; walk.pitch = -0.05;
 }
@@ -1639,6 +1652,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     const r = el.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera);
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
+    if (raycaster.intersectObject(roomDoor.g, true).length) { roomDoor.toggle(); return; }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
@@ -2363,7 +2377,30 @@ function wrapHud(h, label, openLabel) {
   const narrow = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
   if (narrow) h.classList.add('min'); sync();
 }
+// ---------- メニューの整理：よく使うものを上に、細かい設定は「表示の設定・使い方」にしまう ----------
+(function tidyMenu() {
+  const det = document.createElement('details'); det.className = 'mdet';
+  det.innerHTML = '<summary>⚙ 表示の設定・使い方</summary>';
+  while (h1.firstChild) det.appendChild(h1.firstChild);
+  const btns = ['bw', 'bt', 'bd', 'bhs', 'bhw'].map(id => det.querySelector('#' + id)).filter(Boolean);
+  const top = document.createElement('div'); top.className = 'mtop'; btns.slice(0, 3).forEach(b => top.appendChild(b));
+  const sel = document.createElement('select'); sel.id = 'viewSel'; sel.setAttribute('aria-label', '見る場所');
+  const vb = [...det.querySelectorAll('[data-v]')], kb = [...det.querySelectorAll('[data-kv]')];
+  sel.innerHTML = '<option value="">📍 見る場所を選ぶ</option><optgroup label="発電機室">' + vb.map(b => `<option value="v${b.dataset.v}">${b.textContent}</option>`).join('') +
+    '</optgroup><optgroup label="機器室">' + kb.map(b => `<option value="k${b.dataset.kv}">${b.textContent}</option>`).join('') + '</optgroup>';
+  sel.onchange = () => { const v = sel.value; sel.value = ''; if (!v) return; const b = v[0] === 'v' ? vb.find(x => x.dataset.v === v.slice(1)) : kb.find(x => x.dataset.kv === v.slice(1)); if (b) b.click(); if (h1._collapse && h1.dataset.narrow) h1._collapse(); };
+  [...vb, ...kb].forEach(b => { b.style.display = 'none'; });
+  det.querySelectorAll('b').forEach(b => { if (b.textContent === '機器室') b.remove(); });
+  det.querySelectorAll('br').forEach(b => b.remove());
+  const lab = document.createElement('div'); lab.className = 'mlab'; lab.textContent = '見る場所';
+  const extra = document.createElement('div'); btns.slice(3).forEach(b => extra.appendChild(b));
+  const tip = document.createElement('div'); tip.className = 'mtip'; tip.innerHTML = '画面をドラッグで回す・ピンチ／ホイールで拡大。<b>盤の扉や部屋のドアは、タップで開け閉め</b>できます。';
+  h1.append(top, lab, sel, det.querySelector('.campad'), tip, det);
+  det.insertBefore(extra, det.children[1]);
+})();
+css.textContent += '.mtop button{font-size:15px!important;padding:8px 12px!important;min-height:44px}#viewSel{font-size:16px;padding:8px;min-height:44px;width:100%;max-width:420px;margin:2px 0 6px}.mlab{font-weight:bold;margin-top:4px}.campad{margin:4px 0}.campad .cpl{font-weight:bold}.campad button{min-width:64px}.mtip{font-size:12px;color:#cde;margin:4px 0}.mdet summary{cursor:pointer;color:#9de;margin-top:4px;padding:6px 0}.mdet{font-size:12px}';
 wrapHud(h1, '📋 視点・操作', '▲ 収納');
+h1.dataset.narrow = h1.classList.contains('min') ? '1' : '';
 wrapHud(h2, '🎛 運転・内部', '▼ 収納');
 if (h1.classList.contains('min')) h1.querySelector('.hb').addEventListener('click', e => { const b = e.target.closest('button'); if (b && (b.dataset.v || b.id === 'bw' || b.id === 'bd')) h1._collapse(); });
 $('stt').addEventListener('click', () => { h2.classList.toggle('ex'); showStat(); });
@@ -2407,6 +2444,7 @@ renderer.setAnimationLoop(() => {
   $('rd').textContent = `回転 ${Math.round(S.rpm)} min⁻¹ ｜ 電圧 ${Math.round(210 * S.volt)} V ｜ 周波数 ${S.hz.toFixed(1)} Hz ｜ ${S.mains ? '商用' : S.brk ? '発電' : '停電'}`;
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
+  roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.rotation.y = roomDoor.cur;
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);
