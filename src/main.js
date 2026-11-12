@@ -1506,14 +1506,21 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 
 // ================= 歩く視点（一人称） =================
 const worker = createWorker(); scene.add(worker.root); worker.root.visible = false; window.__worker = worker;
-const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
+const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.3), keys: {}, pad: { f: 0, s: 0 }, saved: null };
 const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
 BLOCKS.push(...kiki.blocks);
 const inRect = (r, x, z) => x >= r[0] && x <= r[1] && z >= r[2] && z <= r[3];
 const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
-window.__walk = { walk, hitAt };
+window.__walk = { walk, hitAt, goThroughDoor: () => goThroughDoor(), step: dt => walkStep(dt), setWalk: on => setWalk(on) };
+// 発電機室と機器室の間のドア（中心）。ボタンで、ドアの向こうへ移る
+const DOOR = { x: -5.3, z: -3.4 };
+function goThroughDoor() {
+  stopMovement();
+  const toKiki = walk.pos.z >= DOOR.z;
+  walk.pos.set(DOOR.x, 1.65, toKiki ? -4.3 : -2.6); walk.yaw = toKiki ? 0 : Math.PI; walk.pitch = -0.05;
+}
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
@@ -1522,6 +1529,12 @@ function walkStep(dt) {
   const before = walk.pos.clone();
   const dx = fx * f * sp, dz = fz * f * sp;
   if (!hitAt(walk.pos.x + dx, walk.pos.z)) walk.pos.x += dx; if (!hitAt(walk.pos.x, walk.pos.z + dz)) walk.pos.z += dz;
+  // ドアの前で前へ進むと、ドアの真ん中へ寄せる（狭い通り道に入りやすくする）
+  if (f > 0 && Math.abs(walk.pos.z - DOOR.z) < 1.0 && Math.abs(walk.pos.x - DOOR.x) < 1.1 && Math.abs(fz) > 0.4) {
+    const nx = walk.pos.x + Math.sign(DOOR.x - walk.pos.x) * Math.min(Math.abs(DOOR.x - walk.pos.x), 1.2 * dt);
+    if (!hitAt(nx, walk.pos.z)) walk.pos.x = nx;
+  }
+  const inKiki = walk.pos.z < DOOR.z; if (inKiki !== walk.inKiki) { walk.inKiki = inKiki; $('doorGo').textContent = inKiki ? '🚪 発電機室へ戻る' : '🚪 ドアを通って機器室へ'; }
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
@@ -1597,10 +1610,11 @@ pad.querySelectorAll('button').forEach(b => {
   });
 });
 const hint = document.createElement('div'); hint.className = 'hud'; hint.style.cssText = 'left:50%;top:70px;transform:translateX(-50%);display:none;text-align:center;pointer-events:none';
-hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
+hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>機器室へは、入口の緑の「機器室」の札の下のドアを通る（右下の「🚪 ドアを通って機器室へ」でも移れる）<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
-pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button>');
+pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
+$('doorGo').onclick = goThroughDoor; protectControl($('doorGo'));
 $('personView').onclick = () => {
   stopMovement(); walk.third = !walk.third; walk.pitch = -0.05;
   $('personView').textContent = walk.third ? '後ろから見る → 本人の目線' : '本人の目線 → 後ろから見る';
