@@ -95,7 +95,9 @@ npm run dev      # 監視ビルド
 
 ## 8. 公開と Git の運用
 - リポジトリ：`pepefukuoka-hub/emergency-generator-simulator`（公開）。ライセンスは MIT（岩メガネ）。
-- **`main` への直接 push は、利用者が「反映して」と言ったときだけ。** 普段は作業用ブランチ（`work/機能名`）に push する。プルリクエストは、利用者が求めたときだけ。
+- **公開は、毎回たずねずに行う（利用者の指示、2026-11）。** 作業がまとまって画面で確認できたら、作業ブランチに push したあと、同じ内容を `main` にも push して公開する（fast-forward で。履歴の書き換えはしない）。プルリクエストは、利用者が求めたときだけ。
+- **報告の最後に、毎回リンクを貼る：** 公開ページ https://pepefukuoka-hub.github.io/emergency-generator-simulator/ と、作業ブランチ https://github.com/pepefukuoka-hub/emergency-generator-simulator/tree/（ブランチ名）。
+- 利用者が「次のチャットに貼る文」を求めたら、**1回でコピーできるよう、1つのコードブロックにまとめる。**
 - コミットメッセージは日本語で、何を変えたかを書く。
 - 公開ページ（GitHub Pages）：`main` の `/docs`。
 - **作品集ハブ**（`pepefukuoka-hub/pepefukuoka-hub.github.io`）にも載せている。このリポジトリの `docs/index.html` を、ハブの `work/hatsudenki-sim/index.html` に、コピーして反映する。分類は「仕事」の「点検」。ハブの `AGENTS.md`・`URLS.md` の決まりに従う（既存の公開URLを動かさない、`tools/check-urls.sh` を push 前に実行、公開に個人情報を入れない、確認していない項目を完了扱いにしない）。
