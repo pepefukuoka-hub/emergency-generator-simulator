@@ -232,7 +232,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       c.strokeStyle = '#222'; c.lineWidth = 0.5; c.beginPath(); c.arc(cx, cy, r * 0.82, Math.PI * 0.75, Math.PI * 2.25); c.stroke();
       for (let i = 0; i <= 30; i++) { const a = Math.PI * (0.75 + 1.5 * i / 30), r0 = r * (i % 5 ? 0.77 : 0.72); c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); c.lineTo(cx + Math.cos(a) * r * 0.82, cy + Math.sin(a) * r * 0.82); c.stroke(); }
       c.fillStyle = '#222'; c.font = (s2 * 0.1) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      for (let i = 0; i <= 6; i++) { const a = Math.PI * (0.75 + 1.5 * i / 6); c.fillText(String(Math.round(max * i / 6)), cx + Math.cos(a) * r * 0.56, cy + Math.sin(a) * r * 0.56); }
+      if (max !== null) for (let i = 0; i <= 6; i++) { const a = Math.PI * (0.75 + 1.5 * i / 6), lo = Array.isArray(max) ? max[0] : 0, hi = Array.isArray(max) ? max[1] : max; c.fillText(String(Math.round(lo + (hi - lo) * i / 6)), cx + Math.cos(a) * r * 0.56, cy + Math.sin(a) * r * 0.56); }
       c.font = 'bold ' + (s2 * 0.13) + 'px sans-serif'; c.fillText(unit, cx, cy + r * 0.62);
       const a = Math.PI * (0.75 + 1.5 * ang); c.strokeStyle = '#111'; c.lineWidth = 1; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.85, cy + Math.sin(a) * r * 0.85); c.stroke();
       c.fillStyle = '#e9e9e4'; c.beginPath(); c.arc(cx, cy, r * 0.17, 0, 7); c.fill(); c.strokeStyle = '#999'; c.lineWidth = 0.5; c.stroke();
@@ -253,6 +253,21 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       if (t === 'wm') wm(...a); else if (t === 'lbl') lbl(...a); else if (t === 'lamp') lamp(...a); else if (t === 'cs') cs(...a); else if (t === 'pb') pb(...a); else if (t === 'ann') ann(...a);
       else if (t === 'relay') relay(...a); else if (t === 'dm') dm(...a); else if (t === 'sel') sel(...a); else if (t === 'handle') handle(...a); else if (t === 'louver') louver(...a);
       else if (t === 'round') { const x = X(a[0]), y = Y(a[1]), r = X(a[2]); c.fillStyle = '#c9cdd0'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); c.fillStyle = '#16181a'; c.beginPath(); c.arc(x, y, r * 0.78, 0, 7); c.fill(); c.strokeStyle = '#555'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x - r * 0.1, y - r * 0.5); c.moveTo(x, y); c.lineTo(x + r * 0.05, y + r * 0.45); c.stroke(); }
+      else if (t === 'plt') { const [fy, tx, fx = 0.5, fw = 0.5] = a, x = X(fx - fw / 2), y = Y(fy); c.fillStyle = '#f7f7f3'; c.fillRect(x, y, X(fw), 14); c.strokeStyle = '#999'; c.lineWidth = 0.6; c.strokeRect(x, y, X(fw), 14); c.fillStyle = '#222'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, tx, X(fx), y + 7.5, X(fw) - 6, 11, false); }
+      else if (t === 'blue') { const [fx, fy, tx, fw = 0.26] = a, ls = tx.split('\n'), hh = 7 * ls.length + 3; c.fillStyle = '#1d3f93'; c.fillRect(X(fx - fw / 2), Y(fy), X(fw), hh); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; ls.forEach((l, i) => fit(c, l, X(fx), Y(fy) + 5 + i * 7, X(fw) - 3, 7, false)); }
+      else if (t === 'div') { c.fillStyle = '#7d7a70'; c.fillRect(0, Y(a[0]) - 1, w, 2); c.fillStyle = 'rgba(255,255,255,.4)'; c.fillRect(0, Y(a[0]) + 1, w, 1); }
+      else if (t === 'ctt') { const x = X(a[0]), y = Y(a[1]); c.fillStyle = '#141414'; c.fillRect(x - 12, y - 6, 24, 12); c.fillStyle = '#3a3a3a'; c.fillRect(x - 9, y - 3, 18, 4); c.fillStyle = '#ddd'; c.font = '3px sans-serif'; c.textAlign = 'center'; c.fillText(a[2] || 'CTT', x, y + 4.5); }
+      else if (t === 'lev') { const x = X(a[0]), y = Y(a[1]); lbl(a[0], a[1] - 0.022, '', 0.07); c.fillStyle = '#c8c9cb'; c.fillRect(x - 8, y - 8, 16, 16); c.strokeStyle = '#333'; c.lineWidth = 0.8; c.strokeRect(x - 8, y - 8, 16, 16); c.fillStyle = '#111'; c.beginPath(); c.arc(x, y, 3.5, 0, 7); c.fill(); c.beginPath(); c.moveTo(x - 3, y); c.lineTo(x + 3, y); c.lineTo(x + 2, y + 17); c.lineTo(x - 2, y + 17); c.fill(); }
+      else if (t === 'slots') { const [x0, y0, x1, y1, n] = a, rh = (Y(y1) - Y(y0)) / n; c.fillStyle = '#2e2d29'; for (let r = 0; r < n; r++) for (let x = X(x0); x < X(x1); x += 3.2) c.fillRect(x, Y(y0) + r * rh + 1, 1.5, rh * 0.75); }
+      else if (t === 'mfd') { const s2 = X(a[2] || 0.16), x = X(a[0]) - s2 / 2, y = Y(a[1]) - s2 / 2; c.fillStyle = '#1b1c1e'; c.fillRect(x, y, s2, s2 * 0.95); c.fillStyle = '#b9bdb5'; c.fillRect(x + 3, y + 3, s2 - 6, s2 * 0.6); c.strokeStyle = '#555'; c.lineWidth = 0.6; c.beginPath(); c.arc(x + s2 / 2, y + s2 * 0.55, s2 * 0.38, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); c.fillStyle = '#ddd'; for (let i = 0; i < 6; i++) c.fillRect(x + 4 + i * (s2 - 8) / 6, y + s2 * 0.78, (s2 - 8) / 6 - 1.5, 2.5); }
+      else if (t === 'lrow') { const [fx, fy, cols, sz = 8] = a, x = X(fx) - cols.length * sz / 2; c.fillStyle = '#151515'; c.fillRect(x - 2, Y(fy) - sz / 2 - 2, cols.length * sz + 4, sz + 4); cols.forEach((col, i) => { c.fillStyle = col; c.fillRect(x + i * sz + 0.8, Y(fy) - sz / 2 + 0.8, sz - 1.6, sz - 1.6); }); }
+      else if (t === 'dig') { const x = X(a[0]) - 15, y = Y(a[1]); c.fillStyle = '#1a1a1c'; c.fillRect(x, y, 30, 30); c.fillStyle = '#300'; c.fillRect(x + 9, y + 6, 13, 6); c.fillStyle = '#ff3b30'; c.font = 'bold 5px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('100', x + 15.5, y + 9.2); c.fillStyle = '#bbb'; for (let i = 0; i < 4; i++) c.fillRect(x + 4 + i * 6, y + 21, 4, 3); }
+      else if (t === 'win') { const [x0, y0, x1, y1] = a, x = X(x0), y = Y(y0), ww = X(x1 - x0), hh = Y(y1 - y0); c.fillStyle = '#c3c6c8'; c.beginPath(); c.roundRect(x, y, ww, hh, 8); c.fill(); c.fillStyle = '#26221e'; c.beginPath(); c.roundRect(x + 4, y + 4, ww - 8, hh - 8, 6); c.fill(); c.fillStyle = '#d9dbd6'; c.fillRect(x + ww * 0.38, y + hh * 0.08, ww * 0.42, hh * 0.3); c.fillStyle = '#6d7377'; c.fillRect(x + ww * 0.3, y + hh * 0.66, ww * 0.42, hh * 0.27); c.strokeStyle = '#d8b03c'; c.lineWidth = 0.6; for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(x + ww * 0.25, y + hh * (0.42 + k * 0.03)); c.lineTo(x + ww * 0.75, y + hh * (0.48 + k * 0.02)); c.stroke(); } }
+      else if (t === 'lcd') { const [x0, y0, x1, y1] = a, x = X(x0), y = Y(y0), ww = X(x1 - x0), hh = Y(y1 - y0); c.fillStyle = '#1e1f22'; c.fillRect(x, y, ww, hh); c.fillStyle = '#d7d9d4'; c.fillRect(x + 2, y + 2, ww - 4, hh - 4); c.fillStyle = '#1e1f22'; c.fillRect(x + 4, y + 4, ww * 0.5, hh * 0.62); c.fillStyle = '#8e968e'; c.fillRect(x + ww * 0.56, y + 5, ww * 0.4, hh * 0.55); c.fillStyle = '#9bd06a'; for (let k = 0; k < 4; k++) c.fillRect(x + 8 + k * 7, y + hh * 0.3, 4, 1.5); c.fillStyle = '#777'; for (let k = 0; k < 7; k++) c.fillRect(x + 6 + k * ww * 0.13, y + hh * 0.8, ww * 0.08, 2); }
+      else if (t === 'note') { const x = X(a[0]), y = Y(a[1]); c.fillStyle = '#fafafa'; c.fillRect(x - 7, y, 14, 18); c.fillStyle = '#d33'; c.fillRect(x - 6, y + 1.5, 4, 3); c.fillStyle = '#999'; for (let k = 0; k < 6; k++) c.fillRect(x - 5, y + 6 + k * 2, 10, 0.6); }
+      else if (t === 'latch') { const x = X(a[0]), y = Y(a[1]); c.fillStyle = '#a9adb0'; c.fillRect(x - 3, y, 6, 22); c.fillStyle = '#5d6164'; c.fillRect(x - 1.5, y + 3, 3, 16); }
+      else if (t === 'vdiv') { c.fillStyle = '#6f6c63'; c.fillRect(X(a[0]) - 1, 0, 2, h); }
+      else if (t === 'tag') { const [fx, fy, tx, fw = 0.2] = a; c.fillStyle = '#fff'; c.fillRect(X(fx - fw / 2), Y(fy), X(fw), 9); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, tx, X(fx), Y(fy) + 5, X(fw) - 2, 7, false); }
       else if (t === 'paper') { sheet(c, X(a[0]), Y(a[1]), X(a[2] - a[0]), Y(a[3] - a[1])); c.fillStyle = '#444'; c.fillRect(X(a[0] + 0.05), Y(a[1] + 0.012), X(a[2] - a[0] - 0.1), 1.2); }
     }
   };
@@ -302,11 +317,11 @@ export function buildKiki({ M, canvasTex, plateMat }) {
         ...circ([0.68, 0.77], [[0.29, 0.41, 0.53, 0.65, 0.77], [0.3, 0.42, 0.54, 0.65]], [[], [1, 2, 3]])] }],
       [1.0, '27', { plate: '所内動力変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
       [1.0, '26', { plate: '所内照明変圧器盤', parts: [...std('210-105V', 2), ['handle', 0.12, 0.58]] }],
-      [1.0, '25', { plate: 'エプロン照明変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
-      [1.0, '24', { plate: '照明変圧器盤-2', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
+      [1.0, '25', { plate: 'エプロン照明変圧器盤', parts: [...std('210V', 3), ['handle', 0.88, 0.5], ...circ([0.62, 0.71, 0.8], [[0.2, 0.32, 0.44, 0.6, 0.72, 0.84], [0.2, 0.32, 0.44, 0.6, 0.72, 0.84], [0.2]], [[1, 3, 4, 5], [2, 4, 5], []])] }],
+      [1.0, '24', { plate: '照明変圧器盤-2', parts: [...std('210V', 4), ['handle', 0.88, 0.55], ...circ([0.66], [[0.42, 0.58]]), ['lamp', 0.39, 0.73, '#f6a03a', true, 3.6], ['lamp', 0.45, 0.73, '#e9e9e2', false, 3.6], ['lamp', 0.55, 0.73, '#f6a03a', true, 3.6], ['lamp', 0.61, 0.73, '#e9e9e2', false, 3.6]] }],
       [1.0, '23', { plate: '照明変圧器盤-1', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
-      [1.0, '22', { plate: 'No.2 CCR変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }],
-      [1.0, '21', { plate: 'No.1 CCR変圧器盤', parts: [...std('210V', 2), ['handle', 0.12, 0.58]] }]];
+      [1.0, '22', { plate: 'No.2 CCR変圧器盤', parts: [...std('420V', 4).map(e => e[0] === 'wm' ? [...e.slice(0, 5), 600, e[6]] : e), ['handle', 0.86, 0.55], ['round', 0.1, 0.48, 0.07]] }],
+      [1.0, '21', { plate: 'No.1 CCR変圧器盤', parts: [...std('420V', 4).map(e => e[0] === 'wm' ? [...e.slice(0, 5), 600, e[6]] : e), ['handle', 0.86, 0.55], ['round', 0.1, 0.48, 0.07]] }]];
     const tot = P.reduce((a, p) => a + p[0], 0), za = zc(442), zb = zc(895); let z = za;
     for (const [u, no, d] of P) { const z1 = z + (zb - za) * u / tot; cab(xb, xa, z + 0.004, z1 - 0.004, 2.3, 'x-', 'trp', no, d); z = z1; }
   }
@@ -330,21 +345,75 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     const zt = (zc(534) + zc(562)) / 2, sl = M(0x2b2d2f, 0.3, 0.8);
     for (const dx of [-0.25, 0.2]) for (const dz of [-0.2, 0, 0.2]) for (let k = 0; k < 4; k++) box(xa - 0.5 + dx + k * 0.035, xa - 0.5 + dx + k * 0.035 + 0.018, 1.22, 1.222, zt + dz - 0.07, zt + dz + 0.07, sl);
   }
+  // 盤面の部品の組（写真より）。高圧の盤は、1面を上中下の3段に分ける。段の上端 y、名札、青い札、継電器が上か下か
+  const G = '#3ce05a', R = '#ff3b30', O = '#f6a03a', Wt = '#e9e9e2', Bn = '#7a5c58';
+  const FT = (y, nm, bl, top, o = {}) => {
+    const m = top ? y + 0.15 : y + 0.085, r = [['plt', y + 0.02, nm, 0.42, 0.42], ['handle', 0.12, y + (top ? 0.11 : 0.12)]];
+    if (bl) r.push(['blue', 0.78, y + 0.02, bl, 0.3]);
+    if (top) r.push(['relay', 0.47, y + 0.045, 0.2, 0.075, true]);
+    r.push(['ann', 0.28, m, o.ann || 1, false], ['wm', 0.47, m, 0.16, 'A', o.max || 20, 0.3], ['pb', 0.64, m], ['pb', 0.74, m],
+      ['lamp', 0.42, m + 0.045, G, true, 4], ['lamp', 0.52, m + 0.045, R, true, 4], ['cs', 0.28, m + 0.085], ['lev', 0.45, m + 0.085], ['cs', 0.64, m + 0.085], ['ctt', 0.8, m + 0.085]);
+    if (!top) r.push(['relay', o.r2 ? 0.4 : 0.47, m + 0.12, 0.18, 0.08, true]);
+    if (o.r2) r.push(['relay', 0.6, m + 0.12, 0.14, 0.08, false], ['lbl', 0.6, m + 0.112, '全停時実施', 0.14]);
+    return r;
+  };
+  const VT = (y, top) => { const m = top ? y + 0.15 : y + 0.1; return [['plt', y + 0.02, 'VT盤', 0.5, 0.42], ['handle', 0.14, y + 0.1], ...(top ? [['relay', 0.5, y + 0.045, 0.2, 0.075, true], ['pb', 0.68, m], ['pb', 0.78, m], ['ann', 0.3, m, 1, false]] : []),
+    ['wm', 0.5, m, 0.16, 'kV', 9, 0.8], ['cs', 0.5, m + 0.085], ['ctt', 0.75, m + 0.085, 'VTT']]; };
+  const ZPD = y => [['plt', y + 0.02, 'ZPD盤', 0.5, 0.42], ['ann', 0.3, y + 0.075, 1, false], ['pb', 0.68, y + 0.075], ['pb', 0.78, y + 0.075], ['handle', 0.14, y + 0.15],
+    ['lbl', 0.5, y + 0.165, '全停時実施', 0.16], ['relay', 0.5, y + 0.175, 0.14, 0.11, false]];
+  const T3 = (a, b, c3) => [...a(0.035), ['div', 0.345], ...b(0.355), ['div', 0.665], ...c3(0.675)];
+  const HV = {
+    // E 列（受電・饋電）
+    '6': T3(y => FT(y, '饋電盤-5', '急速充電器用\n変圧器盤', true), y => FT(y, '饋電盤-6', '', false, { ann: 2, r2: 1 }), y => [['plt', y + 0.02, '', 0.45, 0.4], ['handle', 0.14, y + 0.15]]),
+    '5': T3(y => FT(y, '饋電盤-2', '電源切替盤', true, { max: 50 }), y => FT(y, '饋電盤-3', '電力用コンデンサ盤-1\n電力用コンデンサ盤-2', false), y => FT(y, '饋電盤-4', '道路駐車場照明\n変圧器盤', false)),
+    'E4': T3(y => VT(y, true), ZPD, y => FT(y, '饋電盤-1', '電源自動切替盤', false, { max: 50 })),
+    '3': [['plt', 0.035, '受電盤', 0.5, 0.45], ['wm', 0.27, 0.12, 0.16, 'A', 15, 0.4], ['wm', 0.46, 0.12, 0.16, 'kW', 900, 0.15], ['wm', 0.65, 0.12, 0.16, 'kV', 9, 0.8],
+      ['wm', 0.38, 0.19, 0.16, 'Hz', [55, 65], 0.5], ['wm', 0.57, 0.19, 0.16, 'cosφ', null, 0.5], ['ann', 0.32, 0.26, 2, false], ['cs', 0.3, 0.36], ['cs', 0.47, 0.36],
+      ['tag', 0.62, 0.41, '43RD-R1 運用中…手動', 0.28], ['lamp', 0.4, 0.425, G, true, 4], ['lamp', 0.5, 0.425, R, true, 4], ['cs', 0.25, 0.46], ['lev', 0.4, 0.46], ['cs', 0.57, 0.46], ['handle', 0.1, 0.43],
+      ['pb', 0.38, 0.53], ['pb', 0.46, 0.53], ['dig', 0.42, 0.6], ['lbl', 0.33, 0.715, '全停時実施', 0.14], ['lbl', 0.53, 0.715, '全停時実施', 0.14], ['relay', 0.33, 0.725, 0.16, 0.1, true], ['relay', 0.53, 0.725, 0.16, 0.1, true],
+      ['ctt', 0.25, 0.88, 'VTT'], ['ctt', 0.42, 0.88, 'VTT'], ['ctt', 0.59, 0.88], ['ctt', 0.76, 0.88]],
+    '2': [['plt', 0.035, '引込計器盤', 0.5, 0.45], ['lamp', 0.44, 0.15, G, true, 4], ['lamp', 0.54, 0.15, R, true, 4], ['ann', 0.49, 0.19, 1, false], ['win', 0.27, 0.22, 0.73, 0.41], ['handle', 0.12, 0.4],
+      ['pb', 0.46, 0.49], ['pb', 0.54, 0.49], ['paper', 0.26, 0.53, 0.74, 0.68], ['lbl', 0.5, 0.735, '全停時実施', 0.16], ['relay', 0.5, 0.745, 0.12, 0.11, false]],
+    // F 列（配電盤・コンデンサ盤）
+    '14': T3(y => FT(y, '配電盤-5', '所内動力変圧器盤', true), y => FT(y, '配電盤-6', 'SFL受電盤', false, { ann: 2, r2: 1 }), y => FT(y, '配電盤-7', '', false, { ann: 2, r2: 1, max: 30 })),
+    '13': T3(y => FT(y, '配電盤-2', '照明変圧器盤', true), y => FT(y, '配電盤-3', 'エプロン照明\n変圧器盤', false), y => FT(y, '配電盤-4', '所内照明変圧器盤', false)),
+    '12': T3(y => VT(y, false), ZPD, y => FT(y, '配電盤-1', 'No2CCR\n変圧器盤', false, { max: 30 })),
+    '11': [['plt', 0.035, '電源切換盤', 0.5, 0.45], ['wm', 0.4, 0.14, 0.17, 'kV', 9, 0.85], ['wm', 0.6, 0.14, 0.17, 'kV', 9, 0.85], ['cs', 0.4, 0.4], ['cs', 0.6, 0.4], ['cs', 0.5, 0.46],
+      ['lamp', 0.37, 0.52, G, true, 4], ['lamp', 0.45, 0.52, R, false, 4], ['lamp', 0.56, 0.52, G, false, 4], ['lamp', 0.64, 0.52, R, true, 4], ['lev', 0.41, 0.565], ['lev', 0.6, 0.565], ['handle', 0.12, 0.52],
+      ['ctt', 0.4, 0.92, 'VTT'], ['ctt', 0.6, 0.92, 'VTT']],
+    ...Object.fromEntries([['7', 1], ['8', 2]].map(([no, k]) => [no, [['plt', 0.035, 'コンデンサ盤-' + k, 0.5, 0.45], ['ann', 0.5, 0.31, 3, false], ['cs', 0.5, 0.45], ['lamp', 0.47, 0.5, G, true, 4], ['lamp', 0.56, 0.5, R, true, 4],
+      ['cs', 0.36, 0.535], ['lev', 0.5, 0.535], ['pb', 0.47, 0.61], ['pb', 0.56, 0.61], ['handle', 0.12, 0.52]]])),
+    // G 監視用UPS
+    '61-1': [['plt', 0.05, 'インバータ盤', 0.5, 0.45], ['wm', 0.33, 0.15, 0.15, 'V', 150, 0.6], ['wm', 0.5, 0.15, 0.15, 'Hz', [55, 65], 0.5], ['wm', 0.67, 0.15, 0.15, 'A', 300, 0.3],
+      ['lrow', 0.5, 0.245, [O, O, O, O, O, Bn, Wt]], ['lrow', 0.5, 0.262, [Bn, Bn, Bn, Bn, Bn, Bn, Bn]], ['cs', 0.25, 0.37], ['paper', 0.4, 0.33, 0.8, 0.47], ['handle', 0.86, 0.52], ['note', 0.4, 0.6], ['slots', 0.24, 0.8, 0.8, 0.92, 6]],
+    '61-2': [['plt', 0.04, '直流電源盤', 0.27, 0.32], ['vdiv', 0.5], ...[0.07, 0.165, 0.26, 0.355, 0.45].map((x, i) => ['wm', x, 0.15, 0.09, i < 3 ? 'V' : 'A', [150, 150, 200, 300, 300][i], 0.5]),
+      ['lrow', 0.27, 0.24, [O, O, O, Wt, Bn, Bn]], ['lrow', 0.27, 0.256, [Bn, Bn, Bn, Bn, Bn, Bn]], ...[0.1, 0.2, 0.3, 0.4].map(x => ['cs', x, 0.37]), ['paper', 0.09, 0.4, 0.38, 0.52],
+      ['latch', 0.44, 0.51], ['latch', 0.53, 0.51], ['note', 0.27, 0.6], ['paper', 0.55, 0.31, 0.68, 0.45], ['paper', 0.7, 0.31, 0.83, 0.45], ['slots', 0.1, 0.8, 0.43, 0.93, 6], ['slots', 0.57, 0.83, 0.9, 0.96, 6]],
+    '61-3': [['plt', 0.05, '蓄電池盤', 0.3, 0.36], ['vdiv', 0.5], ['latch', 0.46, 0.5], ['latch', 0.55, 0.5], ['tag', 0.3, 0.55, '蓄電池設備', 0.26], ['note', 0.3, 0.6], ['slots', 0.13, 0.8, 0.43, 0.93, 6], ['slots', 0.58, 0.81, 0.9, 0.94, 6]]
+  };
+  // CCR用UPS（写真は No.1。No.2 も同じ形と推測）
+  const UPSD = k => ({
+    in: [['plt', 0.035, `No.${k} 入出力盤`, 0.42, 0.5], ...[0.25, 0.44, 0.63].map(x => ['mfd', x, 0.2, 0.16]), ['lrow', 0.45, 0.335, [O, Wt, O, O, Wt, Bn, R, Bn, O]], ['lrow', 0.42, 0.37, [O, Wt, O, Wt, O, Wt]],
+      ['lrow', 0.35, 0.41, [Wt, Wt, Wt]], ['latch', 0.1, 0.47], ['slots', 0.14, 0.72, 0.88, 0.92, 4]],
+    ups: [['plt', 0.03, `No.${k} UPS盤`, 0.6, 0.45], ['paper', 0.3, 0.2, 0.82, 0.45], ['slots', 0.2, 0.55, 0.9, 0.92, 8]],
+    bat: [['plt', 0.03, `No.${k} 蓄電池盤1`, 0.6, 0.45], ['slots', 0.15, 0.08, 0.9, 0.36, 6], ['tag', 0.62, 0.52, '蓄電池設備', 0.3], ['slots', 0.18, 0.8, 0.86, 0.93, 3]]
+  });
+  const HVd = no => ({ parts: HV[no] });
   // D CCR用UPS（No.62・63。図面では破線）。背中合わせの2列
-  for (const [a, b, no, nm] of [[425, 458, '62-1', 'CCR-U No.1入出力盤'], [458, 492, '62-2', 'CCR-U No.1UPS盤'], [520, 556, '62-3', 'CCR-U No.1蓄電池盤']])
-    row(a, b, xc(1020) + 0.5, xc(1020) - 0.5, 1.95, 'x+', 'ups', [[no, nm]], { pit: false, rack: false });
-  for (const [a, b, no, nm] of [[458, 492, '63-3', 'CCR-U No.2蓄電池盤'], [525, 558, '63-2', 'CCR-U No.2UPS盤'], [558, 590, '63-1', 'CCR-U No.2入出力盤']])
-    row(a, b, xc(1078) + 0.5, xc(1078) - 0.5, 1.95, 'x-', 'ups', [[no, nm]], { pit: false, rack: false });
-  // E 受電・饋電盤の列（No.74・6〜2）。正面は −X。ドアの前をあけるため、図面より +X へ 0.5m 寄せた
+  for (const [a, b, no, k] of [[425, 458, '62-1', 'in'], [458, 492, '62-2', 'ups'], [520, 556, '62-3', 'bat']])
+    row(a, b, xc(1020) + 0.5, xc(1020) - 0.5, 1.95, 'x+', 'trp', [[no, { parts: UPSD(1)[k] }]], { pit: false, rack: false });
+  for (const [a, b, no, k] of [[458, 492, '63-3', 'bat'], [525, 558, '63-2', 'ups'], [558, 590, '63-1', 'in']])
+    row(a, b, xc(1078) + 0.5, xc(1078) - 0.5, 1.95, 'x-', 'trp', [[no, { parts: UPSD(2)[k] }]], { pit: false, rack: false });
+  // E 受電・饋電盤の列（No.74・6〜2）。正面は −X。ドアの前をあけるため、図面より +X へ 0.5m 寄せた。盤面は写真に合わせた
   const eX = xc(850) + 0.5;
-  row(968, 1172, eX, eX - 1.9, 2.3, 'x-', 'hv', [
-    ['74', '電力インタフェース盤', 'ctl'], ['6', '饋電盤-5,6'], ['5', '饋電盤-2,3,4'], ['4', 'VT盤・ZPD盤・饋電盤-1'], ['3', '受電盤'], ['2', '引込計器盤']]);
-  // F 配電盤・コンデンサ盤の列（No.14〜11・8・7）。正面は +X
-  row(978, 1168, xc(1045), xc(1045) - 1.9, 2.3, 'x+', 'hv', [
-    ['14', '配電盤-5,6,7'], ['13', '配電盤-2,3,4'], ['12', 'VT盤・ZPD盤・配電盤-1'], ['11', '電源切換盤'], ['8', 'コンデンサ盤-2', 'lv'], ['7', 'コンデンサ盤-1', 'lv']]);
-  // G 監視用UPS（No.61-1〜3）。X方向に並ぶ。正面は −Z（推測）
-  { const z0 = zc(1152), z1 = zc(1187), xa = xc(643), xb = xc(792), nm = [['61-1', '監視用UPS インバータ盤'], ['61-2', '監視用UPS 直流電源盤'], ['61-3', '監視用UPS 蓄電池盤']];
-    nm.forEach(([no, name], i) => cab(xa + (xb - xa) * (i + 1) / 3 + 0.004, xa + (xb - xa) * i / 3 - 0.004, z0, z1, 2.0, 'z-', 'ups', no, name)); blocks.push([xb, xa, z0, z1]); }
+  row(968, 1172, eX, eX - 1.9, 2.3, 'x-', 'trp', [
+    ['74', '電力インタフェース盤', 'ctl'], ['6', HVd('6')], ['5', HVd('5')], ['4', HVd('E4')], ['3', HVd('3')], ['2', HVd('2')]]);
+  // F 配電盤・コンデンサ盤の列（No.14〜11・8・7）。正面は +X。盤面は写真に合わせた
+  row(978, 1168, xc(1045), xc(1045) - 1.9, 2.3, 'x+', 'trp', [
+    ['14', HVd('14')], ['13', HVd('13')], ['12', HVd('12')], ['11', HVd('11')], ['8', HVd('8')], ['7', HVd('7')]]);
+  // G 監視用UPS（No.61-1〜3）。X方向に並ぶ。正面は −Z（推測）。盤面は写真に合わせた
+  { const z0 = zc(1152), z1 = zc(1187), xa = xc(643), xb = xc(792), nm = ['61-1', '61-2', '61-3'];
+    nm.forEach((no, i) => cab(xa + (xb - xa) * (i + 1) / 3 + 0.004, xa + (xb - xa) * i / 3 - 0.004, z0, z1, 2.0, 'z-', 'trp', no, { parts: HV[no] })); blocks.push([xb, xa, z0, z1]); }
   // H 監視室側の壁ぎわ：論理制御盤×3・灯火インタフェース盤（No.71・72）、電流計測処理装置（No.73）。正面は +Z
   { const xa = xc(970), xb = xc(1107), nm = [['71', '論理制御盤-1'], ['71', '論理制御盤-2'], ['71', '論理制御盤'], ['72', '灯火インタフェース盤']];
     nm.forEach(([no, name], i) => cab(xa + (xb - xa) * (i + 1) / 4 + 0.004, xa + (xb - xa) * i / 4 - 0.004, Z0 + 0.02, Z0 + 0.72, 2.1, 'z+', 'ctl', no, name)); blocks.push([xb, xa, Z0, Z0 + 0.72]);
@@ -382,13 +451,13 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     変圧器盤: [[-2.6, 1.8, -10.6], [-0.9, 1.2, -17]],
   };
   const info = ['機器室（配置図からの想像モデル）', [
-    ['受電・饋電盤の列（No.2〜6・74）', [[-7.2, 1.7, -4.2], [-5.0, 1.2, -7.6]], '役割：高圧で受電して、各系統へ送り出す盤の列です。図面の名称は、引込計器盤、受電盤、VT盤・ZPD盤、饋電盤、電力インタフェース盤です。', '見る点：計器の指示、表示灯、継電器の動作表示、異音・異臭、盤内の過熱の跡。', '根拠：点検の周期と項目は、保安規程（電気事業法 第42条）で定めます。', '※ 盤面の絵は推測です。実物の盤面の写真があれば、合わせ直します。'],
-    ['配電盤・コンデンサ盤の列（No.7〜14）', [[-6.6, 1.7, -4.2], [-9.2, 1.2, -7.6]], '役割：電源切換盤で、商用と発電機の電源を切り換え、配電盤から負荷へ送ります。コンデンサ盤は力率の改善用です。', '見る点：切換の状態表示、コンデンサのふくらみ・油漏れ・異音、直列リアクトルの過熱。', '※ 盤面の絵は推測です。'],
+    ['受電・饋電盤の列（No.2〜6・74）', [[-7.2, 1.7, -4.2], [-5.0, 1.2, -7.6]], '役割：高圧で受電して、各系統へ送り出す盤の列です。図面の名称は、引込計器盤、受電盤、VT盤・ZPD盤、饋電盤、電力インタフェース盤です。', '見る点：計器の指示、表示灯、継電器の動作表示、異音・異臭、盤内の過熱の跡。', '根拠：点検の周期と項目は、保安規程（電気事業法 第42条）で定めます。', '※ 盤面は正面の写真に合わせました（No.2〜6）。電力インタフェース盤（No.74）は推測です。計器の目盛・整定は目安です。'],
+    ['配電盤・コンデンサ盤の列（No.7〜14）', [[-6.6, 1.7, -4.2], [-9.2, 1.2, -7.6]], '役割：電源切換盤で、商用と発電機の電源を切り換え、配電盤から負荷へ送ります。コンデンサ盤は力率の改善用です。', '見る点：切換の状態表示、コンデンサのふくらみ・油漏れ・異音、直列リアクトルの過熱。', '※ 盤面は正面の写真に合わせました。'],
     ['変圧器盤の列（No.21〜28・52）', [[-3.0, 1.8, -10.4], [-0.9, 1.2, -17]], '役割：CCR用、照明用、所内動力用などの変圧器を納めた盤です。', '見る点：温度計の指示、うなり音の変化、通気口のほこり、油入なら油面と漏れ。', '※ 盤の中身（変圧器の種類・容量）は、図面からは読めず、未確認です。'],
     ['定電流調整器（CCR）の列（No.31〜52）', [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。', '並び（写真より。正面は北向き、西から）：予備器-4／PAPI、ALS-2、REDL-2、予備器-2／予備器-3、RTZL、RCLL-2、ALS-1／予備器-1、ALS-1、RCLL-1、REDL-1。同じ回路名は、上段が操作部、下段がCCR本体です。', '操作部のパネル：押しボタン、遠方／直接の切換、絶縁抵抗の数字表示（MΩ）、接地警報設定（10・5・3・1・0.5MΩ・OFF）、警報音の入／切。', 'CCR本体のパネル：押しボタン3つ、遠方／直接の切換、液晶の表示画面。', '見る点：絶縁抵抗の表示と、その下がり方。接地警報の設定値。遠方／直接の位置。故障表示。通気口の詰まり。予備器へ切り換えられるか。', '※ 押しボタンの文字は写真で読めず、色だけにしてあります。接地警報設定の値は写真から読んだもので、要確認です。形式名は表示していません。南の面は背面です。'],
     ['ケーブル切替盤・CCT（No.51・53〜58・87）', [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]], '並び（写真より。正面は北向き）：西から、掲示を貼った盤、ケーブル切替盤（上）と予備器（下）、TEDL-1・2（上）と TCLL-1・2（下）、RGL（下段だけの低い盤）。', '回路ごとの計器パネル：出力電流計（A）、絶縁抵抗計（MΩ）、表示灯（受電・開路・過電流・接地）、遠方／直接の切換、OFF・ON・RESET の押しボタン。', 'ケーブル切替盤：切換スイッチで、TEDL-1・2、TCLL-1・2 のどれか1回路を、予備器へ切り換えます。ふだんは OFF です。', '見る点：出力電流の指示、絶縁抵抗計の指示（低下の傾向）、開路・過電流・接地の表示、切換スイッチの位置、通気口の詰まり。', '※ 表示灯とボタンの文字は、写真から読んだもので、細部は要確認です。ケーブル導入盤（No.45）の位置は、写真では分からず、作っていません。形式名は表示していません。'],
-    ['監視用UPS（No.61-1〜3）', [[0.3, 1.7, -8.6], [0.3, 1.1, -5.4]], '役割：監視・制御の機器へ、停電のときも電気を送り続けます。インバータ盤、直流電源盤、蓄電池盤の3面です。', '見る点：入出力の電圧・電流、故障表示、蓄電池の電圧・液面・温度、ファンの音。', '※ 正面の向きは推測です。'],
-    ['CCR用UPS（No.62・63）', [[-6.2, 1.8, -17.2], [-8.6, 1.0, -21]], '役割：図面の名称は、CCR-U の入出力盤、UPS盤、蓄電池盤（No.1・No.2）です。図面では破線で描かれています。', '※ 破線の意味（将来分か、扉の開く範囲か）は未確認です。並びは簡略化しています。'],
+    ['監視用UPS（No.61-1〜3）', [[0.3, 1.7, -8.6], [0.3, 1.1, -5.4]], '役割：監視・制御の機器へ、停電のときも電気を送り続けます。インバータ盤、直流電源盤、蓄電池盤の3面です。', '見る点：入出力の電圧・電流、故障表示、蓄電池の電圧・液面・温度、ファンの音。', '※ 盤面は写真に合わせました。正面の向きは推測です。'],
+    ['CCR用UPS（No.62・63）', [[-6.2, 1.8, -17.2], [-8.6, 1.0, -21]], '役割：図面の名称は、CCR-U の入出力盤、UPS盤、蓄電池盤（No.1・No.2）です。図面では破線で描かれています。', '※ 盤面は No.1 の写真に合わせ、No.2 は同じ形と推測しました。写真では UPS盤と蓄電池盤の間に操作パネルの盤がもう1面ありますが、図面の面数に合わせて省いています。破線の意味は未確認です。'],
     ['論理制御盤・灯火インタフェース盤（No.71〜73）', [[-8.5, 1.7, -24.2], [-8.5, 1.1, -26.4]], '役割：監視室の操作卓と、機器室の盤の間で、灯火の入・切と光度の指令、状態の信号を受け渡します。', '見る点：故障表示、電源表示、通信の異常表示。'],
   ]];
   return { group: g, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info };
