@@ -1,4 +1,5 @@
 import { createWorker } from './worker.js';
+import { buildKiki } from './kikishitsu.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -103,9 +104,15 @@ const room = new THREE.Group(); scene.add(room);
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 8.0), mat.floor);
 floor.rotation.x = -Math.PI / 2; floor.position.set(-4.7, 0, 0.6); floor.receiveShadow = true; room.add(floor);
 const wallMat = M(0xffffff, 0, 1, { map: concreteTex([5, 2]), side: THREE.BackSide });
-const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), wallMat); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
+const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), [wallMat, wallMat, wallMat, wallMat, wallMat, new THREE.MeshBasicMaterial({ visible: false })]); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
+// 入口側（−Z）の壁は、機器室へ抜けるドアの穴（X −5.8〜−4.8、高さ 2.15）をあけた3枚の面
+const doorWall = [];
+for (const [x0, x1, y0, y1] of [[-13, -5.8, 0, 4.4], [-4.8, 3.6, 0, 4.4], [-5.8, -4.8, 2.15, 4.4]]) {
+  const o = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), M(0xffffff, 0, 1, { map: concreteTex([(x1 - x0) / 3.3, (y1 - y0) / 2.2]) }));
+  o.position.set((x0 + x1) / 2, (y0 + y1) / 2, -3.4); room.add(o); doorWall.push(o);
+}
 // 表示を消せる組：wall＝壁・天井まわりと壁ぎわの物、small＝床に置いた小物
-const hideSets = { wall: [walls], small: [] }; let _hn = 0; const grab = (k, n0) => hideSets[k].push(...room.children.slice(n0));
+const hideSets = { wall: [walls, ...doorWall], small: [] }; let _hn = 0; const grab = (k, n0) => hideSets[k].push(...room.children.slice(n0));
 for (const [x0, x1, z0, z1] of [[-3.6, 3.2, -1.95, -1.85], [-3.6, 3.2, 2.0, 2.1], [-3.6, -3.5, -1.95, 2.1], [3.1, 3.2, -1.95, 2.1]])
   bx(x0, x1, 0, 0.01, z0, z1, mat.black, room);
 const lamp = M(0xffffff, 0, 0.3, { emissive: 0xffffff, emissiveIntensity: 1 });
@@ -363,7 +370,7 @@ for (const x of [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0]) bx(x - 0.15, x + 0.15
 grab('wall', _hn);
 // 左壁（-z側）の下部ベージュ帯と、床の縞鋼板
 _hn = room.children.length;
-bx(-10.5, 3.6, 0, 1.25, -3.4, -3.37, M(0x9c9d83, 0, 0.9), room);
+{ const bm = M(0x9c9d83, 0, 0.9); bx(-10.5, -5.95, 0, 1.25, -3.4, -3.37, bm, room); bx(-4.65, 3.6, 0, 1.25, -3.4, -3.37, bm, room); }
 grab('wall', _hn);
 bx(-4.1, 3.6, 0, 0.012, -3.3, -2.5, mat.plate, room); bx(-10.4, -9.5, 0, 0.012, -3.3, -1.0, mat.plate, room);
 // 排気管（天井まで→入口側へ）と、風道の曲がり
@@ -1240,8 +1247,9 @@ bx(-7.5, -6.6, 0, 0.3, -3.3, -2.7, M(0xf0f0ee, 0, 0.8), room);                  
 grab('small', _hn);
 _hn = room.children.length;
 bx(-8.75, -7.7, 0, 2.0, -3.4, -2.95, M(0xbfc3b8, 0.2, 0.7), room); bx(-8.22, -8.18, 0, 2.0, -2.97, -2.93, M(0x8a8e84), room); for (const x of [-8.28, -8.12]) bx(x - 0.01, x + 0.01, 0.95, 1.1, -2.98, -2.93, chrome, room);
-bx(-5.95, -4.65, 0, 2.55, -3.4, -3.36, M(0xc8c4a8, 0, 0.9), room); bx(-5.8, -4.8, 0, 2.15, -3.36, -3.3, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.31, -5.29, 0, 2.15, -3.3, -3.29, M(0x888c86), room); for (const x of [-5.36, -5.24]) bx(x - 0.01, x + 0.01, 1.0, 1.15, -3.31, -3.27, chrome, room);
-{ const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('入口', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
+// 機器室へのドア（開けた状態。枠と、発電機室側へ開いた扉）
+{ const fm = M(0xc8c4a8, 0, 0.9); bx(-5.95, -5.8, 0, 2.55, -3.4, -3.36, fm, room); bx(-4.8, -4.65, 0, 2.55, -3.4, -3.36, fm, room); bx(-5.8, -4.8, 2.15, 2.55, -3.4, -3.36, fm, room); bx(-5.84, -5.8, 0, 2.15, -3.36, -2.36, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.8, -5.76, 1.0, 1.15, -2.5, -2.48, chrome, room); }
+{ const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('機器室', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
 { const n2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.42), M(0xf2f2f0, 0, 0.8)); n2.position.set(-0.75, 1.55, -3.285); n2.rotation.y = Math.PI; n2.visible = false; room.add(n2); }
 bx(0.2, 1.1, 0, 0.75, -3.4, -3.05, M(0xe9dfc0, 0.1, 0.7), room); for (let i = 0; i < 6; i++) bx(0.35, 0.95, 0.5 + i * 0.03, 0.52 + i * 0.03, -3.05, -3.04, M(0x9a9482), room); // 温風機
 bx(0.0, 0.14, 1.9, 2.04, -3.4, -3.33, M(0xc0141a, 0, 0.5), room);               // 火災報知機
@@ -1394,12 +1402,16 @@ function stepState(dt) {
 }
 const FIRE_MODES = ['accel', 'run', 'xfer', 'supply'];
 
+// ================= 機器室（入口のドアの向こう） =================
+const kiki = buildKiki({ M, canvasTex, plateMat: mat.plate });
+scene.add(kiki.group); window.__kiki = kiki;
+
 // ================= UI =================
 const css = document.createElement('style');
 css.textContent = '.hud{position:fixed;color:#fff;font:13px/1.6 sans-serif;background:#000b;padding:8px 12px;border-radius:8px}.hud button{font-size:13px;padding:4px 8px;margin:2px;cursor:pointer}.hud button.on{background:#3a7;color:#fff}#hud2{left:12px;bottom:12px;max-width:640px}#stt{font-weight:bold;font-size:15px;color:#ffd866}#rd{color:#9fe;font-family:monospace}.hudtg{background:#1c3a46;color:#fff;border:1px solid #7fe0d0;border-radius:6px;font-weight:bold;display:block;width:100%;text-align:left}.hud.min{padding:4px}.hud.min .hb{display:none}.hud.min .hudtg{width:auto}#std,#stw{display:none}#hud2.ex #std,#hud2.ex #stw{display:block}#stt{cursor:pointer;padding:4px 0}@media (pointer:coarse){.hud button,.hud select{min-height:34px}}';
 document.head.appendChild(css);
 const h1 = document.createElement('div'); h1.className = 'hud'; h1.style.cssText = 'top:12px;left:12px';
-h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
+h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=wk type=checkbox checked> 機器室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
   '<button data-v=0>全体</button><button data-v=4>入口から</button><button data-v=5>蓄電池</button><button data-v=6>配電盤</button><button data-v=7>盤面アップ</button><button data-v=10>盤の下側</button><button data-v=11>操作盤の下側</button><button data-v=1>点検側</button><button data-v=2>操作盤側</button><button data-v=3>発電機端面</button><button data-v=8>内部を見る位置</button><button data-v=9>盤の内部</button>';
 document.body.appendChild(h1);
 const h2 = document.createElement('div'); h2.className = 'hud'; h2.id = 'hud2';
@@ -1408,6 +1420,7 @@ h2.innerHTML = '<b>運転</b> <button id=bs>▶ 始動（試験運転）</button
 document.body.appendChild(h2);
 function $(id) { return document.getElementById(id); }
 $('w').onchange = e => room.visible = e.target.checked;
+$('wk').onchange = e => kiki.group.visible = e.target.checked;
 $('a').onchange = e => controls.autoRotate = e.target.checked;
 $('snd').onchange = e => { S.sound = e.target.checked; };
 $('spd').onchange = e => { S.scale = +e.target.value; };
@@ -1418,6 +1431,8 @@ $('bi').onclick = () => { xray = !xray; applyView(); };
 $('bc').onclick = () => { section = !section; applyView(); };
 const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0]], [[-3.4, 1.8, -3.0], [-1.5, 1.1, -1.0]], [[-6.2, 1.9, 0.4], [-1, 1.5, 0]], [[-5.3, 1.65, -2.8], [0.5, 1.3, 1.0]], [[-1, 0.85, 1.25], [-1, 0.7, 2.7]], [[-6.3, 1.6, 1.0], [-9.8, 1.5, 1.0]], [[-8.2, 1.5, 1.25], [-9.8, 1.4, 1.25]], [[-0.4, 2.4, 6.4], [-0.6, 1.6, 0]], [[-7.4, 1.6, -0.2], [-9.9, 1.4, 0.1]]];
 views.push([[-8.3, 0.55, -0.65], [-9.8, 0.55, -0.65]], [[-1.05, 0.5, -3.6], [-1.05, 0.5, -2.22]]);
+h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
+h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
 h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
@@ -1495,7 +1510,10 @@ const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: n
 const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
-const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
+BLOCKS.push(...kiki.blocks);
+const inRect = (r, x, z) => x >= r[0] && x <= r[1] && z >= r[2] && z <= r[3];
+const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
+window.__walk = { walk, hitAt };
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
@@ -1643,6 +1661,7 @@ const INFO = [
     ['試験端子（VT/CT）', [[-8.0, 0.6, pz(2) + 0.1], [-9.8, 0.1, pz(2) + 0.1]], '役割：継電器の試験をする時に、計器用変成器（VT／CT）の二次側を安全に切り離したり、試験電流・電圧をつなぐ端子です。', '注意：CTの二次側は、絶対に開放しないでください。高電圧が発生して危険です。VTの二次側は短絡しないでください。'],
     ['非常停止（5E）', [[-8.0, 0.95, pz(4) - 0.27], [-9.8, 0.75, pz(4) - 0.27]], '役割：緊急の時に、エンジンを止めます。', '見る点：押されたままになっていないか（押したままだと始動しません）。点検後は引いて復帰させます。']]],
 ];
+INFO.push(kiki.info);
 const dwBtn = document.createElement('button'); dwBtn.id = 'dwBtn'; dwBtn.textContent = '📖 設備の説明'; document.body.appendChild(dwBtn);
 const dw = document.createElement('div'); dw.id = 'dw'; document.body.appendChild(dw);
 const css3 = document.createElement('style');
