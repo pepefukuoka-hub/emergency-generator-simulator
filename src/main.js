@@ -1759,6 +1759,9 @@ views.push([[-12.75, 1.4, 1.55], [-10.4, 1.1, 2.2]]);   // 15：補機盤の裏
 views.push([[-12.75, 1.4, 2.5], [-10.4, 1.1, 3.15]]);   // 16：高圧配電盤 GF2/GF1 の裏
 h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button><button data-v=13>発電機盤の裏</button><button data-v=14>電源自動切換盤の裏</button><button data-v=15>補機盤の裏</button><button data-v=16>高圧配電盤の裏</button>');
 h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
+window.__road = kiki.road;
+h1.insertAdjacentHTML('beforeend','<button id=roadDoor>道路駐車場照明盤の扉</button><small> 内部の寸法・結線は近似（目安・架空）</small>');
+document.getElementById('roadDoor').onclick=()=>{kiki.road.toggle();};
 h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
 h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; if (b.dataset.v === '14') rearDoor3.target = rearDoor3.OPEN; if (b.dataset.v === '15') rearDoor4.target = rearDoor4.OPEN; if (b.dataset.v === '16') rearDoor5.target = rearDoor5.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
@@ -2038,6 +2041,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
     if (raycaster.intersectObject(autoNote, false).length) { showAutoNote(); return; }
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
+    if (kiki.group.visible && raycaster.intersectObjects(kiki.road.leaves,true).length) { kiki.road.toggle(); return; }
     if (raycaster.intersectObjects(roomDoor.g, true).length) { roomDoor.toggle(); return; }
     { const r = REARS.find(r => raycaster.intersectObjects(r.leaves, true).length); if (r) { r.toggle(); return; } }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }

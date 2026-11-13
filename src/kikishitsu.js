@@ -1,10 +1,12 @@
 // 機器室（発電機室の入口のドアの向こう）。配置図から読み取った盤の並びを、箱と盤面の絵で作る。
 // 教育用の想像モデル。位置は図面からの近似、盤面の絵・高さ・色は推測。形式名・メーカー名は入れない。
 import * as THREE from 'three';
+import { roadLighting } from './road-lighting.js';
 
 export function buildKiki({ M, canvasTex, plateMat }) {
   const g = new THREE.Group();
   const blocks = [];
+  let road;
   // 室の内のり。発電機室（X −13〜3.6）と壁をそろえ、ドアの壁（Z −3.4）から −Z へ約23m。
   const X0 = -13, X1 = 3.6, Z0 = -26.5, Z1 = -3.62, H = 4.4;
   // 図面の写真の画素 → 座標（図の左＝−Z、図の上＝+X）
@@ -323,7 +325,14 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       [1.0, '22', { plate: 'No.2 CCR変圧器盤', parts: [...std('420V', 4).map(e => e[0] === 'wm' ? [...e.slice(0, 5), 600, e[6]] : e), ['handle', 0.86, 0.55], ['round', 0.1, 0.48, 0.07]] }],
       [1.0, '21', { plate: 'No.1 CCR変圧器盤', parts: [...std('420V', 4).map(e => e[0] === 'wm' ? [...e.slice(0, 5), 600, e[6]] : e), ['handle', 0.86, 0.55], ['round', 0.1, 0.48, 0.07]] }]];
     const tot = P.reduce((a, p) => a + p[0], 0), za = zc(442), zb = zc(895); let z = za;
-    for (const [u, no, d] of P) { const z1 = z + (zb - za) * u / tot; cab(xb, xa, z + 0.004, z1 - 0.004, 2.3, 'x-', 'trp', no, d); z = z1; }
+    for (let i=0;i<P.length;i++) { const [u,no,d]=P[i], z1=z+(zb-za)*u/tot;
+      if(no==='28'){
+        const end=z+(zb-za)*(u+P[i+1][0])/tot, width=end-z-.008;
+        const fronts=[d,P[i+1][2]].map(data=>M(0xffffff,.2,.55,{map:canvasTex(512,1024,DRAW.trp('',data))}));
+        road=roadLighting({width,height:2.3,depth:xa-xb,materials:[body,plinth],fronts,canvasTex});
+        road.g.position.set(xb,0,(z+end)/2);road.g.rotation.y=-Math.PI/2;g.add(road.g);z=end;i++;
+      }else{cab(xb,xa,z+.004,z1-.004,2.3,'x-','trp',no,d);z=z1;}
+    }
   }
   // B 定電流調整器（CCR）の列。上下2段。正面は +X（北向き。図面の三角の印の側。CCT の写真で確かめた向きと同じ）。南の面は背面で、パンチングの通気口と名札（ビデオ）。正面の盤面は写真5枚に合わせた（DRAW.ccr）
   { const u = (t, type) => ({ title: t, type }), st = (a, b, up, lo) => [[a, b], { up, lo }];
@@ -479,6 +488,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     plane(0.6, 0.17, m, (DX0 + DX1) / 2, 2.4, Z1 - 0.01, 'z-'); }
 
   const views = {
+    道路駐車場照明盤: [[road.g.position.x-3.4,1.55,road.g.position.z],[road.g.position.x,1.15,road.g.position.z]],
     全体: [[-17.5, 15, -15], [-4.5, 0, -15]],
     入口から: [[-5.3, 1.65, -4.3], [-6.6, 1.2, -14]],
     受配電盤: [[-6.9, 1.7, -3.9], [-6.9, 1.2, -8.5]],
@@ -497,5 +507,5 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     ['CCR用UPS（No.62・63）', [[-11.3, 1.6, -19.0], [-9.2, 1.1, -21.3]], '役割：図面の名称は、CCR-U の入出力盤、UPS盤、蓄電池盤（No.1・No.2）です。図面では破線で描かれています。', '※ 盤面は No.1・No.2 の写真に合わせました。実物は1組6面（入出力盤、UPS盤、操作パネルの盤、蓄電池盤1、直流電流計の盤、蓄電池盤2）ですが、図面の3面に詰めて描いています。写真では UPS盤と蓄電池盤の間に操作パネルの盤がもう1面ありますが、図面の面数に合わせて省いています。破線の意味は未確認です。'],
     ['論理制御盤・灯火インタフェース盤（No.71〜73）', [[-8.5, 1.7, -24.2], [-8.5, 1.1, -26.4]], '役割：監視室の操作卓と、機器室の盤の間で、灯火の入・切と光度の指令、状態の信号を受け渡します。', '見る点：故障表示、電源表示、通信の異常表示。', '※ 論理制御盤（3面）と灯火インタフェース盤の正面は、写真のとおり扉だけです（表示・計器は扉の中）。電流計測処理装置（No.73）は推測です。'],
   ]];
-  return { group: g, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info };
+  return { road, group: g, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info };
 }
