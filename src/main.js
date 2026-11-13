@@ -1512,7 +1512,9 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 
 // ================= 歩く視点（一人称） =================
 const worker = createWorker(); scene.add(worker.root); worker.root.visible = false; window.__worker = worker;
-const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.3), keys: {}, pad: { f: 0, s: 0 }, saved: null };
+// 正面から見るときだけ点ける、カメラ位置の弱い照明（顔が影にならないように）
+const frontFill = new THREE.PointLight(0xfff4e6, 0, 5, 1.5); scene.add(frontFill);
+const walk = { third: false, front: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.3), keys: {}, pad: { f: 0, s: 0 }, saved: null };
 const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
@@ -1554,14 +1556,15 @@ function walkStep(dt) {
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
   worker.update(walk.pos.distanceTo(before) * Math.sign(f));
-  worker.root.visible = walk.third;
+  worker.root.visible = walk.third; frontFill.intensity = walk.third && walk.front ? 2.2 : 0;
   if (walk.third) {
     // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
-    const bx = Math.sin(walk.yaw), bz = Math.cos(walk.yaw);
-    let d = 2.7;
-    for (let i = 1; i <= 54; i++) { const t = i * 0.05; if (hitAt(walk.pos.x + bx * t, walk.pos.z + bz * t)) { d = Math.max(0.5, t - 0.15); break; } }
-    camera.position.set(walk.pos.x + bx * d, 1.65 + 0.2 * d + bob, walk.pos.z + bz * d);
-    camera.rotation.set(walk.pitch - 0.2, walk.yaw, 0, 'YXZ');
+    // 正面から見る（walk.front）：作業員の前に回って、顔の方を見る。前が壁なら近づく
+    const sg = walk.front ? -1 : 1, bx = Math.sin(walk.yaw) * sg, bz = Math.cos(walk.yaw) * sg;
+    let d = walk.front ? 2.2 : 2.7;
+    for (let i = 1; i <= 54; i++) { const t = i * 0.05; if (t > d) break; if (hitAt(walk.pos.x + bx * t, walk.pos.z + bz * t)) { d = Math.max(0.6, t - 0.15); break; } }
+    if (walk.front) { camera.position.set(walk.pos.x + bx * d, 1.5 + bob, walk.pos.z + bz * d); camera.lookAt(walk.pos.x, 1.15, walk.pos.z); frontFill.position.copy(camera.position); }
+    else { camera.position.set(walk.pos.x + bx * d, 1.65 + 0.2 * d + bob, walk.pos.z + bz * d); camera.rotation.set(walk.pitch - 0.2, walk.yaw, 0, 'YXZ'); }
   } else {
     camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
   }
@@ -1617,8 +1620,10 @@ h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;col
 pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
 $('doorGo').onclick = goThroughDoor; protectControl($('doorGo'));
 $('personView').onclick = () => {
-  stopMovement(); walk.third = !walk.third;   // 向き（yaw・pitch）は、そのまま引き継ぐ
-  $('personView').textContent = walk.third ? '後ろから見る → 本人の目線' : '本人の目線 → 後ろから見る';
+  // 本人の目線 → 後ろから見る → 正面から見る → 本人の目線 の順に切り替える。向き（yaw・pitch）は、そのまま引き継ぐ
+  stopMovement();
+  if (!walk.third) { walk.third = true; walk.front = false; } else if (!walk.front) walk.front = true; else { walk.third = false; walk.front = false; }
+  $('personView').textContent = !walk.third ? '本人の目線 → 後ろから見る' : !walk.front ? '後ろから見る → 正面から見る' : '正面から見る → 本人の目線';
 };
 protectControl($('personView'));
 $('bw').onclick = () => setWalk(!walk.on);
