@@ -1762,7 +1762,7 @@ h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.v
 window.__road = kiki.road;
 h1.insertAdjacentHTML('beforeend','<button id=roadDoor>道路駐車場照明盤の扉</button><small> 内部の寸法・結線は近似（目安・架空）</small>');
 document.getElementById('roadDoor').onclick=()=>{kiki.road.toggle();};
-h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
+h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); if (b.dataset.kv === 'コンデンサ盤') kiki.capDoors.forEach(d => { d.target = d.OPEN; }); });
 h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; if (b.dataset.v === '14') rearDoor3.target = rearDoor3.OPEN; if (b.dataset.v === '15') rearDoor4.target = rearDoor4.OPEN; if (b.dataset.v === '16') rearDoor5.target = rearDoor5.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
@@ -2043,6 +2043,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
     if (kiki.group.visible && raycaster.intersectObjects(kiki.road.leaves,true).length) { kiki.road.toggle(); return; }
     if (raycaster.intersectObjects(roomDoor.g, true).length) { roomDoor.toggle(); return; }
+    if (camera.position.z < -3.4 && kiki.group.visible) { const d = kiki.capDoors.find(d => raycaster.intersectObjects(d.leaves, true).length); if (d) { d.toggle(); return; } }   // 機器室のコンデンサ盤の扉
     { const r = REARS.find(r => raycaster.intersectObjects(r.leaves, true).length); if (r) { r.toggle(); return; } }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
@@ -2095,7 +2096,7 @@ dw.addEventListener('click', e => {
   const b = e.target.closest('.it'); if (!b) return;
   const ci = +b.dataset.c, ii = +b.dataset.i, box = dw.querySelector(`[data-t="${ci}-${ii}"]`), open = box.style.display === 'none';
   dw.querySelectorAll('.tx').forEach(x => { x.style.display = 'none'; }); dw.querySelectorAll('.it').forEach(x => x.classList.remove('on'));
-  if (open) { box.style.display = 'block'; b.classList.add('on'); const v = INFO[ci][1][ii][1]; flyTo(v[0], v[1]); }
+  if (open) { box.style.display = 'block'; b.classList.add('on'); const v = INFO[ci][1][ii][1]; flyTo(v[0], v[1]); if (INFO[ci][1][ii][0].startsWith('コンデンサ盤の中')) { $('wk').checked = kiki.group.visible = true; kiki.capDoors.forEach(d => { d.target = d.OPEN; }); } }
 });
 dw.style.display = 'none';
 const dwSet = on => { dw.style.display = on ? 'block' : 'none'; dwBtn.textContent = on ? '📖 設備の説明（収納）' : '📖 設備の説明'; };
@@ -2836,6 +2837,7 @@ renderer.setAnimationLoop(() => {
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.forEach(l => { l.rotation.y = -l.userData.k * roomDoor.cur; });
+  for (const d of kiki.capDoors) { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.leaves[0].rotation.y = d.cur; }
   for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor ? 1.6 : 0.8) * Math.min(1, r.cur / 1.2); }
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
