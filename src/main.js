@@ -1817,8 +1817,10 @@ function showBatNote() { const cv = document.createElement('canvas'); cv.width =
 function modal(html) { mod.innerHTML = '<div class=box>' + html + '<div style="text-align:right"><button id=mClose>閉じる</button></div></div>'; mod.style.display = 'flex'; $('mClose').onclick = () => { mod.style.display = 'none'; }; }
 let started = false; h1.style.display = h2.style.display = 'none'; controls.enabled = false; controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
 function enterTitle() { if (walk.on) setWalk(false); if (typeof dwBtn !== 'undefined') { dwBtn.style.display = dw.style.display = 'none'; } ov.style.display = 'flex'; menuBtn.style.display = 'none'; h1.style.display = h2.style.display = 'none'; controls.enabled = false; controls.autoRotate = true; if (!started) view(...views[0]); $('tStart').textContent = started ? '▶ つづける' : '▶ スタート'; }
-function enterGame() { started = true; if (typeof dwBtn !== 'undefined') dwBtn.style.display = 'block'; ov.style.display = 'none'; menuBtn.style.display = 'block'; h1.style.display = h2.style.display = 'block'; controls.enabled = true; controls.autoRotate = $('a').checked; }
+function enterGame() { started = true; setTimeout(startAsWorker, 0); if (typeof dwBtn !== 'undefined') dwBtn.style.display = 'block'; ov.style.display = 'none'; menuBtn.style.display = 'block'; h1.style.display = h2.style.display = 'block'; controls.enabled = true; controls.autoRotate = $('a').checked; }
 $('tStart').onclick = () => { audioInit(); enterGame(); };
+// スタートしたら、発電機の操作盤側（入口側）に立つ作業員を、後ろから見る状態で始める（利用者の指示）
+function startAsWorker() { if (walk.on) return; walk.pos.set(-3.6, 1.65, -1.4); walk.yaw = -Math.PI / 2 - 0.35; walk.pitch = -0.1; walk.third = true; walk.front = false; setWalk(true); $('personView').textContent = '👤 後ろ'; }
 menuBtn.onclick = enterTitle;
 $('tHow').onclick = () => modal('<h2>操作説明</h2>・<b>ドラッグ</b>：画面を回す　<b>ホイール／ピンチ</b>：拡大縮小<br>・<b>右ドラッグ／2本指の移動／矢印ボタン</b>：見る中心を上下左右へ動かします。下側へ移動してから拡大できます。<br>・左上のボタン：見る場所を切り替えます（点検側、操作盤側、配電盤、内部を見る位置など）<br>・左下の「運転」：<b>始動（試験運転）</b>、<b>停電→自動始動</b>、<b>復電・停止</b><br>・「内部」：<b>透かして見る</b>／<b>断面（半分切る）</b>で、ピストンや回転子の動きが見えます<br>・画面下の説明に、いま何が起きているかが出ます<br>・音が出ます。気になるときは、オプションで切れます<br><span style="color:#9bd">※ 教育用の想像モデルです。内部構造や数値は実機と異なる場合があります。</span>');
 $('tOpt').onclick = () => modal('<h2>オプション</h2><label><input id=o_snd type=checkbox ' + (S.sound ? 'checked' : '') + '> 音を鳴らす</label><label>動作の速さ <select id=o_spd><option value=0.02>超スロー</option><option value=0.05>スロー</option><option value=0.12>普通</option></select></label><label><input id=o_shd type=checkbox ' + (renderer.shadowMap.enabled ? 'checked' : '') + '> 影を表示（重いときは切る）</label><label><input id=o_hq type=checkbox ' + (renderer.getPixelRatio() > 1 ? 'checked' : '') + '> 高画質（重いときは切る）</label><label><input id=o_exp type=checkbox ' + ($('std').style.display !== 'none' ? 'checked' : '') + '> 解説文を表示</label>');
@@ -1911,7 +1913,7 @@ function walkStep(dt) {
 function setWalk(on) {
   stopMovement();
   fly = null; worker.root.visible = on && walk.third; $('personView').style.display = on ? '' : 'none';
-  walk.on = on; $('bw').textContent = on ? '🎥 全体の視点に戻る' : '🚶 歩く視点'; pad.style.display = on ? 'block' : 'none'; hint.style.display = on ? 'block' : 'none';
+  walk.on = on; $('bw').textContent = on ? '🎥 全体の視点に戻る' : '🚶 歩く視点'; pad.style.display = on ? 'block' : 'none'; hint.style.display = 'none';   // スティックの説明は出さない（利用者の指示）
   if (on) { walk.saved = [camera.position.clone(), controls.target.clone()]; controls.enabled = false; controls.autoRotate = false; camera.fov = 68; camera.updateProjectionMatrix(); renderer.domElement.style.touchAction = 'none'; setTimeout(() => { hint.style.display = 'none'; }, 6000); }
   else {
     // 全体の視点に戻るときは、それまで見ていた画面をそのまま引き継ぐ（位置・向き・画角）。見る中心は、後ろ／正面から見ていたなら作業員、本人の目線なら 2.5m 先
