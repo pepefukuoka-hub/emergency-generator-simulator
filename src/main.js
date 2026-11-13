@@ -1,6 +1,7 @@
 import { createWorker } from './workers.js';
 import { buildKiki } from './kikishitsu.js';
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RELAY_PHOTO, TERM_PHOTO } from './relay-photos.js';
@@ -321,16 +322,96 @@ const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshS
   g.fillStyle = '#111'; g.font = 'bold 34px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('危険', 64, 66);
 }) })); sign.position.set(0.28, 1.0, -CD / 2 - 0.025); sign.rotation.y = Math.PI; cage.add(sign);
 
-// ---------- 室内燃料タンク ----------
+// ---------- 室内燃料タンク（利用者の写真より作り直し。寸法は写真の見た目からの近似で、実測ではない） ----------
+// 灰緑色の角形タンク（角を丸めた箱）を、X形の筋かい付きの架台に載せる。正面（−Z）に液面計の目盛と札、上につり手。
+// 赤い配管：左に上へ立ち上がる管、ハンドル付きの弁、圧力計、右にこし器・流量計・弁、フレキ管、床へ下りる管（給油管・送油管・返油管・ドレン管の札）
 const tank = new THREE.Group(); tank.position.set(2.5, 0, 2.7); gen.add(tank);
-bx(-0.75, 0.75, 0, 0.18, -0.6, 0.6, M(0x9a9ea2, 0.1, 0.9), tank);
-for (const x of [-0.45, 0.45]) for (const z of [-0.35, 0.35]) bx(x - 0.04, x + 0.04, 0.18, 1.3, z - 0.04, z + 0.04, mat.gray, tank);
-bx(-0.5, 0.5, 1.3, 2.5, -0.4, 0.4, mat.gray, tank);
-const tl = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.2), new THREE.MeshStandardMaterial({ map: labelTex(256, 64, (g, w, h) => { g.fillStyle = '#c3cbcd'; g.fillRect(0, 0, w, h); g.fillStyle = '#111'; g.font = 'bold 34px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('室内燃料タンク', 128, 34); }) }));
-tl.position.set(0, 2.15, -0.401); tl.rotation.y = Math.PI; tank.add(tl);
-pipe([[0.35, 1.3, -0.42], [0.35, 0.8, -0.5], [0.0, 0.7, -0.5], [-0.3, 0.6, -0.55]], 0.025, mat.red, tank);
-pipe([[0.45, 1.8, -0.42], [0.6, 1.8, -0.5], [0.6, 0.5, -0.55]], 0.025, mat.red, tank);
-
+{
+  const tg = M(0x8fa29e, 0.25, 0.5), frameM = M(0x8fa29e, 0.3, 0.55), red = M(0xd11f1f, 0.15, 0.4), brassM = M(0xc9a64a, 0.8, 0.3), steelM = M(0xb8bcbf, 0.85, 0.25), whiteM = M(0xf2f2ee, 0, 0.5);
+  const rb = (w, h, d, r, m, x, y, z) => { const o = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, r), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; tank.add(o); return o; };
+  const cylL = (r, l, m, x, y, z, ax = 'y', seg = 24) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), m); if (ax === 'x') o.rotation.z = Math.PI / 2; if (ax === 'z') o.rotation.x = Math.PI / 2; o.position.set(x, y, z); tank.add(o); return o; };
+  const tube = (pts, r, m) => { const o = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(q => new THREE.Vector3(...q)), false, 'catmullrom', 0.05), 64, r, 14, false), m); o.castShadow = true; tank.add(o); return o; };
+  const flange = (x, y, z, ax = 'y') => { cylL(0.045, 0.018, red, x, y, z, ax, 28); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, b = cylL(0.006, 0.03, steelM, 0, 0, 0, ax, 8); const u = Math.cos(a) * 0.034, v = Math.sin(a) * 0.034; if (ax === 'y') b.position.set(x + u, y, z + v); else if (ax === 'x') b.position.set(x, y + u, z + v); else b.position.set(x + u, y + v, z); } };
+  // ハンドル付きの弁（本体・ボンネット・軸・赤いハンドル車）。札（常時開・常時閉）を下げる
+  const valve = (x, y, z, ax = 'y', tag) => { const bd = new THREE.Mesh(new THREE.SphereGeometry(0.035, 20, 14), red); bd.scale.set(1, 1.15, 1); bd.position.set(x, y, z); tank.add(bd);
+    cylL(0.016, 0.05, M(0xb9bcbe, 0.7, 0.35), x, y, z - 0.05, 'z', 14); cylL(0.004, 0.05, steelM, x, y, z - 0.09, 'z', 8);
+    const hw = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.005, 8, 24), red); hw.position.set(x, y, z - 0.115); tank.add(hw); for (let k = 0; k < 3; k++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.005, 0.004), red); sp.rotation.z = k * Math.PI / 3; sp.position.set(x, y, z - 0.115); tank.add(sp); }
+    if (tag) { const t = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.045), new THREE.MeshStandardMaterial({ map: canvasTex(32, 48, (c, w, h) => { c.fillStyle = '#fafaf6'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; [...tag].forEach((ch, n) => c.fillText(ch, w / 2, 12 + n * 11)); }), side: THREE.DoubleSide })); t.rotation.y = Math.PI; t.position.set(x + 0.04, y - 0.06, z - 0.04); tank.add(t); } };
+  // 丸い計器（枠・文字盤・ガラス）
+  const gauge = (x, y, z, r, draw) => { cylL(r, 0.04, M(0xe6e6e2, 0.6, 0.3), x, y, z, 'z', 36); const f = new THREE.Mesh(new THREE.CircleGeometry(r * 0.88, 36), new THREE.MeshStandardMaterial({ map: canvasTex(128, 128, draw), roughness: 0.4 })); f.rotation.y = Math.PI; f.position.set(x, y, z - 0.021); tank.add(f);
+    const gl = new THREE.Mesh(new THREE.CircleGeometry(r * 0.9, 36), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, roughness: 0.05, metalness: 0.2 })); gl.rotation.y = Math.PI; gl.position.set(x, y, z - 0.024); tank.add(gl); };
+  const dial = (lab, max) => (c, w, h) => { c.fillStyle = '#fbfbf7'; c.fillRect(0, 0, w, h); c.strokeStyle = '#222'; c.lineWidth = 1.2; c.beginPath(); c.arc(64, 64, 50, Math.PI * 0.75, Math.PI * 2.25); c.stroke();
+    for (let k = 0; k <= 12; k++) { const a = Math.PI * (0.75 + 1.5 * k / 12), r0 = k % 2 ? 44 : 40; c.beginPath(); c.moveTo(64 + Math.cos(a) * r0, 64 + Math.sin(a) * r0); c.lineTo(64 + Math.cos(a) * 50, 64 + Math.sin(a) * 50); c.stroke(); if (!(k % 2)) { c.fillStyle = '#222'; c.font = '9px sans-serif'; c.textAlign = 'center'; c.fillText(String(max * k / 12), 64 + Math.cos(a) * 32, 67 + Math.sin(a) * 32); } }
+    c.font = 'bold 9px sans-serif'; c.fillText(lab, 64, 92); c.strokeStyle = '#111'; c.lineWidth = 2; c.beginPath(); c.moveTo(64, 64); c.lineTo(64 + Math.cos(Math.PI * 1.4) * 40, 64 + Math.sin(Math.PI * 1.4) * 40); c.stroke(); };
+  // 架台：脚4本・上下の枠・正面と側面の X 形の筋かい
+  const LEG = 0.95, B = 0.06;
+  for (const x of [-0.46, 0.46]) for (const z of [-0.36, 0.36]) rb(0.06, LEG, 0.06, 0.006, frameM, x, B + LEG / 2, z);
+  for (const y of [B + 0.04, B + LEG - 0.03, B + 0.42]) { rb(0.98, 0.05, 0.05, 0.006, frameM, 0, y, -0.36); rb(0.98, 0.05, 0.05, 0.006, frameM, 0, y, 0.36); rb(0.05, 0.05, 0.78, 0.006, frameM, -0.46, y, 0); rb(0.05, 0.05, 0.78, 0.006, frameM, 0.46, y, 0); }
+  for (const [z, w] of [[-0.36, 0.92], [0.36, 0.92]]) for (const sg of [1, -1]) { const d = Math.hypot(w, LEG - 0.45), o = rb(d, 0.04, 0.012, 0.004, frameM, 0, B + 0.42 + (LEG - 0.45) / 2, z); o.rotation.z = sg * Math.atan2(LEG - 0.45, w); }
+  rb(1.06, 0.05, 0.86, 0.008, frameM, 0, B + LEG + 0.02, 0);
+  // タンク本体（角を丸めた箱）と上のつり手・通気管
+  const TY = B + LEG + 0.045, TH = 1.12;
+  rb(0.98, TH, 0.76, 0.025, tg, 0, TY + TH / 2, 0);
+  tube([[0.28, TY + TH, 0.05], [0.28, TY + TH + 0.15, 0.05], [0.42, TY + TH + 0.15, 0.05], [0.42, TY + TH, 0.05]], 0.012, M(0xd0d4d2, 0.4, 0.4));
+  rb(0.22, 0.03, 0.12, 0.006, M(0xc8ccca, 0.4, 0.4), 0.35, TY + TH + 0.015, 0.05);
+  // 正面：液面計の目盛（0〜900）、札「室内燃料タンク」「軽油」
+  { const ft = canvasTex(512, 600, (c, w, h) => { c.clearRect(0, 0, w, h);
+      c.fillStyle = '#f6f6f2'; c.fillRect(60, 10, 22, 570); c.strokeStyle = '#999'; c.strokeRect(60, 10, 22, 570); c.fillStyle = '#222'; c.font = '9px sans-serif';
+      for (let k = 0; k <= 45; k++) { const y = 18 + k * 12.4; c.fillRect(70, y, k % 5 ? 6 : 12, 1); if (!(k % 5)) c.fillText(String(k * 20), 84, y + 3); }
+      c.fillStyle = '#c4241f'; c.fillRect(70, 18 + 15 * 12.4, 12, 1.5); c.fillStyle = '#1f6fd0'; c.fillRect(60, 560, 22, 18);
+      c.fillStyle = '#111'; c.font = 'bold 40px sans-serif'; c.textAlign = 'center'; c.fillText('室内燃料タンク', 320, 230);
+      c.fillStyle = '#fff'; c.fillRect(420, 548, 64, 26); c.fillStyle = '#111'; c.font = 'bold 18px sans-serif'; c.fillText('軽 油', 452, 568); });
+    const fp = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 1.12), new THREE.MeshStandardMaterial({ map: ft, transparent: true, roughness: 0.5 })); fp.rotation.y = Math.PI; fp.position.set(0, TY + TH / 2, -0.382); tank.add(fp);
+    // 液面計の立体：目盛板の枠、ガイド金具、浮き子の指針
+    rb(0.06, 1.06, 0.02, 0.004, M(0xd5d8d6, 0.4, 0.4), 0.34, TY + TH / 2, -0.39);
+    for (const y of [TY + 0.1, TY + TH - 0.12]) rb(0.1, 0.03, 0.03, 0.004, frameM, 0.34, y, -0.395);
+    const pt = rb(0.07, 0.025, 0.03, 0.006, M(0xd8dadb, 0.8, 0.3), 0.34, TY + TH * 0.55, -0.405); }
+  // 給油口（正面の右下、ハンドル付きの弁とフランジ）
+  valve(-0.2, TY + 0.1, -0.44, 'y', '常時閉'); flange(-0.2, TY + 0.03, -0.44);
+  // 左：上へ立ち上がる赤い管（タンクの上を回って後ろへ）、弁2つ、圧力計、灰色のフレキ管
+  const LX = 0.62;
+  tube([[LX, 0.1, -0.42], [LX, 1.9, -0.42], [LX, 2.35, -0.42], [LX - 0.05, 2.45, -0.42], [0.42, 2.45, -0.3], [0.42, TY + TH + 0.02, -0.1]], 0.022, red);
+  for (const y of [0.42, 0.62, 0.95]) flange(LX, y, -0.42);
+  valve(LX, 0.52, -0.42, 'y', '常時閉'); valve(LX, 0.8, -0.42, 'y', '常時開');
+  gauge(0.42, 0.95, -0.47, 0.075, dial('MPa', 60)); rb(0.03, 0.14, 0.03, 0.006, brassM, 0.42, 0.83, -0.45);
+  tube([[0.78, 1.7, -0.3], [0.86, 1.2, -0.25], [0.8, 0.8, -0.32], [0.86, 0.4, -0.3]], 0.016, M(0x8a8e8c, 0.6, 0.45));
+  // 右：こし器（灰色の筒）・流量計（赤い丸い計器）・弁3つ、上の取り出し管
+  const RX = -0.45;
+  tube([[-0.2, TY - 0.02, -0.44], [-0.2, TY - 0.22, -0.44], [RX, TY - 0.22, -0.44], [RX, 0.15, -0.44]], 0.02, red);
+  { const st = cylL(0.045, 0.16, M(0xb9c4c8, 0.3, 0.4), RX - 0.12, TY - 0.32, -0.44); cylL(0.05, 0.03, M(0xa9b4b8, 0.3, 0.4), RX - 0.12, TY - 0.22, -0.44); tube([[RX, TY - 0.22, -0.44], [RX - 0.12, TY - 0.22, -0.44]], 0.018, red); }
+  gauge(RX + 0.15, 0.62, -0.5, 0.06, (c, w, h) => { c.fillStyle = '#e8e2d4'; c.fillRect(0, 0, w, h); c.fillStyle = '#c4241f'; c.fillRect(20, 30, 88, 12); c.fillStyle = '#111'; c.fillRect(34, 56, 60, 16); c.fillStyle = '#eee'; c.font = 'bold 12px monospace'; c.textAlign = 'center'; c.fillText('0 0 0 0 0', 64, 68); });
+  for (const y of [0.85, 0.58, 0.4]) { valve(RX, y, -0.44, 'y', y === 0.58 ? null : '常時開'); flange(RX, y + 0.07, -0.44); }
+  // 下：床へ下りる管4本（札：給油管・送油管・返油管・ドレン管）と、銀色のフレキ管
+  const lbl = t => new THREE.MeshStandardMaterial({ map: canvasTex(24, 96, (c, w, h) => { c.fillStyle = '#d11f1f'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = 'bold 13px sans-serif'; c.textAlign = 'center'; c.fillText('↓', w / 2, 14); [...t].forEach((ch, n) => c.fillText(ch, w / 2, 32 + n * 15)); }) });
+  [[0.25, '給油管'], [0.12, '送油管'], [-0.05, 'ドレン管'], [-0.28, '返油管']].forEach(([x, t]) => {
+    tube([[x, 0.42, -0.42], [x, 0.25, -0.46], [x, 0.12, -0.6], [x, -0.05, -0.62]], 0.018, red); valve(x, 0.42, -0.42, 'y'); flange(x, 0.32, -0.44);
+    const l = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.12), lbl(t)); l.rotation.y = Math.PI; l.position.set(x, 0.2, -0.53); l.rotation.x = 0.4; tank.add(l); });
+  { const hose = tube([[-0.15, 0.3, -0.45], [-0.25, 0.22, -0.55], [-0.4, 0.16, -0.62]], 0.022, M(0xc0c4c6, 0.9, 0.3)); }
+  // 床の点検口の縞鋼板（管の通る所）
+  bx(-0.4, 0.4, 0.002, 0.008, -0.7, -0.55, M(0xa9adb0, 0.7, 0.4), tank);
+}
+// 壁の液面計2台（+X の壁。位置は推測）：左＝室内燃料タンク（×100 L、0〜9、POWER／ALARM）、右＝地下燃料タンク（×1000 L、0〜7、電源・HH・H・L・LL、警報停止。警報設定値 HH7000／H6600／L1400／LL1000）。メーカー名・形式は入れない
+{ const wl = new THREE.Group(); wl.position.set(3.58, 0, 1.3); wl.rotation.y = -Math.PI / 2; room.add(wl);
+  const meterFace = (unit, max, ang) => (c, x, y, w, h) => { c.fillStyle = '#111'; c.fillRect(x - 4, y - 4, w + 8, h + 40); c.fillStyle = '#fbfbf7'; c.fillRect(x, y, w, h);
+    const cx = x + w / 2, cy = y + h * 0.95, r = h * 0.8; c.strokeStyle = '#222'; c.lineWidth = 1.2; c.beginPath(); c.arc(cx, cy, r, Math.PI * 1.22, Math.PI * 1.78); c.stroke();
+    for (let k = 0; k <= max * 2; k++) { const a = Math.PI * (1.22 + 0.56 * k / (max * 2)); c.beginPath(); c.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); c.lineTo(cx + Math.cos(a) * (r - (k % 2 ? 5 : 9)), cy + Math.sin(a) * (r - (k % 2 ? 5 : 9))); c.stroke(); if (!(k % 2)) { c.fillStyle = '#222'; c.font = '10px sans-serif'; c.textAlign = 'center'; c.fillText(String(k / 2), cx + Math.cos(a) * (r + 8), cy + Math.sin(a) * (r + 8)); } }
+    c.font = 'bold 12px serif'; c.fillText('LEVEL', cx, y + h * 0.55); c.font = '8px sans-serif'; c.fillText(unit, cx, y + h * 0.67); c.fillStyle = '#c4241f'; c.font = '7px sans-serif'; c.fillText('電源遮断', x + 22, y + h * 0.6);
+    c.strokeStyle = '#111'; c.lineWidth = 1.4; const a = Math.PI * (1.22 + 0.56 * ang); c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95); c.stroke(); };
+  const panel = (W, H, bg, draw) => new THREE.MeshStandardMaterial({ map: canvasTex(256, Math.round(256 * H / W), (c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); draw(c, w, h); }), roughness: 0.45 });
+  // 左：灰色の箱
+  { const W = 0.34, H = 0.44, o = new THREE.Mesh(new RoundedBoxGeometry(W, H, 0.14, 4, 0.01), M(0xbfc2c4, 0.3, 0.45)); o.position.set(-0.3, 1.45, 0.07); wl.add(o);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.01, H - 0.01), panel(W, H, '#c8cbcd', (c, w, h) => { c.fillStyle = '#111'; c.font = 'bold 26px sans-serif'; c.textAlign = 'center'; c.fillText('室内燃料タンク', w / 2, 40); meterFace('×100 LITER', 9, 0.68)(c, 50, 60, 156, 80);
+      for (const [x0, t] of [[18, 'POWER'], [136, 'ALARM']]) { c.strokeStyle = '#222'; c.lineWidth = 1; c.strokeRect(x0, 200, 104, 52); c.fillStyle = '#222'; c.font = '11px sans-serif'; c.fillText(t, x0 + 52, 214); }
+      c.strokeRect(14, 268, 228, 34); c.fillStyle = '#555'; for (let k = 0; k < 5; k++) c.fillRect(22, 274 + k * 6, 200 - k * 20, 1.2); })); f.position.set(-0.3, 1.45, 0.142); wl.add(f);
+    for (const [x, col, r] of [[-0.42, 0x111111, 0.008], [-0.36, 0xe8e8e2, 0.014], [-0.24, 0x7a0f0f, 0.014], [-0.18, 0xd11f1f, 0.009]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.022, 20), M(col, 0.2, 0.3)); b.rotation.x = Math.PI / 2; b.position.set(x, 1.37, 0.15); wl.add(b); } }
+  // 右：クリーム色の箱
+  { const W = 0.28, H = 0.4, o = new THREE.Mesh(new RoundedBoxGeometry(W, H, 0.09, 4, 0.012), M(0xe6e2d2, 0.15, 0.5)); o.position.set(0.08, 1.43, 0.045); wl.add(o);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.012, H - 0.012), panel(W, H, '#ebe7d8', (c, w, h) => { c.fillStyle = '#111'; meterFace('×1000 LITER', 7, 0.78)(c, 14, 34, 180, 92);
+      c.fillStyle = '#fff'; c.fillRect(30, 140, 50, 40); c.fillStyle = '#111'; c.font = '7px monospace'; ['警報設定値', 'HH:7000', ' H:6600', ' L:1400', 'LL:1000'].forEach((t, n) => c.fillText(t, 34, 149 + n * 7.5));
+      c.font = '9px sans-serif'; ['電源', 'HH', 'H', 'L', 'LL'].forEach((t, n) => c.fillText(t, 228, 44 + n * 17)); c.fillStyle = '#555'; for (let k = 0; k < 5; k++) c.fillRect(200, 186 + k * 4, 40, 1.4);
+      c.fillStyle = '#fff'; c.fillRect(48, 232, 160, 26); c.fillStyle = '#111'; c.font = 'bold 18px sans-serif'; c.textAlign = 'center'; c.fillText('地下燃料タンク', 128, 252); c.fillStyle = '#666'; for (let k = 0; k < 4; k++) c.fillRect(20, 285 + k * 8, 210 - k * 25, 1.2); })); f.position.set(0.08, 1.43, 0.091); wl.add(f);
+    [[0x3ce05a, true], [0x5a1f1f, false], [0xff3b30, true], [0x5a1f1f, false], [0x5a1f1f, false]].forEach(([col, on], n) => { const l = new THREE.Mesh(new THREE.SphereGeometry(0.006, 12, 8), M(col, 0, 0.3, on ? { emissive: col, emissiveIntensity: 0.8 } : {})); l.position.set(0.175, 1.588 - n * 0.026, 0.094); wl.add(l); });
+    const sb = new THREE.Mesh(new RoundedBoxGeometry(0.03, 0.03, 0.012, 2, 0.003), M(0xd11f1f, 0.1, 0.4)); sb.position.set(0.18, 1.43, 0.096); wl.add(sb); } }
 
 // ---------- 機械室の付帯設備（ビデオより） ----------
 const conc = M(0x9a9ea2, 0.05, 0.9), beige = M(0xd9d0b4, 0.2, 0.6), duct = M(0x9aa0a4, 0.5, 0.45);
