@@ -8,7 +8,7 @@ const opts = { entryPoints: ['src/main.js'], bundle: true, minify: true, format:
 function emit(js) {
   const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>非常用発電機シミュレータ</title>' +
+    '<title>空港設備シミュレータ</title>' +
     '<style>body{margin:0;overflow:hidden;background:#000}</style></head><body><script>' +
     js.replace(/<\/script>/g, '<\\/script>') + '</script></body></html>';
   mkdirSync('docs', { recursive: true });

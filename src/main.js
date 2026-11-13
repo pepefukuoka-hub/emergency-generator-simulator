@@ -1732,7 +1732,7 @@ const css = document.createElement('style');
 css.textContent = '.hud{position:fixed;color:#fff;font:13px/1.6 sans-serif;background:#000b;padding:8px 12px;border-radius:8px}.hud button{font-size:13px;padding:4px 8px;margin:2px;cursor:pointer}.hud button.on{background:#3a7;color:#fff}#hud2{left:12px;bottom:12px;max-width:640px}#stt{font-weight:bold;font-size:15px;color:#ffd866}#rd{color:#9fe;font-family:monospace}.hudtg{background:#1c3a46;color:#fff;border:1px solid #7fe0d0;border-radius:6px;font-weight:bold;display:block;width:100%;text-align:left}.hud.min{padding:4px}.hud.min .hb{display:none}.hud.min .hudtg{width:auto}#std,#stw{display:none}#hud2.ex #std,#hud2.ex #stw{display:block}#stt{cursor:pointer;padding:4px 0}@media (pointer:coarse){.hud button,.hud select{min-height:34px}}';
 document.head.appendChild(css);
 const h1 = document.createElement('div'); h1.className = 'hud'; h1.style.cssText = 'top:12px;left:12px';
-h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=wk type=checkbox checked> 機器室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
+h1.innerHTML = '<b>空港設備シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=wk type=checkbox checked> 機器室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
   '<button data-v=0>全体</button><button data-v=4>入口から</button><button data-v=5>蓄電池</button><button data-v=6>配電盤</button><button data-v=7>盤面アップ</button><button data-v=10>盤の下側</button><button data-v=11>操作盤の下側</button><button data-v=1>点検側</button><button data-v=2>操作盤側</button><button data-v=3>発電機端面</button><button data-v=8>内部を見る位置</button><button data-v=9>盤の内部</button>';
 document.body.appendChild(h1);
 const h2 = document.createElement('div'); h2.className = 'hud'; h2.id = 'hud2';
@@ -1809,7 +1809,7 @@ css2.textContent = `#ov{position:fixed;inset:0;display:flex;align-items:center;j
 #menuBtn{position:fixed;top:12px;right:12px;z-index:10;padding:8px 14px;font-size:14px;cursor:pointer;display:none}`;
 document.head.appendChild(css2);
 const ov = document.createElement('div'); ov.id = 'ov';
-ov.innerHTML = '<div class=ttl><div class=sub>実機写真ベース 3D 教育用</div><h1>非常用発電機<br>シミュレータ</h1><div class=btns><button id=tStart>▶ スタート</button><button id=tHow>操作説明</button><button id=tOpt>⚙ オプション</button></div></div>';
+ov.innerHTML = '<div class=ttl><div class=sub>実機写真ベース 3D 教育用</div><h1>空港設備<br>シミュレータ</h1><div class=btns><button id=tStart>▶ スタート</button><button id=tHow>操作説明</button><button id=tOpt>⚙ オプション</button></div></div>';
 document.body.appendChild(ov);
 const mod = document.createElement('div'); mod.id = 'mod'; document.body.appendChild(mod);
 const menuBtn = document.createElement('button'); menuBtn.id = 'menuBtn'; menuBtn.textContent = '☰ メニュー'; document.body.appendChild(menuBtn);
