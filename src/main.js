@@ -1726,6 +1726,7 @@ const FIRE_MODES = ['accel', 'run', 'xfer', 'supply'];
 // ================= 機器室（入口のドアの向こう） =================
 const kiki = buildKiki({ M, canvasTex, plateMat: mat.plate });
 scene.add(kiki.group); window.__kiki = kiki;
+REARS.push(...kiki.doors);   // 機器室の CCR の扉（上段・下段）も、盤の裏扉と同じくタップで開閉
 
 // ================= UI =================
 const css = document.createElement('style');
@@ -2039,7 +2040,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (raycaster.intersectObject(autoNote, false).length) { showAutoNote(); return; }
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
     if (raycaster.intersectObjects(roomDoor.g, true).length) { roomDoor.toggle(); return; }
-    { const r = REARS.find(r => raycaster.intersectObjects(r.leaves, true).length); if (r) { r.toggle(); return; } }
+    { let r = null, best = 1e9; for (const q of REARS) { if (q.cab && camera.position.z > -3.45) continue; const h = raycaster.intersectObjects(q.leaves, true)[0]; if (h && h.distance < best) { best = h.distance; r = q; } } if (r) { r.toggle(); return; } }   // 機器室の扉は、機器室の中から見ているときだけ
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');

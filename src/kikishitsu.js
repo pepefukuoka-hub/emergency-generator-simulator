@@ -1,10 +1,13 @@
 // 機器室（発電機室の入口のドアの向こう）。配置図から読み取った盤の並びを、箱と盤面の絵で作る。
 // 教育用の想像モデル。位置は図面からの近似、盤面の絵・高さ・色は推測。形式名・メーカー名は入れない。
 import * as THREE from 'three';
+import { makeCcrInside } from './ccr-inside.js';
 
 export function buildKiki({ M, canvasTex, plateMat }) {
   const g = new THREE.Group();
   const blocks = [];
+  const ccrDoors = [];   // CCR の扉（上段・下段）。発電機室の盤の裏扉と同じ形（leaves・toggle）で main.js へ渡す
+  let CI = null;
   // 室の内のり。発電機室（X −13〜3.6）と壁をそろえ、ドアの壁（Z −3.4）から −Z へ約23m。
   const X0 = -13, X1 = 3.6, Z0 = -26.5, Z1 = -3.62, H = 4.4;
   // 図面の写真の画素 → 座標（図の左＝−Z、図の上＝+X）
@@ -274,12 +277,42 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   DRAW.plain = () => (c, w, h) => { c.fillStyle = GRG; c.fillRect(0, 0, w, h); };
   // 盤1面：本体の箱＋正面の絵。dir は正面の向き。
   function cab(x0, x1, z0, z1, h, dir, kind, no, name, back) {
+    if (kind === 'ccr' && dir === 'x+') return ccrCab(x0, x1, z0, z1, h, no, name, back);
     box(x0, x1, 0.06, h, z0, z1, body); box(x0 + 0.02, x1 - 0.02, 0, 0.06, z0 + 0.02, z1 - 0.02, plinth);
     const e = 0.004, hh = h - 0.06, cy = 0.06 + hh / 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wd = dir[0] === 'x' ? z1 - z0 : x1 - x0;
     const tex = (k, a, b) => { const R = FINE.includes(k) ? 2 : 1, d = DRAW[k](a, b); return M(0xffffff, 0.2, 0.55, { map: canvasTex(256 * R, Math.round(256 * hh / wd) * R, (c, w, hc) => { c.save(); c.scale(R, R); d(c, w / R, hc / R); c.restore(); }) }); };
     const put = (m, d) => { if (d === 'x+') plane(wd, hh, m, x1 + e, cy, cz, d); else if (d === 'x-') plane(wd, hh, m, x0 - e, cy, cz, d); else if (d === 'z+') plane(wd, hh, m, cx, cy, z1 + e, d); else plane(wd, hh, m, cx, cy, z0 - e, d); };
     put(tex(kind, no, name), dir);
     if (back) put(tex('stack', back[0], back[1]), { 'x+': 'x-', 'x-': 'x+', 'z+': 'z-', 'z-': 'z+' }[dir]);
+  }
+  // CCR の盤（正面 +X）：箱の外側＋上下2枚の扉（タップで開閉、左の蝶番で手前へ開く）。中身は、初めて開けたときに作る（ccr-inside.js、写真 IMG_3609〜3614）
+  function ccrCab(x0, x1, z0, z1, h, no, d, back) {
+    CI = CI || makeCcrInside({ M, canvasTex });
+    const W = z1 - z0, D = x1 - x0, hh = h - 0.06, T = hh / 2, t = 0.02, PD = 0.42, sh = CI.mt.shell, inn = CI.mt.inner;
+    const grp = new THREE.Group(); grp.position.set(x0, 0.06, z1); grp.rotation.y = Math.PI / 2; g.add(grp);   // u＝正面から見て左→右（−Z）、d＝奥→手前（+X）
+    const B = (u0, u1, v0, v1, d0, d1, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(u1 - u0, v1 - v0, d1 - d0), m); o.position.set((u0 + u1) / 2, (v0 + v1) / 2, (d0 + d1) / 2); grp.add(o); return o; };
+    box(x0 + 0.02, x1 - 0.02, 0, 0.06, z0 + 0.02, z1 - 0.02, plinth);
+    B(0, W, 0, hh, 0, PD, body);                                                   // 取付板より奥（見えない部分）
+    for (const [a, b] of [[0, t], [W - t, W]]) B(a, b, 0, hh, PD, D - t, sh);       // 側板
+    B(0, W, hh - t, hh, PD, D - t, sh); B(0, W, 0, t, PD, D - t, sh); B(0, W, T - 0.015, T + 0.015, PD, D - t, sh);   // 天板・底板・中仕切り
+    B(t, W - t, t, hh - t, PD - 0.001, PD, inn);
+    // 正面の絵（上下に分けて扉に貼る）
+    const R = 2, fd = DRAW.ccr(no, d), ftex = canvasTex(256 * R, Math.round(256 * hh / W) * R, (c, w, hc) => { c.save(); c.scale(R, R); fd(c, w / R, hc / R); c.restore(); });
+    const fm = M(0xffffff, 0.2, 0.55, { map: ftex });
+    const tiers = [[T, true], [0, false]];
+    for (const [v0, up] of tiers) {
+      const leaf = new THREE.Group(); leaf.position.set(0, v0, D); grp.add(leaf); leaf.userData.k = -1;
+      const lh = T - 0.004, dm = new THREE.Mesh(new THREE.BoxGeometry(W - 0.006, lh, t), sh); dm.position.set(W / 2, T / 2, -t / 2); leaf.add(dm);
+      const geo = new THREE.PlaneGeometry(W - 0.006, lh), uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, (up ? 0.5 : 0) + uv.getY(i) * 0.5);
+      const fp = new THREE.Mesh(geo, fm); fp.position.set(W / 2, T / 2, 0.003); leaf.add(fp);
+      const inside = new THREE.Group(); inside.position.set(0, v0, 0); inside.visible = false; grp.add(inside);
+      const title = up ? d.up.title : d.lo.title;
+      const door = { leaves: [leaf], light: { intensity: 0 }, cur: 0, target: 0, OPEN: 1.75, built: false, inside, up, title, cab: [x0, x1, z0, z1],
+        build() { if (this.built) return; this.built = true; (up ? CI.upper : CI.lower)(inside, W, T, PD, D - t, title); CI.doorBack(leaf, W - 0.006, lh, t, up); },
+        toggle() { this.build(); this.target = this.target ? 0 : this.OPEN; inside.visible = true; } };
+      ccrDoors.push(door);
+    }
+    if (back) { const m = M(0xffffff, 0.2, 0.55, { map: canvasTex(256, Math.round(256 * hh / W), (c, w, hc) => DRAW.stack(back[0], back[1])(c, w, hc)) }); plane(W, hh, m, x0 - 0.004, 0.06 + hh / 2, (z0 + z1) / 2, 'x-'); }
   }
   const rackTex = canvasTex(64, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#b8bcbf'; c.fillRect(0, 0, w, 5); c.fillRect(0, h - 5, w, 5); c.fillRect(8, 0, 6, h); c.fillRect(40, 0, 6, h); }, [1, 1]);
   // ケーブルラック（盤の列の上。ビデオより。高さ・幅は推測）
@@ -483,6 +516,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     入口から: [[-5.3, 1.65, -4.3], [-6.6, 1.2, -14]],
     受配電盤: [[-6.9, 1.7, -3.9], [-6.9, 1.2, -8.5]],
     CCRの列: [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]],
+    CCRの中: [[-2.2, 1.5, -17.2], [-4.1, 1.3, -17.2]],
     CCT: [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]],
     CCR用UPS: [[-11.3, 1.6, -19.0], [-9.2, 1.1, -21.3]],
     変圧器盤: [[-2.6, 1.8, -10.6], [-0.9, 1.2, -17]],
@@ -491,11 +525,11 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     ['受電・饋電盤の列（No.2〜6・74）', [[-7.2, 1.7, -4.2], [-5.0, 1.2, -7.6]], '役割：高圧で受電して、各系統へ送り出す盤の列です。図面の名称は、引込計器盤、受電盤、VT盤・ZPD盤、饋電盤、電力インタフェース盤です。', '見る点：計器の指示、表示灯、継電器の動作表示、異音・異臭、盤内の過熱の跡。', '根拠：点検の周期と項目は、保安規程（電気事業法 第42条）で定めます。', '※ 盤面は正面の写真に合わせました（No.2〜6）。電力インタフェース盤（No.74）は推測です。計器の目盛・整定は目安です。'],
     ['配電盤・コンデンサ盤の列（No.7〜14）', [[-6.6, 1.7, -4.2], [-9.2, 1.2, -7.6]], '役割：電源切換盤で、商用と発電機の電源を切り換え、配電盤から負荷へ送ります。コンデンサ盤は力率の改善用です。', '見る点：切換の状態表示、コンデンサのふくらみ・油漏れ・異音、直列リアクトルの過熱。', '※ 盤面は正面の写真に合わせました。'],
     ['変圧器盤の列（No.21〜28・52）', [[-3.0, 1.8, -10.4], [-0.9, 1.2, -17]], '役割：CCR用、照明用、所内動力用などの変圧器を納めた盤です。', '見る点：温度計の指示、うなり音の変化、通気口のほこり、油入なら油面と漏れ。', '※ 盤の中身（変圧器の種類・容量）は、図面からは読めず、未確認です。'],
-    ['定電流調整器（CCR）の列（No.31〜52）', [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。', '並び（写真より。正面は北向き、西から）：予備器-4／PAPI、ALS-2、REDL-2、予備器-2／予備器-3、RTZL、RCLL-2、ALS-1／予備器-1、ALS-1、RCLL-1、REDL-1。同じ回路名は、上段が操作部、下段がCCR本体です。', '操作部のパネル：押しボタン、遠方／直接の切換、絶縁抵抗の数字表示（MΩ）、接地警報設定（10・5・3・1・0.5MΩ・OFF）、警報音の入／切。', 'CCR本体のパネル：押しボタン3つ、遠方／直接の切換、液晶の表示画面。', '見る点：絶縁抵抗の表示と、その下がり方。接地警報の設定値。遠方／直接の位置。故障表示。通気口の詰まり。予備器へ切り換えられるか。', '※ 押しボタンの文字は写真で読めず、色だけにしてあります。接地警報設定の値は写真から読んだもので、要確認です。形式名は表示していません。南の面は背面です。'],
+    ['定電流調整器（CCR）の列（No.31〜52）', [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。', '並び（写真より。正面は北向き、西から）：予備器-4／PAPI、ALS-2、REDL-2、予備器-2／予備器-3、RTZL、RCLL-2、ALS-1／予備器-1、ALS-1、RCLL-1、REDL-1。同じ回路名は、上段が操作部、下段がCCR本体です。', '操作部のパネル：押しボタン、遠方／直接の切換、絶縁抵抗の数字表示（MΩ）、接地警報設定（10・5・3・1・0.5MΩ・OFF）、警報音の入／切。', 'CCR本体のパネル：押しボタン3つ、遠方／直接の切換、液晶の表示画面。', '見る点：絶縁抵抗の表示と、その下がり方。接地警報の設定値。遠方／直接の位置。故障表示。通気口の詰まり。予備器へ切り換えられるか。', '扉：上段・下段とも、タップで開け閉めできます。中身は REDL-2 の写真に合わせ、全部の盤を同じ形にしてあります。上段（操作部）：一番上に照明、小形変圧器・操作箱、リレー・端子のユニット、基板、長い端子台、配線用遮断器・小形リレー、下に常用↔予備切替器（予備／常用、切・入の表示、手動操作のつまみ、動作回数計）。下段（CCR本体）：端子ユニット4つ、遮断器・電磁接触器・電源ユニット、リレー・端子の列、左に太いケーブルの束。扉の裏に、表示器の裏・基板・回路図。', '※ 盤ごとの中身の違い、部品の名前・数・配線は未確認です（写真1面分からの想像）。', '※ 押しボタンの文字は写真で読めず、色だけにしてあります。接地警報設定の値は写真から読んだもので、要確認です。形式名は表示していません。南の面は背面です。'],
     ['ケーブル切替盤・CCT（No.51・53〜58・87）', [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]], '並び（写真より。正面は北向き）：西から、掲示を貼った盤、ケーブル切替盤（上）と予備器（下）、TEDL-1・2（上）と TCLL-1・2（下）、RGL（下段だけの低い盤）。', '回路ごとの計器パネル：出力電流計（A）、絶縁抵抗計（MΩ）、表示灯（受電・開路・過電流・接地）、遠方／直接の切換、OFF・ON・RESET の押しボタン。', 'ケーブル切替盤：切換スイッチで、TEDL-1・2、TCLL-1・2 のどれか1回路を、予備器へ切り換えます。ふだんは OFF です。', '見る点：出力電流の指示、絶縁抵抗計の指示（低下の傾向）、開路・過電流・接地の表示、切換スイッチの位置、通気口の詰まり。', '※ 表示灯とボタンの文字は、写真から読んだもので、細部は要確認です。ケーブル導入盤（No.45）の位置は、写真では分からず、作っていません。形式名は表示していません。'],
     ['監視用UPS（No.61-1〜3）', [[0.3, 1.7, -8.6], [0.3, 1.1, -5.4]], '役割：監視・制御の機器へ、停電のときも電気を送り続けます。インバータ盤、直流電源盤、蓄電池盤の3面です。', '見る点：入出力の電圧・電流、故障表示、蓄電池の電圧・液面・温度、ファンの音。', '※ 盤面は写真に合わせました。正面の向きは推測です。'],
     ['CCR用UPS（No.62・63）', [[-11.3, 1.6, -19.0], [-9.2, 1.1, -21.3]], '役割：図面の名称は、CCR-U の入出力盤、UPS盤、蓄電池盤（No.1・No.2）です。図面では破線で描かれています。', '※ 盤面は No.1・No.2 の写真に合わせました。実物は1組6面（入出力盤、UPS盤、操作パネルの盤、蓄電池盤1、直流電流計の盤、蓄電池盤2）ですが、図面の3面に詰めて描いています。写真では UPS盤と蓄電池盤の間に操作パネルの盤がもう1面ありますが、図面の面数に合わせて省いています。破線の意味は未確認です。'],
     ['論理制御盤・灯火インタフェース盤（No.71〜73）', [[-8.5, 1.7, -24.2], [-8.5, 1.1, -26.4]], '役割：監視室の操作卓と、機器室の盤の間で、灯火の入・切と光度の指令、状態の信号を受け渡します。', '見る点：故障表示、電源表示、通信の異常表示。', '※ 論理制御盤（3面）と灯火インタフェース盤の正面は、写真のとおり扉だけです（表示・計器は扉の中）。電流計測処理装置（No.73）は推測です。'],
   ]];
-  return { group: g, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info };
+  return { group: g, doors: ccrDoors, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info };
 }
