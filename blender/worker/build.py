@@ -188,7 +188,7 @@ for i in jid:
 for i in pid:
     if pe[i]: pp[i, 2] = waist + 0.012 if pp[i, 2] > waist - 0.1 else ankle - 0.03
 
-GREY = (0.25, 0.265, 0.28); GREY_D = (0.225, 0.24, 0.255)
+GREY = (0.34, 0.355, 0.33); GREY_D = (0.29, 0.305, 0.28)   # 明るい灰色の作業服（線形値。参考画像の色味）
 JACKET = make('jacket', jf, mat('cloth', GREY, 0.85), jp)
 PANTS = make('pants', pf, mat('cloth', GREY, 0.85), pp)
 
@@ -326,7 +326,7 @@ eye = (cube('joint-l-eye') + cube('joint-r-eye')) / 2
 hid = [i for i in body_idx if wsum(i, ['head']) > 0.5]
 top = P[hid, 2].max(); ymin, ymax = P[hid, 1].min(), P[hid, 1].max()
 back = lambda i: max(0.0, min(1.0, (P[i, 1] - (eye[1] + 0.03)) / (ymax - eye[1] - 0.03)))      # 0＝前、1＝後ろ
-capz = lambda i: eye[2] + 0.047 - 0.035 * back(i)                                              # 帽子の下の縁（後ろ下がり）
+capz = lambda i: eye[2] + 0.024 - 0.03 * back(i)                                              # ヘルメットの下の縁（後ろ下がり）
 hairz = lambda i: eye[2] + 0.026 - 0.115 * max(0.0, (back(i) - 0.42) / 0.58)                    # 髪の下の縁（耳の上、後ろはえり足まで）
 def scalp(sel, puff, it):
     faces = [f for f in BF if all(i in hset and sel(i) for i in f[0])]; pos = P.copy()
@@ -335,28 +335,29 @@ def scalp(sel, puff, it):
 hset = set(hid)
 hf, hp = scalp(lambda i: P[i, 2] > hairz(i) and back(i) > 0.16, lambda i: 0.0035, 1)
 HAIR = make('hair', hf, mat('hair', (0.02, 0.018, 0.016), 0.6), hp, rigid='head')
-def puff_cap(i):
+HAT = (0.80, 0.80, 0.78)   # 白いヘルメット（つやあり）
+def puff_cap(i):   # 頭から浮かせた丸い殻。上ほど高く、下の縁は少し外へ反らせる
     t = max(0.0, min(1.0, (P[i, 2] - capz(i)) / (top - capz(i))))
-    return 0.007 + 0.014 * math.sin(t * math.pi * 0.9) + 0.016 * (1 - back(i)) * math.sin(min(1.0, t * 1.6) * math.pi * 0.5) * (1 - t * 0.6)   # 前を少し高く立てる
-capf, cp = scalp(lambda i: P[i, 2] > capz(i), puff_cap, 4)
-CAP = make('cap', capf, mat('cap', (0.27, 0.285, 0.30), 0.85), cp, rigid='head'); thicken(CAP, 0.006)
+    return 0.026 + 0.014 * math.sin(t * math.pi * 0.5) + 0.008 * (1 - t) ** 6
+capf, cp = scalp(lambda i: P[i, 2] > capz(i), puff_cap, 6)
+CAP = make('cap', capf, mat('helmet', HAT, 0.35), cp, rigid='head'); thicken(CAP, 0.006)
 hc = P[hid].mean(0)
 # つば
-cco = np.array([v.co for v in CAP.data.vertices]); rim = cco[(cco[:, 2] < eye[2] + 0.07) & (cco[:, 1] < eye[1] + 0.04)]
+cco = np.array([v.co for v in CAP.data.vertices]); rim = cco[(cco[:, 2] < eye[2] + 0.05) & (cco[:, 1] < eye[1] + 0.04)]
 bm = bmesh.new(); S = 14; rows = []
 xs = np.linspace(-0.074, 0.074, S)
-for a, (ext, drop) in enumerate([(0.0, 0.0), (0.03, 0.004), (0.058, 0.011), (0.075, 0.019)]):
+for a, (ext, drop) in enumerate([(0.0, 0.0), (0.018, 0.003), (0.034, 0.008), (0.045, 0.014)]):   # ヘルメットの前のひさし（短い）
     row = []
     for x in xs:
-        j = int(np.argmin((rim[:, 0] - x) ** 2 + (rim[:, 2] - (eye[2] + 0.05)) ** 2 * 4)); base = rim[j]
+        j = int(np.argmin((rim[:, 0] - x) ** 2 + (rim[:, 2] - (eye[2] + 0.03)) ** 2 * 4)); base = rim[j]
         round_ = math.cos(x / 0.074 * math.pi / 2) ** 0.75
-        row.append(bm.verts.new((x * (1 - 0.06 * a), base[1] + 0.014 - ext * round_, eye[2] + 0.057 - drop - 0.006 * (x / 0.074) ** 2)))
+        row.append(bm.verts.new((x * (1 + 0.04 * a), base[1] + 0.002 - ext * round_, base[2] - drop)))
     rows.append(row)
 for a in range(3):
     for b in range(S - 1): bm.faces.new((rows[a][b], rows[a][b + 1], rows[a + 1][b + 1], rows[a + 1][b]))
 bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.005)
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-BRIM = from_bm('brim', bm, mat('cap', (0.27, 0.285, 0.30), 0.85), CAP)
+BRIM = from_bm('brim', bm, mat('helmet', HAT, 0.35), CAP)
 
 
 # ---------- 8. まとめる：肌＋目 → body、服・帽子・髪・靴 → outfit ----------
@@ -460,7 +461,7 @@ BODY_COL = col
 pos, nor, mi = raster(OUTFIT, S)
 base = np.array([list(m.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value)[:3] for m in OUTFIT.data.materials])
 col = base[np.clip(mi, 0, len(base) - 1)]
-names = [m.name for m in OUTFIT.data.materials]; cl = np.isin(mi, [names.index(n) for n in ('cloth', 'cloth_d', 'cap')])
+names = [m.name for m in OUTFIT.data.materials]; cl = np.isin(mi, [names.index(n) for n in ('cloth', 'cloth_d')])
 col = np.where(cl[..., None], col * (0.92 + 0.16 * noise(pos, 14))[..., None], col)
 # ひざ・ひじ・すその汚れ（うすい暗色。位置は推測）
 dirt = np.clip(np.exp(-((pos[..., 2] - 0.5) / 0.12) ** 2) * (nor[..., 1] < 0) * 0.5 + sm(0.25, 0.05, pos[..., 2]) * 0.6, 0, 1) * noise(pos, 22, 9)
