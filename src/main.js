@@ -1726,7 +1726,7 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 const worker = createWorker(); scene.add(worker.root); worker.root.visible = false; window.__worker = worker;
 // 正面から見るときだけ点ける、カメラ位置の弱い照明（顔が影にならないように）
 const frontFill = new THREE.PointLight(0xfff4e6, 0, 5, 1.5); scene.add(frontFill);
-const walk = { third: false, front: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.3), keys: {}, pad: { f: 0, s: 0 }, saved: null };
+const walk = { third: false, front: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.3), keys: {}, pad: { f: 0, s: 0, x: 0 }, saved: null };
 const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
@@ -1753,10 +1753,11 @@ function goThroughDoor() {
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight || walk.runOn ? 2.2 : 1;   // 走る：Shift キー、または 🏃 ボタン
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
-  walk.yaw -= sd * 1.6 * dt;   // 左右：その場で回る
+  const sx = walk.pad.x || 0;
+  walk.yaw -= (sd * 1.6 + sx * 0.7) * dt;   // 左右キー：その場で回る。スティックの横：横へ動きながら、体も少しずつ回る
   const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
   const before = walk.pos.clone();
-  const dx = fx * f * sp, dz = fz * f * sp;
+  const dx = (fx * f - fz * sx) * sp, dz = (fz * f + fx * sx) * sp;
   if (!hitAt(walk.pos.x + dx, walk.pos.z)) walk.pos.x += dx; if (!hitAt(walk.pos.x, walk.pos.z + dz)) walk.pos.z += dz;
   // ドアの前で前へ進むと、ドアの真ん中へ寄せる（狭い通り道に入りやすくする）
   if (f > 0 && Math.abs(walk.pos.z - DOOR.z) < 1.0 && Math.abs(walk.pos.x - DOOR.x) < 1.1 && Math.abs(fz) > 0.4) {
@@ -1767,7 +1768,7 @@ function walkStep(dt) {
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
-  worker.update(walk.pos.distanceTo(before) * Math.sign(f));
+  worker.update(walk.pos.distanceTo(before) * (f < -0.1 ? -1 : 1));
   worker.root.visible = walk.third; frontFill.intensity = walk.third && walk.front ? 2.2 : 0;
   if (walk.third) {
     // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
@@ -1795,7 +1796,7 @@ function setWalk(on) {
   }
 }
 const pad = document.createElement('div'); pad.className = 'hud'; pad.style.cssText = 'right:14px;bottom:14px;display:none;padding:6px';
-pad.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:4px"><span></span><button data-p="f1">▲</button><span></span><button data-p="s-1">◀</button><button data-p="f-1">▼</button><button data-p="s1">▶</button></div><div style="font-size:11px;text-align:center;color:#bcd">▲▼：前後　◀▶：その場で回る</div>';
+pad.innerHTML = '<div id=stick style="position:relative;width:140px;height:140px;margin:4px auto;border-radius:50%;background:radial-gradient(circle at 50% 45%,#3b4148,#1c1f23 70%);box-shadow:inset 0 3px 10px #000a,0 0 0 3px #555c;touch-action:none"><div id=stickKnob style="position:absolute;left:42px;top:42px;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#8a9098,#3c4148 60%,#22262a);box-shadow:0 4px 8px #000b,inset 0 -3px 6px #0008"></div></div><div style="font-size:11px;text-align:center;color:#bcd">スティックを倒した方向へ進む（斜めも可）</div>';
 document.body.appendChild(pad);
 function protectControl(b) {
   b.style.userSelect = 'none'; b.style.webkitUserSelect = 'none';
@@ -1805,7 +1806,7 @@ function protectControl(b) {
 const movementStops = new Set();
 function stopMovement() {
   movementStops.forEach(stop => stop());
-  walk.keys = {}; walk.pad.f = walk.pad.s = 0;
+  walk.keys = {}; walk.pad.f = walk.pad.s = walk.pad.x = 0;
 }
 addEventListener('blur', stopMovement);
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopMovement(); });
@@ -1831,8 +1832,18 @@ pad.querySelectorAll('button').forEach(b => {
     if (!e.buttons || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) stop(e);
   });
 });
+// スティック：倒した方向へ進む（上＝前、下＝後ろ、左右＝横へ。斜めも可）。倒す量で速さが変わる。横へ倒すと、体も少しずつその向きへ回る
+{ const st = $('stick'), kn = $('stickKnob'), R = 48; let id = null;
+  const set = (x, y) => { kn.style.transform = `translate(${x}px,${y}px)`; walk.pad.f = -y / R; walk.pad.x = x / R; };
+  const move = e => { const r = st.getBoundingClientRect(); let x = e.clientX - r.left - 70, y = e.clientY - r.top - 70; const l = Math.hypot(x, y); if (l > R) { x *= R / l; y *= R / l; } set(x, y); };
+  const end = e => { if (id === null || (e && e.pointerId !== id)) return; id = null; set(0, 0); };
+  protectControl(st);
+  st.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); id = e.pointerId; st.setPointerCapture(id); move(e); });
+  st.addEventListener('pointermove', e => { if (e.pointerId === id) move(e); });
+  for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) st.addEventListener(t, end);
+  movementStops.add(() => { id = null; set(0, 0); }); }
 const hint = document.createElement('div'); hint.className = 'hud'; hint.style.cssText = 'left:50%;top:70px;transform:translateX(-50%);display:none;text-align:center;pointer-events:none';
-hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>機器室へは、入口の緑の「機器室」の札の下のドアを通る（右下の「🚪 ドアを通って機器室へ」でも移れる）<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
+hint.innerHTML = '<b>歩く視点</b><br>右下のスティック：倒した方向へ進む（斜めも可）　画面をドラッグ：向きを変える　🏃ボタン／Shift：走る　<br>機器室へは、入口の緑の「機器室」の札の下のドアを通る（右下の「🚪 ドアを通って機器室へ」でも移れる）<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
 pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
