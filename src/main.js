@@ -1882,7 +1882,7 @@ function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight || walk.runOn ? 2.2 : 1;   // 走る：Shift キー、または 🏃 ボタン
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
   const sx = walk.pad.x || 0;
-  walk.yaw -= (sd * 1.6 + sx * 0.7) * dt;   // 左右キー：その場で回る。スティックの横：横へ動きながら、体も少しずつ回る
+  walk.yaw -= (sd * 1.6 + (walk.third ? 0 : sx * 0.7)) * dt;   // 左右キー：見る向きを回す。本人の目線では、スティックの横で体も少しずつ回る
   const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
   const before = walk.pos.clone();
   const dx = (fx * f - fz * sx) * sp, dz = (fz * f + fx * sx) * sp;
@@ -1895,8 +1895,13 @@ function walkStep(dt) {
   const inKiki = walk.pos.z < DOOR.z; if (inKiki !== walk.inKiki) { walk.inKiki = inKiki; $('doorGo').textContent = inKiki ? '🚪 発電機室へ' : '🚪 機器室へ'; }
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
-  worker.root.rotation.y = walk.yaw;
-  worker.update(walk.pos.distanceTo(before) * (f < -0.1 ? -1 : 1));
+  // 後ろ／正面から見るときは、カメラの向きはそのままで、作業員が進む方向を向いて前へ歩く（後ろ歩きにしない。利用者の指示）
+  if (walk.bodyYaw === undefined) walk.bodyYaw = walk.yaw;
+  const moved = Math.hypot(dx, dz) > 1e-5;
+  if (walk.third && moved) { const tgt = Math.atan2(-dx, -dz); let d = tgt - walk.bodyYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); walk.bodyYaw += d * Math.min(1, dt * 10); }
+  if (!walk.third) walk.bodyYaw = walk.yaw;
+  worker.root.rotation.y = walk.bodyYaw;
+  worker.update(walk.pos.distanceTo(before) * (walk.third || f >= -0.1 ? 1 : -1));
   worker.root.visible = walk.third; frontFill.intensity = walk.third && walk.front ? 2.2 : 0;
   if (walk.third) {
     // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
