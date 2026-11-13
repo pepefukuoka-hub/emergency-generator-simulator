@@ -1554,26 +1554,12 @@ function walkStep(dt) {
   worker.update(walk.pos.distanceTo(before));
   worker.root.visible = walk.third;
   if (walk.third) {
-    const target = new THREE.Vector3(walk.pos.x, 1.1, walk.pos.z);
-    // 背後が壁際なら斜め後ろ・横の空いている方向へ回す。
-    let best = null;
-    for (const angle of [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2]) {
-      const offset = new THREE.Vector3(Math.sin(walk.yaw + angle) * 2.7,
-        1.25 - walk.pitch * 1.2, Math.cos(walk.yaw + angle) * 2.7);
-      let fraction = 1;
-      for (let i = 1; i <= 50; i++) {
-        const t = i / 50;
-        if (hitAt(target.x + offset.x * t, target.z + offset.z * t)) {
-          fraction = Math.max(0.02, (i - 1) / 50); break;
-        }
-      }
-      if (!best || fraction > best.fraction) best = { offset, fraction };
-      if (fraction >= 0.8) break;
-    }
-    camera.position.copy(target).addScaledVector(best.offset, best.fraction);
-    camera.position.y = Math.max(camera.position.y, 2.15);
-    camera.lookAt(target);
-
+    // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
+    const bx = Math.sin(walk.yaw), bz = Math.cos(walk.yaw);
+    let d = 2.7;
+    for (let i = 1; i <= 54; i++) { const t = i * 0.05; if (hitAt(walk.pos.x + bx * t, walk.pos.z + bz * t)) { d = Math.max(0.5, t - 0.15); break; } }
+    camera.position.set(walk.pos.x + bx * d, 1.65 + 0.2 * d + bob, walk.pos.z + bz * d);
+    camera.rotation.set(walk.pitch - 0.2, walk.yaw, 0, 'YXZ');
   } else {
     camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
   }
@@ -1629,7 +1615,7 @@ h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;col
 pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
 $('doorGo').onclick = goThroughDoor; protectControl($('doorGo'));
 $('personView').onclick = () => {
-  stopMovement(); walk.third = !walk.third; walk.pitch = -0.05;
+  stopMovement(); walk.third = !walk.third;   // 向き（yaw・pitch）は、そのまま引き継ぐ
   $('personView').textContent = walk.third ? '後ろから見る → 本人の目線' : '本人の目線 → 後ろから見る';
 };
 protectControl($('personView'));

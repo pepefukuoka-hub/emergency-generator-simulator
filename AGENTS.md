@@ -83,7 +83,7 @@ npm run dev      # 監視ビルド
 ## 6.5 作業員（歩く視点の「後ろから見る」）
 - モデルは `src/worker/worker.glb`（＋ `body.jpg`・`outfit.jpg`）。`blender/worker/build.py` で作る（手順は `blender/worker/README.md`）。体・骨・ウェイト・目は MakeHuman / MPFB の CC0 データ、服・帽子・靴・髪はスクリプトで作成。**架空の人物。実在の人の写真・顔・氏名・所属・ロゴは使わない。**
 - `src/worker.js` の `createWorker()` が `{ root, update(進んだ距離) }` を返す。歩く動きは、骨の回転で付けている（`turn(骨, [軸, 角度]…)`。軸はモデルの向きで、X＝左右、Y＝上、Z＝前）。
-- 視点の切り替え（本人の目線／後ろから見る）は、`walk.third` と `#personView`。確認用に `window.__worker` を出してある。
+- 視点の切り替え（本人の目線／後ろから見る）は、`walk.third` と `#personView`。切り替えても、向き（`walk.yaw`・`walk.pitch`）はそのまま。後ろから見るときは、同じ向きのまま真後ろ・少し上へ下がり、背後が壁なら向きを変えずに近づく。確認用に `window.__worker` を出してある。
 - 服・帽子・靴の形は推測。市販のゲーム並みの人物ではない（顔の絵・髪・しわ・指は簡素）。
 
 ## 7. 動作確認の方法
