@@ -1,10 +1,10 @@
-import { createWorker } from './worker.js';
+import { createWorker } from './workers.js';
 import { buildKiki } from './kikishitsu.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RELAY_PHOTO, TERM_PHOTO } from './relay-photos.js';
-import { DESK_PHOTO } from './desk-photo.js';
+import { buildDeskInstruments } from './desk-instruments.js';
 import { loadGenset, GENSET } from './genset.js';
 import { paintRotary, paintMeter, paintPart, syncTesterControls, syncTesterParts, buildCase, animateTester } from './relay-instruments.js';
 
@@ -302,37 +302,7 @@ bx(-0.07, -0.03, 0.3, 0.5, 0.315, 0.34, mat.steel, cp); bx(0.03, 0.07, 0.3, 0.5,
 for (const x of [-0.3, 0.3]) { const e = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.012, 8, 16), mat.steel); e.position.set(x, 1.31, -0.28); cp.add(e); }
 const deskNeedles = [];
 const desk = new THREE.Group(); const al = Math.atan2(0.6, 0.25); desk.rotation.x = -al; desk.position.set(0, 1.175, 0); cp.add(desk);
-function gauge(x, y, r, max) {
-  const t = canvasTex(128, 128, (g, w, h) => {
-    g.fillStyle = '#f4f4f0'; g.fillRect(0, 0, w, h); g.strokeStyle = '#111'; g.lineWidth = 3; g.fillStyle = '#111';
-    for (let i = 0; i <= 10; i++) { const a = Math.PI * (0.8 + 1.4 * i / 10); g.beginPath(); g.moveTo(64 + Math.cos(a) * 46, 64 + Math.sin(a) * 46); g.lineTo(64 + Math.cos(a) * 56, 64 + Math.sin(a) * 56); g.stroke(); }
-    g.strokeStyle = '#c00'; g.lineWidth = 5; const a = Math.PI * (0.8 + 1.4 * max); g.beginPath(); g.moveTo(64 + Math.cos(a) * 40, 64 + Math.sin(a) * 40); g.lineTo(64 + Math.cos(a) * 58, 64 + Math.sin(a) * 58); g.stroke();
-    g.strokeStyle = '#111'; g.lineWidth = 4; g.beginPath(); g.moveTo(64, 64); g.lineTo(64 + Math.cos(Math.PI * 1.9) * 40, 64 + Math.sin(Math.PI * 1.9) * 40); g.stroke();
-  });
-  const grp = new THREE.Group(); grp.position.set(x, y, 0.012);
-  grp.add(new THREE.Mesh(new THREE.CircleGeometry(r, 32), new THREE.MeshStandardMaterial({ map: t, roughness: 0.3 })));
-  const bz = new THREE.Mesh(new THREE.TorusGeometry(r * 1.05, r * 0.14, 8, 32), mat.black); bz.position.z = 0.006; grp.add(bz); desk.add(grp);
-}
-gauge(-0.24, 0.1, 0.075, 0.75); gauge(0.05, 0.1, 0.05, 0.6); gauge(0.17, 0.1, 0.05, 0.5); gauge(0.29, 0.1, 0.05, 0.55);
-bx(-0.31, -0.17, -0.2, -0.06, 0, 0.01, mat.black, desk);
-const knob = bx(-0.255, -0.225, -0.17, -0.09, 0.01, 0.04, mat.black, desk); knob.rotation.z = -0.5;
-// 天板は、実機の写真（真上に補正）を貼る。回転計が左、圧力計3つが右、切替スイッチが回転計の下。
-desk.children.forEach(o => { o.visible = false; });
-{ const t = new THREE.TextureLoader().load(DESK_PHOTO.uri); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  const top = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9 * DESK_PHOTO.h / DESK_PHOTO.w * 0.9 / 0.9), new THREE.MeshStandardMaterial({ map: t, color: 0xe3f6f1, roughness: 0.5, metalness: 0.1 })); top.position.z = 0.0015; top.receiveShadow = true; desk.add(top);
-  // 計器の針（写真では消してある。運転状態に連動して動く）。位置は、補正した写真の画素（1040×750）で指定。
-  const PXM = 0.9 / DESK_PHOTO.w, needleM = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.5 });
-  const mkNeedle = (hx, hy, tipLen, tailLen, rest, span, fn) => {
-    const g = new THREE.Group(); g.position.set((hx - DESK_PHOTO.w / 2) * PXM, (DESK_PHOTO.h / 2 - hy) * PXM, 0.004); desk.add(g);
-    const len = (tipLen + tailLen) * PXM, n = new THREE.Mesh(new THREE.BoxGeometry(0.0019, len, 0.0012), needleM); n.position.y = (tipLen - tailLen) * PXM / 2; g.add(n);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.0045, 0.0045, 0.002, 16), needleM); cap.rotation.x = Math.PI / 2; g.add(cap);
-    deskNeedles.push({ g, rest, span, fn }); };
-  // rest：停止時の向き（上から時計回りの度）、span：目盛りの端までの角度
-  mkNeedle(245, 205, 40, 8, -118.6, 222.6, () => S.rpm / 1800);       // 機関回転計（0〜1800 min⁻¹）
-  mkNeedle(651, 189, 31, 12, -137, 265, () => 0.5 * Math.min(1, S.rpm / 1200));   // 潤滑油（0〜1 MPa）
-  mkNeedle(781, 190, 33, 12, -137, 265, () => 0.46 * Math.min(1, S.rpm / 1200));  // 冷却水（0〜0.4 MPa）
-  mkNeedle(919, 189, 36, 14, -137, 265, () => 0.35 * Math.min(1, S.rpm / 1200));  // 給気（0〜0.4 MPa）
-}
+buildDeskInstruments(desk, S, deskNeedles);
 // 金網ガード（危険表示付）：写真1・3より、発電機側面（-z側）で操作盤の隣（反駆動側寄り）
 const cage = new THREE.Group(); cage.position.set(-2.2, 0, -1.12); cage.rotation.y = 0; gen.add(cage);
 const CW = 1.3, CD = 0.65, CH = 1.9;
@@ -1583,7 +1553,7 @@ function walkStep(dt) {
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
-  worker.update(walk.pos.distanceTo(before));
+  worker.update(walk.pos.distanceTo(before) * Math.sign(f));
   worker.root.visible = walk.third;
   if (walk.third) {
     // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
@@ -1652,6 +1622,11 @@ $('personView').onclick = () => {
 };
 protectControl($('personView'));
 $('bw').onclick = () => setWalk(!walk.on);
+h1.insertAdjacentHTML('beforeend', '<label style="display:inline-block;margin:6px">キャラクター <select id="workerChoice" aria-label="キャラクターを選ぶ"><option value="natural">作業員 B（新しい歩行）</option><option value="legacy">作業員 A（保存版）</option></select></label>');
+$('workerChoice').value = worker.selected;
+$('workerChoice').onchange = e => { stopMovement(); worker.select(e.target.value); };
+protectControl($('workerChoice'));
+
 addEventListener('keydown', e => { if (walk.on && !document.hidden && !e.target.closest('input,select,textarea,[contenteditable=true]')) { if (e.repeat && !walk.keys[e.code]) return; walk.keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); } if (e.key === 'Escape' && walk.on && mod.style.display !== 'flex') { /* メニューは既存処理 */ } });
 addEventListener('keyup', e => { walk.keys[e.code] = false; });
 { let drag = false, lx = 0, ly = 0; const el = renderer.domElement;
