@@ -3,6 +3,7 @@
 // 寸法・奥行き・扉の裏の部品の数は、写真からの近似と推測。メーカー名・形式名は入れない。
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { makeVcb, VCB_SIZE } from './vcb.js';
 
 export function makeHv({ M, canvasTex }) {
   const doors = [];
@@ -96,17 +97,13 @@ export function makeHv({ M, canvasTex }) {
     tg.userData.tagSlot = true;
     // 左の黄色の配線の束（棚から下へ）
     wire(g, [[-Wi / 2 + 0.03, ys + 0.05, -0.2], [-Wi / 2 + 0.035, ys - 0.15, -0.16], [-Wi / 2 + 0.03, -Hs / 2 + 0.15, -0.17]], 0.012, yellowW);
-    // VCB 本体（引出形）。前面の絵＋立体の取っ手・トリップボタン・鍵
-    const bw = Wi * 0.6, bh = Math.min(Hs * 0.52, 0.4), bd = 0.5, by = -Hs / 2 + 0.05 + bh / 2, bz = -0.13 - bd / 2, bx = -0.04;
-    RB(g, bw, bh, bd, 0.012, unitM, bx, by, bz);
-    P(g, bw - 0.01, bh - 0.01, vcbFrontT, bx, by, -0.129);
-    for (const s of [-1, 1]) { C(g, 0.009, bh * 0.36, M(0x8a9099, 0.6, 0.35), bx + s * (bw / 2 - 0.025), by + bh * 0.15, -0.105); for (const dy of [-1, 1]) C(g, 0.006, 0.025, M(0x8a9099, 0.6, 0.35), bx + s * (bw / 2 - 0.025), by + bh * 0.15 + dy * bh * 0.15, -0.117, 'z'); }
-    C(g, 0.016, 0.014, M(0x222222, 0.3, 0.5), bx - 0.015, by - bh * 0.02, -0.122, 'z', 20); C(g, 0.013, 0.02, red, bx - 0.015, by - bh * 0.02, -0.112, 'z', 20);
-    C(g, 0.013, 0.014, M(0x2a2a2a, 0.3, 0.5), bx - 0.015, by - bh * 0.17, -0.122, 'z', 20); B(g, 0.006, 0.018, 0.012, silver, bx - 0.015, by - bh * 0.17, -0.11);
+    // VCB 本体（引出形）：Blender で作った模型（src/vcb.js・blender/vcb/build.py。陰影は焼き込み済み）を、区画の高さに合わせて縮めて置く
+    const sc = Math.min(Hs * 0.57, 0.42) / VCB_SIZE.H, bw = VCB_SIZE.W * sc, bh = VCB_SIZE.H * sc, bd = VCB_SIZE.D * sc, bx = -0.04, by = -Hs / 2 + 0.02 + bh / 2, bz = -0.15 - bd / 2;
+    const vb = makeVcb(); vb.scale.setScalar(sc); vb.position.set(bx, -Hs / 2 + 0.035, -0.15 - VCB_SIZE.front * sc); g.add(vb);
     // 左の黒い機器（操作機構の箱らしいもの。推測）
     RB(g, 0.06, bh * 0.5, 0.22, 0.006, black, bx - bw / 2 - 0.045, by + bh * 0.05, bz + 0.1);
     // 床：真ちゅう色のレールと、引き出し用の受け台（銀の板）
-    for (const s of [-1, 1]) B(g, 0.03, 0.03, 0.62, brass, bx + s * bw * 0.42, -Hs / 2 + 0.03, -0.42);
+    for (const s of [-1, 1]) B(g, 0.03, 0.03, 0.62, brass, bx + s * (bw * 0.5 - 0.04), -Hs / 2 + 0.02, -0.42);
     B(g, bw * 1.05, 0.008, 0.16, brass, bx, -Hs / 2 + 0.012, -0.1);
     B(g, bw * 0.45, 0.012, 0.11, silver, bx + 0.02, -Hs / 2 + 0.02, -0.09);
   }
