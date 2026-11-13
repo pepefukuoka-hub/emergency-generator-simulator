@@ -1890,7 +1890,7 @@ function walkStep(dt) {
     const nx = walk.pos.x + Math.sign(DOOR.x - walk.pos.x) * Math.min(Math.abs(DOOR.x - walk.pos.x), 1.2 * dt);
     if (!hitAt(nx, walk.pos.z)) walk.pos.x = nx;
   }
-  const inKiki = walk.pos.z < DOOR.z; if (inKiki !== walk.inKiki) { walk.inKiki = inKiki; $('doorGo').textContent = inKiki ? '🚪 発電機室へ戻る' : '🚪 ドアを通って機器室へ'; }
+  const inKiki = walk.pos.z < DOOR.z; if (inKiki !== walk.inKiki) { walk.inKiki = inKiki; $('doorGo').textContent = inKiki ? '🚪 発電機室へ' : '🚪 機器室へ'; }
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
@@ -1922,7 +1922,7 @@ function setWalk(on) {
   }
 }
 const pad = document.createElement('div'); pad.className = 'hud'; pad.style.cssText = 'right:14px;bottom:14px;display:none;padding:6px';
-pad.innerHTML = '<div id=stick style="position:relative;width:140px;height:140px;margin:4px auto;border-radius:50%;background:radial-gradient(circle at 50% 45%,#3b4148,#1c1f23 70%);box-shadow:inset 0 3px 10px #000a,0 0 0 3px #555c;touch-action:none"><div id=stickKnob style="position:absolute;left:42px;top:42px;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#8a9098,#3c4148 60%,#22262a);box-shadow:0 4px 8px #000b,inset 0 -3px 6px #0008"></div></div><div style="font-size:11px;text-align:center;color:#bcd">スティックを倒した方向へ進む（斜めも可）</div>';
+pad.innerHTML = '<div id=stick style="position:relative;width:100px;height:100px;margin:2px auto 0;border-radius:50%;background:radial-gradient(circle at 50% 45%,#3b4148,#1c1f23 70%);box-shadow:inset 0 3px 10px #000a,0 0 0 3px #555c;touch-action:none"><div id=stickKnob style="position:absolute;left:30px;top:30px;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#8a9098,#3c4148 60%,#22262a);box-shadow:0 4px 8px #000b,inset 0 -3px 6px #0008"></div></div>';
 document.body.appendChild(pad);
 function protectControl(b) {
   b.style.userSelect = 'none'; b.style.webkitUserSelect = 'none';
@@ -1959,9 +1959,9 @@ pad.querySelectorAll('button').forEach(b => {
   });
 });
 // スティック：倒した方向へ進む（上＝前、下＝後ろ、左右＝横へ。斜めも可）。倒す量で速さが変わる。横へ倒すと、体も少しずつその向きへ回る
-{ const st = $('stick'), kn = $('stickKnob'), R = 48; let id = null;
+{ const st = $('stick'), kn = $('stickKnob'), R = 34; let id = null;
   const set = (x, y) => { kn.style.transform = `translate(${x}px,${y}px)`; walk.pad.f = -y / R; walk.pad.x = x / R; };
-  const move = e => { const r = st.getBoundingClientRect(); let x = e.clientX - r.left - 70, y = e.clientY - r.top - 70; const l = Math.hypot(x, y); if (l > R) { x *= R / l; y *= R / l; } set(x, y); };
+  const move = e => { const r = st.getBoundingClientRect(); let x = e.clientX - r.left - 50, y = e.clientY - r.top - 50; const l = Math.hypot(x, y); if (l > R) { x *= R / l; y *= R / l; } set(x, y); };
   const end = e => { if (id === null || (e && e.pointerId !== id)) return; id = null; set(0, 0); };
   protectControl(st);
   st.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); id = e.pointerId; st.setPointerCapture(id); move(e); });
@@ -1972,16 +1972,19 @@ const hint = document.createElement('div'); hint.className = 'hud'; hint.style.c
 hint.innerHTML = '<b>歩く視点</b><br>右下のスティック：倒した方向へ進む（斜めも可）　画面をドラッグ：向きを変える　🏃ボタン／Shift：走る　<br>機器室へは、入口の緑の「機器室」の札の下のドアを通る（右下の「🚪 ドアを通って機器室へ」でも移れる）<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
-pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
-pad.insertAdjacentHTML('afterbegin', '<button id=runBtn style="display:block;width:100%;margin:2px 0">🚶 歩く（押すと 🏃 走る）</button>');
-$('runBtn').onclick = () => { walk.runOn = !walk.runOn; $('runBtn').textContent = walk.runOn ? '🏃 走る（押すと 🚶 歩く）' : '🚶 歩く（押すと 🏃 走る）'; $('runBtn').classList.toggle('on', walk.runOn); };
+pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none" title="押すたびに 本人の目線→後ろから→正面から">👁 本人</button><button id=doorGo style="background:#2a6;color:#fff">🚪 機器室へ</button>');
+pad.insertAdjacentHTML('afterbegin', '<button id=runBtn>🚶 歩く</button>');
+$('runBtn').onclick = () => { walk.runOn = !walk.runOn; $('runBtn').textContent = walk.runOn ? '🏃 走る' : '🚶 歩く'; $('runBtn').classList.toggle('on', walk.runOn); };
 protectControl($('runBtn'));
-$('doorGo').onclick = goThroughDoor; protectControl($('doorGo'));
+$('doorGo').onclick = goThroughDoor;
+{ const cs = document.createElement('style'); cs.textContent = '#padBox{right:8px!important;bottom:8px!important;padding:4px!important;width:auto}#padBox button{font-size:12px!important;padding:3px 6px!important;margin:1px!important;min-height:30px;display:inline-block!important;width:auto!important}#padBox .pbRow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;max-width:200px}';
+  document.head.appendChild(cs); pad.id = 'padBox'; const row = document.createElement('div'); row.className = 'pbRow'; ['runBtn', 'personView', 'doorGo'].forEach(id => row.appendChild($(id))); pad.insertBefore(row, pad.firstChild); }
+ protectControl($('doorGo'));
 $('personView').onclick = () => {
   // 本人の目線 → 後ろから見る → 正面から見る → 本人の目線 の順に切り替える。向き（yaw・pitch）は、そのまま引き継ぐ
   stopMovement();
   if (!walk.third) { walk.third = true; walk.front = false; } else if (!walk.front) walk.front = true; else { walk.third = false; walk.front = false; }
-  $('personView').textContent = !walk.third ? '本人の目線 → 後ろから見る' : !walk.front ? '後ろから見る → 正面から見る' : '正面から見る → 本人の目線';
+  $('personView').textContent = !walk.third ? '👁 本人' : !walk.front ? '👤 後ろ' : '🙂 正面';
 };
 protectControl($('personView'));
 $('bw').onclick = () => setWalk(!walk.on);
