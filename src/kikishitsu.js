@@ -2,11 +2,17 @@
 // 教育用の想像モデル。位置は図面からの近似、盤面の絵・高さ・色は推測。形式名・メーカー名は入れない。
 import * as THREE from 'three';
 import { makeHv } from './kiki-hv.js';
+import { roadLighting } from './road-lighting.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { makeCcrInside } from './ccr-inside.js';
 
 export function buildKiki({ M, canvasTex, plateMat }) {
   const g = new THREE.Group();
   const blocks = [];
   const hv = makeHv({ M, canvasTex });
+  let road;
+  const ccrDoors = [];   // CCR の扉（上段・下段）。発電機室の盤の裏扉と同じ形（leaves・toggle）で main.js へ渡す
+  let CI = null;
   // 室の内のり。発電機室（X −13〜3.6）と壁をそろえ、ドアの壁（Z −3.4）から −Z へ約23m。
   const X0 = -13, X1 = 3.6, Z0 = -26.5, Z1 = -3.62, H = 4.4;
   // 図面の写真の画素 → 座標（図の左＝−Z、図の上＝+X）
@@ -275,16 +281,158 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   };
   DRAW.plain = () => (c, w, h) => { c.fillStyle = GRG; c.fillRect(0, 0, w, h); };
   // 盤1面：本体の箱＋正面の絵。dir は正面の向き。
+  // コンデンサ盤（No.7・8）の扉と中身（写真3枚より。No.8 の「88C2」の札は推測）。
+  // 扉は1枚で、正面から見て右（−Z）に蝶番。扉の裏に縦横の配線ダクト・補助リレー・書類入れ。
+  // 中は上から：制御の区画（端子台・名札・小形の配線用遮断器3台・ヒューズ2本）、真空電磁接触器の引出し（88C）、棚、通気口つきの下の化粧板。
+  // 下の化粧板の奥（コンデンサ・リアクトル）は写っておらず、作っていない。寸法は写真からの目安。形式名・メーカー名は入れない
+  const CAPD = 0.62, capDoors = [];
+  const wireM = M(0xf2d21b, 0, 0.5), blackM = M(0x1b1c1e, 0.25, 0.55), inM = M(0xd9d6c8, 0.15, 0.7), frmM = M(0xa9abba, 0.35, 0.5);
+  // 穴あきの配線ダクト。vert＝縦に立つダクト（横長の穴が縦に並ぶ）、横のダクトは縦長の穴が横に並ぶ。穴の奥に黄色い線が少し見える
+  const ductTex = (n, vert) => canvasTex(vert ? 64 : 256, vert ? 256 : 64, (c, w, h) => {
+    c.fillStyle = '#b4b6c3'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < n; i++) { const t = (i + 0.5) / n;
+      if (vert) { const y = t * h, s = h / n; c.fillStyle = '#34353c'; c.fillRect(w * 0.14, y - s * 0.2, w * 0.72, s * 0.4); c.fillStyle = 'rgba(214,180,40,.55)'; c.fillRect(w * 0.3, y - s * 0.08, w * 0.4, s * 0.16); }
+      else { const x = t * w, s = w / n; c.fillStyle = '#34353c'; c.fillRect(x - s * 0.2, h * 0.14, s * 0.4, h * 0.72); c.fillStyle = 'rgba(214,180,40,.55)'; c.fillRect(x - s * 0.08, h * 0.3, s * 0.16, h * 0.4); } }
+    c.fillStyle = 'rgba(255,255,255,.25)'; if (vert) { c.fillRect(0, 0, 2, h); c.fillRect(w - 2, 0, 2, h); } else { c.fillRect(0, 0, w, 2); c.fillRect(0, h - 2, w, 2); }
+  });
+  const ductMs = {}; const ductM = (n, vert) => ductMs[n + '' + !!vert] || (ductMs[n + '' + !!vert] = M(0xffffff, 0.2, 0.55, { map: ductTex(n, vert) }));
+  const txtTex = (t, w, h, px, bg = '#f6f6f0', fg = '#111') => canvasTex(w, h, (c, W, H) => { c.fillStyle = bg; c.fillRect(0, 0, W, H); c.strokeStyle = '#777'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, W - 1, H - 1); c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, t, W / 2, H / 2 + 1, W - 4, px); });
+  // 真空電磁接触器の前板（銘板は文字を入れず線だけ。注意の札・開閉回数計）
+  const vcsTex = canvasTex(256, 320, (c, w, h) => {
+    c.fillStyle = '#dcd8ca'; c.fillRect(0, 0, w, h); const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.12)'); gr.addColorStop(1, 'rgba(0,0,0,.08)'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#5d5f63'; c.fillRect(48, 24, 160, 34); c.fillStyle = '#e9e9e4'; c.fillRect(60, 32, 136, 4); c.fillRect(60, 40, 136, 3); c.fillRect(60, 47, 136, 3);
+    c.fillStyle = '#f2f2ee'; c.fillRect(48, 58, 160, 40); c.fillStyle = '#9a9a96'; for (let i = 0; i < 6; i++) c.fillRect(56, 63 + i * 5.6, 144, 1.4);
+    for (const [x, y] of [[40, 108], [216, 108], [40, 210], [216, 210]]) { c.fillStyle = '#9b9a92'; c.beginPath(); c.arc(x, y, 3.5, 0, 7); c.fill(); }
+    c.fillStyle = '#f3f3ee'; c.fillRect(150, 186, 52, 22); c.fillStyle = '#f2c81c'; for (const x of [152, 166, 180, 194]) { c.beginPath(); c.moveTo(x, 205); c.lineTo(x + 5, 194); c.lineTo(x + 10, 205); c.fill(); }
+    c.fillStyle = '#f3f3ee'; c.fillRect(90, 186, 42, 30); c.fillStyle = '#555'; for (let i = 0; i < 4; i++) c.fillRect(94, 191 + i * 6, 34, 1.5);
+    c.fillStyle = '#c7271f'; c.fillRect(62, 214, 26, 8); c.fillStyle = '#111'; c.fillRect(62, 214, 10, 8);
+    c.fillStyle = '#191919'; c.fillRect(150, 228, 36, 14); c.fillStyle = '#e8e8e2'; c.font = 'bold 10px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('0123', 168, 236);
+    c.fillStyle = '#f3f3ee'; c.fillRect(150, 248, 30, 34); c.fillStyle = '#666'; for (let i = 0; i < 4; i++) c.fillRect(153, 252 + i * 7, 24, 1.4);
+    c.fillStyle = '#26282b'; c.fillRect(196, 250, 8, 30);
+  });
+  // 下の化粧板（通気口2組・取っ手）
+  const lowTex = canvasTex(256, 288, (c, w, h) => {
+    c.fillStyle = '#dad7c9'; c.fillRect(0, 0, w, h); c.strokeStyle = '#a8a597'; c.lineWidth = 2; c.strokeRect(10, 4, w - 20, h - 8);
+    for (const [y0, y1] of [[18, 130], [150, 272]]) for (let y = y0; y < y1; y += 9) for (let x = 46 + (((y - y0) / 9) % 2) * 6; x < 196; x += 12) { c.fillStyle = '#4a4a46'; c.fillRect(x, y, 8, 4); c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(x, y + 4, 8, 1); }
+    c.fillStyle = '#8f8d82'; for (const [x, y] of [[22, 16], [234, 16], [22, 272], [234, 272]]) { c.beginPath(); c.arc(x, y, 3, 0, 7); c.fill(); }
+  });
+  const tube = (pts, r, m) => { const o = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 20, r, 6, false), m); g.add(o); return o; };
+  function capPanel(x0, x1, z0, z1, h, frontMat, k) {
+    const wd = z1 - z0;
+    // 盤内の座標：u＝前面からの奥行き、l＝正面から見て左端からの距離、y＝高さ
+    const B = (u0, u1, l0, l1, y0, y1, m) => box(x1 - u1, x1 - u0, y0, y1, z1 - l1, z1 - l0, m);
+    const P = (u, l, y) => [x1 - u, y, z1 - l];
+    const RB = (u, l, y, du, dl, dy, r, m) => { const o = new THREE.Mesh(new RoundedBoxGeometry(du, dy, dl, 3, r), m); o.position.set(x1 - u, y, z1 - l); g.add(o); return o; };
+    const face = (m, u, l, y, wl, hy) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(wl, hy), m); o.rotation.y = Math.PI / 2; o.position.set(x1 - u, y, z1 - l); g.add(o); return o; };
+    // 箱（奥の板・側板・天板）
+    B(CAPD - 0.02, CAPD, 0, wd, 0.06, h, inM); B(0.026, CAPD, 0, 0.02, 0.06, h, inM); B(0.026, CAPD, wd - 0.02, wd, 0.06, h, inM); B(0.026, CAPD, 0, wd, h - 0.02, h, inM);
+    B(0.002, 0.026, 0, 0.004, 0.06, h, body); B(0.002, 0.026, wd - 0.004, wd, 0.06, h, body);
+    B(0, CAPD, 0, wd, 0.06, 0.08, inM);
+    B(0.026, 0.04, 0, 0.025, 0.06, h, body); B(0.026, 0.04, wd - 0.025, wd, 0.06, h, body); B(0.026, 0.04, 0, wd, h - 0.03, h, body);   // 扉の当たりの枠
+    // 天井の照明（写真：上部に細長い灯具）
+    B(0.18, 0.24, 0.12, wd - 0.18, h - 0.06, h - 0.03, M(0xf4f4f0, 0.1, 0.5)); B(0.19, 0.23, 0.13, wd - 0.19, h - 0.07, h - 0.06, M(0xffffff, 0, 0.3, { emissive: 0xffffff, emissiveIntensity: 0.9 }));
+    // ① 制御の区画：グレーの枠（左右の柱・上のダクト・下の棚）
+    for (const l of [0.05, 0.585]) B(0.18, 0.5, l, l + 0.035, 1.49, h - 0.03, frmM);
+    B(0.2, 0.3, 0.085, 0.585, 1.99, 2.05, ductM(30));                      // 上の横ダクト（線が上へ入る）
+    B(0.17, 0.5, 0.05, 0.62, 1.47, 1.53, frmM); B(0.165, 0.18, 0.05, 0.62, 1.47, 1.545, frmM);   // 下の棚（前の立ち上がり）
+    B(0.3, 0.31, 0.085, 0.585, 1.55, 1.99, inM);                           // 取付板
+    B(0.27, 0.3, 0.1, 0.57, 1.9, 1.92, M(0xc9cbcd, 0.75, 0.3));             // 端子台のレール
+    for (let i = 0; i < 16; i++) { const l = 0.115 + i * 0.029 + (i > 2 ? 0.02 : 0) + (i > 13 ? 0.02 : 0); if (l > 0.56) break;
+      RB(0.255, l, 1.91, 0.035, 0.022, 0.07, 0.004, i < 3 ? M(0x3a3c40, 0.3, 0.5) : blackM); B(0.236, 0.238, l - 0.006, l + 0.006, 1.93, 1.945, M(0xc98a2a, 0.2, 0.5));
+      tube([P(0.25, l, 1.945), P(0.25, l + 0.004, 1.97), P(0.25, l, 1.995)], 0.0028, wireM); tube([P(0.25, l, 1.875), P(0.252, l - 0.004, 1.84), P(0.27, l, 1.8)], 0.0028, wireM); }
+    for (let i = 0; i < 6; i++) face(M(0xffffff, 0, 0.6, { map: txtTex(['制御電源', '表示電源', '開閉器', 'コンデンサ', '投入回路', 'コンデンサ'][i] , 128, 40, 22) }), 0.278, 0.13 + i * 0.075, 1.835, 0.06, 0.018);
+    // 小形の配線用遮断器3台・端子・ヒューズ2本（下の棚へ黄色い線）
+    for (let i = 0; i < 3; i++) { const l = 0.14 + i * 0.075;
+      RB(0.25, l, 1.665, 0.07, 0.058, 0.11, 0.006, M(0xe9e9e3, 0.1, 0.45)); B(0.213, 0.216, l - 0.02, l + 0.02, 1.68, 1.715, M(0xe9e2d2, 0.1, 0.5));
+      RB(0.21, l, 1.665, 0.02, 0.016, 0.026, 0.004, blackM); B(0.213, 0.215, l + 0.008, l + 0.022, 1.632, 1.646, M(0xf08a1a, 0.1, 0.5));
+      for (const d of [-0.016, 0, 0.016]) { tube([P(0.25, l + d, 1.61), P(0.25, l + d, 1.57), P(0.27, l + d, 1.535)], 0.0028, wireM); tube([P(0.25, l + d, 1.72), P(0.25, l + d, 1.76), P(0.265, l + d, 1.8)], 0.0028, wireM); } }
+    RB(0.26, 0.37, 1.665, 0.05, 0.03, 0.05, 0.004, M(0x4a4d52, 0.3, 0.5)); for (const d of [-0.006, 0.006]) tube([P(0.25, 0.37 + d, 1.64), P(0.255, 0.37 + d, 1.58), P(0.27, 0.37 + d, 1.535)], 0.0028, wireM);
+    B(0.285, 0.295, 0.41, 0.56, 1.655, 1.675, M(0xc9cbcd, 0.75, 0.3));
+    for (const l of [0.45, 0.51]) { RB(0.25, l, 1.665, 0.06, 0.036, 0.08, 0.006, M(0xf1f1ec, 0.05, 0.4)); const cy = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.02, 20), M(0xd8d8d2, 0.1, 0.35)); cy.rotation.z = Math.PI / 2; cy.position.set(...P(0.21, l, 1.675)); g.add(cy);
+      tube([P(0.25, l, 1.62), P(0.25, l, 1.57), P(0.27, l, 1.535)], 0.0028, wireM); }
+    // 右の縦ダクトと、上から下りるケーブルの束
+    B(0.2, 0.3, 0.635, 0.69, 1.3, h - 0.03, ductM(60, true));
+    for (let i = 0; i < 5; i++) { const l = 0.66 + (i % 3) * 0.012, du = 0.33 + (i % 2) * 0.03; tube([P(du, l, h), P(du, l, 1.9), P(du + 0.01, l - 0.01, 1.6), P(du + 0.05, l - 0.02, 1.32)], i < 3 ? 0.009 : 0.005, i < 3 ? blackM : M(0x8a5a40, 0.1, 0.6)); }
+    // 左の壁ぎわ：引出しの制御線（黄色い束）が、灰色の保護チューブで上の区画へ
+    tube([P(0.3, 0.18, 1.06), P(0.24, 0.1, 1.0), P(0.26, 0.04, 1.1), P(0.3, 0.035, 1.35), P(0.33, 0.035, 1.6)], 0.014, M(0xa8acb2, 0.5, 0.45));
+    // ② 真空電磁接触器の引出し：黒い開口、前板、取っ手2本、赤・青の制御プラグ、引出しの台（真ちゅう色）
+    B(0.32, 0.34, 0.12, 0.62, 0.93, 1.47, blackM); B(0.2, 0.32, 0.12, 0.14, 0.93, 1.47, blackM); B(0.2, 0.32, 0.6, 0.62, 0.93, 1.47, inM);
+    B(0.24, 0.32, 0.145, 0.555, 0.98, 1.46, M(0xd0ccbd, 0.2, 0.55)); face(M(0xffffff, 0.15, 0.55, { map: vcsTex }), 0.239, 0.35, 1.22, 0.41, 0.48);
+    for (const l of [0.2, 0.5]) { const hdl = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.12, 6, 12), M(0x8b8f95, 0.6, 0.35)); hdl.position.set(...P(0.215, l, 1.2)); g.add(hdl);
+      for (const dy of [-0.06, 0.06]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.025, 10), M(0x8b8f95, 0.6, 0.35)); st.rotation.z = Math.PI / 2; st.position.set(...P(0.228, l, 1.2 + dy)); g.add(st); } }
+    for (const [l, col] of [[0.24, 0xd8232a], [0.3, 0x1f4fd8]]) { RB(0.225, l, 1.045, 0.035, 0.05, 0.04, 0.005, M(col, 0.1, 0.4)); RB(0.205, l, 1.045, 0.012, 0.03, 0.022, 0.003, M(0x2a2a2a, 0.2, 0.5));
+      for (let t = 0; t < 4; t++) tube([P(0.2, l - 0.012 + t * 0.008, 1.06), P(0.18, l + 0.01 + t * 0.006, 1.1), P(0.19, l - 0.04, 1.08), P(0.27, 0.18, 1.05)], 0.0026, wireM); }
+    B(0.15, 0.33, 0.14, 0.6, 0.955, 0.972, M(0xb9a24a, 0.75, 0.35)); for (const l of [0.14, 0.59]) B(0.15, 0.33, l, l + 0.012, 0.972, 1.0, M(0xb9a24a, 0.75, 0.35));
+    B(0.2, 0.3, 0.34, 0.45, 0.972, 0.976, M(0xc7c09c, 0.6, 0.4)); B(0.16, 0.2, 0.33, 0.36, 0.972, 0.975, M(0xd8232a, 0.1, 0.5));
+    // 88C の札（引出しの右上と、盤の右側）
+    const tg = txtTex('88C' + k, 96, 40, 26); for (const l of [0.48, 0.585]) face(M(0xffffff, 0, 0.6, { map: tg }), l < 0.5 ? 0.237 : 0.198, l, 1.43, 0.05, 0.022);
+    // ③ 棚と、下の化粧板
+    B(0.17, CAPD, 0.02, wd - 0.02, 0.86, 0.93, inM); B(0.165, 0.18, 0.02, wd - 0.02, 0.86, 0.935, M(0xe3e0d4, 0.15, 0.6));
+    B(0.18, 0.2, 0.02, wd - 0.02, 0.08, 0.86, inM); face(M(0xffffff, 0.15, 0.6, { map: lowTex }), 0.179, wd / 2, 0.47, wd - 0.06, 0.76);
+    const lh = new THREE.Mesh(new THREE.CapsuleGeometry(0.007, 0.07, 6, 10), blackM); lh.position.set(...P(0.17, wd - 0.13, 0.52)); g.add(lh);
+    // ---------- 扉（正面から見て右に蝶番。開くと通路側へ） ----------
+    const lg = new THREE.Group(); lg.position.set(x1, 0, z0); g.add(lg);
+    const D = (a, b, y0, y1, za, zb, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(b - a, y1 - y0, zb - za), m); o.position.set((a + b) / 2, (y0 + y1) / 2, (za + zb) / 2); lg.add(o); return o; };
+    const DT = (pts, r, m) => { const o = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 16, r, 6, false), m); lg.add(o); };
+    const DR = (x, y, z, dx, dy, dz, r, m) => { const o = new THREE.Mesh(new RoundedBoxGeometry(dx, dy, dz, 3, r), m); o.position.set(x, y, z); lg.add(o); return o; };
+    const hh = h - 0.06; D(-0.024, 0, 0.065, h - 0.005, 0.001, wd - 0.001, body);
+    { const o = new THREE.Mesh(new THREE.PlaneGeometry(wd - 0.002, hh), frontMat); o.rotation.y = Math.PI / 2; o.position.set(0.002, 0.06 + hh / 2, wd / 2); lg.add(o); }
+    D(-0.026, -0.024, 0.1, h - 0.04, 0.03, wd - 0.03, M(0xdedbcf, 0.15, 0.7));    // 扉の裏の面
+    // 縦ダクト（蝶番の側）と横ダクト4本
+    D(-0.11, -0.026, 0.82, 2.12, 0.07, 0.12, ductM(80, true));
+    for (const y of [2.09, 1.64, 1.1, 0.84]) D(-0.13, -0.026, y - 0.03, y + 0.03, 0.12, 0.52, ductM(26));
+    // 補助リレー（ソケット付き。黒・黄色い線がダクトへ）
+    const relay = (z, y) => { DR(-0.055, y, z, 0.05, 0.05, 0.045, 0.004, blackM); D(-0.083, -0.079, y - 0.012, y + 0.012, z - 0.016, z + 0.016, M(0x3f4247, 0.3, 0.5));
+      for (const dz of [-0.012, 0, 0.012]) DT([[-0.06, y + 0.025, z + dz], [-0.07, y + 0.05, z + dz], [-0.075, y + (y > 1.2 ? 0.08 : 0.06), z + dz + 0.01]], 0.0024, wireM); };
+    relay(0.3, 1.58); relay(0.36, 1.58); relay(0.3, 1.17); relay(0.27, 1.01); relay(0.33, 1.01); relay(0.27, 0.92); relay(0.36, 0.92); relay(0.27, 0.75); relay(0.33, 0.75);
+    D(-0.05, -0.026, 2.13, 2.17, 0.15, 0.4, M(0xc9cbcd, 0.75, 0.3)); for (let i = 0; i < 9; i++) { D(-0.07, -0.05, 2.12, 2.18, 0.16 + i * 0.026, 0.18 + i * 0.026, blackM); DT([[-0.06, 2.12, 0.17 + i * 0.026], [-0.065, 2.0, 0.15 + i * 0.01], [-0.07, 1.9, 0.1]], 0.0024, wireM); }
+    // 書類入れ・銘板・扉の締め金の棒
+    D(-0.05, -0.026, 0.33, 0.67, 0.13, 0.33, M(0xd6d3c6, 0.25, 0.6)); D(-0.052, -0.05, 0.6, 0.62, 0.2, 0.26, M(0x555, 0.2, 0.6));
+    for (const [y, w2, col] of [[1.43, 0.09, 0xf5f5f0], [1.37, 0.09, 0xf5f5f0], [1.27, 0.08, 0xc9c9c2], [1.2, 0.08, 0xc9c9c2], [1.12, 0.1, 0xd6d6d0]]) D(-0.0275, -0.026, y - 0.025, y + 0.025, 0.58 - w2 / 2, 0.58 + w2 / 2, M(col, 0.3, 0.5));
+    { const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.9, 10), M(0xbfc2c4, 0.8, 0.3)); rod.position.set(-0.04, 1.18, wd - 0.09); lg.add(rod);
+      DR(-0.045, 1.0, wd - 0.09, 0.03, 0.08, 0.03, 0.006, M(0x9ea2a6, 0.7, 0.35)); }
+    capDoors.push({ leaves: [lg], cur: 0, target: 0, OPEN: 1.6, toggle() { this.target = this.target ? 0 : this.OPEN; } });
+  }
   function cab(x0, x1, z0, z1, h, dir, kind, no, name, back) {
-    if (!(name && name.secs)) { box(x0, x1, 0.06, h, z0, z1, body); box(x0 + 0.02, x1 - 0.02, 0, 0.06, z0 + 0.02, z1 - 0.02, plinth); }
+    if (kind === 'ccr' && dir === 'x+') return ccrCab(x0, x1, z0, z1, h, no, name, back);
+    if (!(name && name.secs)) { box(x0, name && name.cap ? x1 - CAPD : x1, 0.06, h, z0, z1, body); box(x0 + 0.02, x1 - 0.02, 0, 0.06, z0 + 0.02, z1 - 0.02, plinth); }
     const e = 0.004, hh = h - 0.06, cy = 0.06 + hh / 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wd = dir[0] === 'x' ? z1 - z0 : x1 - x0;
     const tex = (k, a, b) => { const R = FINE.includes(k) ? 2 : 1, d = DRAW[k](a, b); return M(0xffffff, 0.2, 0.55, { map: canvasTex(256 * R, Math.round(256 * hh / wd) * R, (c, w, hc) => { c.save(); c.scale(R, R); d(c, w / R, hc / R); c.restore(); }) }); };
     const put = (m, d) => { if (d === 'x+') plane(wd, hh, m, x1 + e, cy, cz, d); else if (d === 'x-') plane(wd, hh, m, x0 - e, cy, cz, d); else if (d === 'z+') plane(wd, hh, m, cx, cy, z1 + e, d); else plane(wd, hh, m, cx, cy, z0 - e, d); };
     if (name && name.secs && dir[0] === 'x') {   // 高圧の盤：区画ごとの扉と中身（kiki-hv.js）
       const fx = dir === 'x-' ? x0 : x1; hv.build(g, new THREE.Vector3(fx, 0, cz), ROT[dir], wd, x1 - x0, h, tex(kind, no, name), name.secs); return;
     }
-    put(tex(kind, no, name), dir);
+    if (name && name.cap) capPanel(x0, x1, z0, z1, h, tex(kind, no, name), name.cap); else put(tex(kind, no, name), dir);
     if (back) put(tex('stack', back[0], back[1]), { 'x+': 'x-', 'x-': 'x+', 'z+': 'z-', 'z-': 'z+' }[dir]);
+  }
+  // CCR の盤（正面 +X）：箱の外側＋上下2枚の扉（タップで開閉、左の蝶番で手前へ開く）。中身は、初めて開けたときに作る（ccr-inside.js、写真 IMG_3609〜3614）
+  function ccrCab(x0, x1, z0, z1, h, no, d, back) {
+    CI = CI || makeCcrInside({ M, canvasTex });
+    const W = z1 - z0, D = x1 - x0, hh = h - 0.06, T = hh / 2, t = 0.02, PD = 0.42, sh = CI.mt.shell, inn = CI.mt.inner;
+    const grp = new THREE.Group(); grp.position.set(x0, 0.06, z1); grp.rotation.y = Math.PI / 2; g.add(grp);   // u＝正面から見て左→右（−Z）、d＝奥→手前（+X）
+    const B = (u0, u1, v0, v1, d0, d1, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(u1 - u0, v1 - v0, d1 - d0), m); o.position.set((u0 + u1) / 2, (v0 + v1) / 2, (d0 + d1) / 2); grp.add(o); return o; };
+    box(x0 + 0.02, x1 - 0.02, 0, 0.06, z0 + 0.02, z1 - 0.02, plinth);
+    B(0, W, 0, hh, 0, PD, body);                                                   // 取付板より奥（見えない部分）
+    for (const [a, b] of [[0, t], [W - t, W]]) B(a, b, 0, hh, PD, D - t, sh);       // 側板
+    B(0, W, hh - t, hh, PD, D - t, sh); B(0, W, 0, t, PD, D - t, sh); B(0, W, T - 0.015, T + 0.015, PD, D - t, sh);   // 天板・底板・中仕切り
+    B(t, W - t, t, hh - t, PD - 0.001, PD, inn);
+    // 正面の絵（上下に分けて扉に貼る）
+    const R = 2, fd = DRAW.ccr(no, d), ftex = canvasTex(256 * R, Math.round(256 * hh / W) * R, (c, w, hc) => { c.save(); c.scale(R, R); fd(c, w / R, hc / R); c.restore(); });
+    const fm = M(0xffffff, 0.2, 0.55, { map: ftex });
+    const tiers = [[T, true], [0, false]];
+    for (const [v0, up] of tiers) {
+      const leaf = new THREE.Group(); leaf.position.set(0, v0, D); grp.add(leaf); leaf.userData.k = -1;
+      const lh = T - 0.004, dm = new THREE.Mesh(new THREE.BoxGeometry(W - 0.006, lh, t), sh); dm.position.set(W / 2, T / 2, -t / 2); leaf.add(dm);
+      const geo = new THREE.PlaneGeometry(W - 0.006, lh), uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, (up ? 0.5 : 0) + uv.getY(i) * 0.5);
+      const fp = new THREE.Mesh(geo, fm); fp.position.set(W / 2, T / 2, 0.003); leaf.add(fp);
+      const inside = new THREE.Group(); inside.position.set(0, v0, 0); inside.visible = false; grp.add(inside);
+      const title = up ? d.up.title : d.lo.title;
+      const door = { leaves: [leaf], light: { intensity: 0 }, cur: 0, target: 0, OPEN: 1.75, built: false, inside, up, title, cab: [x0, x1, z0, z1],
+        build() { if (this.built) return; this.built = true; (up ? CI.upper : CI.lower)(inside, W, T, PD, D - t, title); CI.doorBack(leaf, W - 0.006, lh, t, up); },
+        toggle() { this.build(); this.target = this.target ? 0 : this.OPEN; inside.visible = true; } };
+      ccrDoors.push(door);
+    }
+    if (back) { const m = M(0xffffff, 0.2, 0.55, { map: canvasTex(256, Math.round(256 * hh / W), (c, w, hc) => DRAW.stack(back[0], back[1])(c, w, hc)) }); plane(W, hh, m, x0 - 0.004, 0.06 + hh / 2, (z0 + z1) / 2, 'x-'); }
   }
   const rackTex = canvasTex(64, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#b8bcbf'; c.fillRect(0, 0, w, 5); c.fillRect(0, h - 5, w, 5); c.fillRect(8, 0, 6, h); c.fillRect(40, 0, 6, h); }, [1, 1]);
   // ケーブルラック（盤の列の上。ビデオより。高さ・幅は推測）
@@ -328,7 +476,14 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       [1.0, '22', { plate: 'No.2 CCR変圧器盤', parts: [...std('420V', 4).map(e => e[0] === 'wm' ? [...e.slice(0, 5), 600, e[6]] : e), ['handle', 0.86, 0.55], ['round', 0.1, 0.48, 0.07]] }],
       [1.0, '21', { plate: 'No.1 CCR変圧器盤', parts: [...std('420V', 4).map(e => e[0] === 'wm' ? [...e.slice(0, 5), 600, e[6]] : e), ['handle', 0.86, 0.55], ['round', 0.1, 0.48, 0.07]] }]];
     const tot = P.reduce((a, p) => a + p[0], 0), za = zc(442), zb = zc(895); let z = za;
-    for (const [u, no, d] of P) { const z1 = z + (zb - za) * u / tot; cab(xb, xa, z + 0.004, z1 - 0.004, 2.3, 'x-', 'trp', no, d); z = z1; }
+    for (let i=0;i<P.length;i++) { const [u,no,d]=P[i], z1=z+(zb-za)*u/tot;
+      if(no==='28'){
+        const end=z+(zb-za)*(u+P[i+1][0])/tot, width=end-z-.008;
+        const fronts=[d,P[i+1][2]].map(data=>M(0xffffff,.2,.55,{map:canvasTex(512,1024,DRAW.trp('',data))}));
+        road=roadLighting({width,height:2.3,depth:xa-xb,materials:[body,plinth],fronts,canvasTex});
+        road.g.position.set(xb,0,(z+end)/2);road.g.rotation.y=-Math.PI/2;g.add(road.g);z=end;i++;
+      }else{cab(xb,xa,z+.004,z1-.004,2.3,'x-','trp',no,d);z=z1;}
+    }
   }
   // B 定電流調整器（CCR）の列。上下2段。正面は +X（北向き。図面の三角の印の側。CCT の写真で確かめた向きと同じ）。南の面は背面で、パンチングの通気口と名札（ビデオ）。正面の盤面は写真5枚に合わせた（DRAW.ccr）
   { const u = (t, type) => ({ title: t, type }), st = (a, b, up, lo) => [[a, b], { up, lo }];
@@ -412,7 +567,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   // 区画の種類（上から）。配電盤・饋電盤＝VCB の区画、VT盤・ZPD盤＝ZPD の区画の作り（写真2組より。ほかの区画も同じ作りとした）。空欄の区画は開かない
   const S3 = [[0, 0.345], [0.345, 0.665], [0.665, 1]], sec = k => S3.map(([a, b], i) => [a, b, k[i]]);
   const SECS = { '6': sec(['vcb', 'vcb', null]), '5': sec(['vcb', 'vcb', 'vcb']), 'E4': sec(['vt', 'zpd', 'vcb']), '14': sec(['vcb', 'vcb', 'vcb']), '13': sec(['vcb', 'vcb', 'vcb']), '12': sec(['vt', 'zpd', 'vcb']) };
-  const HVd = no => ({ parts: HV[no], secs: SECS[no] });
+  const HVd = no => ({ parts: HV[no], secs: SECS[no], ...(no === '7' ? { cap: 1 } : no === '8' ? { cap: 2 } : {}) });
   // D CCR用UPS（No.62・63。図面では破線）
   // 2列は向かい合わせ（No.1 は正面 −X、No.2 は正面 +X。利用者の指示）。列の中の盤は、すき間なしで並べる。
   // 幅は実物の面数（入出力1・UPS2・蓄電池3）の割合。奥行きは 0.8m とし、2列の間に約1mの通路を残す（推測）
@@ -487,15 +642,18 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     plane(0.6, 0.17, m, (DX0 + DX1) / 2, 2.4, Z1 - 0.01, 'z-'); }
 
   const views = {
+    道路駐車場照明盤: [[road.g.position.x-3.4,1.55,road.g.position.z],[road.g.position.x,1.15,road.g.position.z]],
     全体: [[-17.5, 15, -15], [-4.5, 0, -15]],
     入口から: [[-5.3, 1.65, -4.3], [-6.6, 1.2, -14]],
     受配電盤: [[-6.9, 1.7, -3.9], [-6.9, 1.2, -8.5]],
     CCRの列: [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]],
+    CCRの中: [[-2.2, 1.5, -17.2], [-4.1, 1.3, -17.2]],
     CCT: [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]],
     CCR用UPS: [[-11.3, 1.6, -19.0], [-9.2, 1.1, -21.3]],
     変圧器盤: [[-2.6, 1.8, -10.6], [-0.9, 1.2, -17]],
     配電盤の中: [[-6.9, 1.5, -7.0], [-8.8, 1.1, -8.6]],
     饋電盤の中: [[-6.7, 1.25, -8.2], [-4.8, 0.95, -7.0]],
+    コンデンサ盤: [[-6.3, 1.65, -6.25], [-8.7, 1.25, -6.0]],
   };
   // 視点を選んだときに開ける区画の扉（hv.doors の番号。並びは build の順：E列 6・5・E4、F列 14・13・12）
   const openFor = { 配電盤の中: [9, 15], 饋電盤の中: [5, 6, 7] };
@@ -503,12 +661,13 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   const info = ['機器室（配置図からの想像モデル）', [
     ['受電・饋電盤の列（No.2〜6・74）', [[-7.2, 1.7, -4.2], [-5.0, 1.2, -7.6]], '役割：高圧で受電して、各系統へ送り出す盤の列です。図面の名称は、引込計器盤、受電盤、VT盤・ZPD盤、饋電盤、電力インタフェース盤です。', '見る点：計器の指示、表示灯、継電器の動作表示、異音・異臭、盤内の過熱の跡。', '根拠：点検の周期と項目は、保安規程（電気事業法 第42条）で定めます。', '※ 盤面は正面の写真に合わせました（No.2〜6）。電力インタフェース盤（No.74）は推測です。計器の目盛・整定は目安です。', HVIN],
     ['配電盤・コンデンサ盤の列（No.7〜14）', [[-6.6, 1.7, -4.2], [-9.2, 1.2, -7.6]], '役割：電源切換盤で、商用と発電機の電源を切り換え、配電盤から負荷へ送ります。コンデンサ盤は力率の改善用です。', '見る点：切換の状態表示、コンデンサのふくらみ・油漏れ・異音、直列リアクトルの過熱。', '※ 盤面は正面の写真に合わせました。', HVIN],
+    ['コンデンサ盤の中（No.7・8）', [[-6.3, 1.65, -6.25], [-8.7, 1.25, -6.0]], '扉は1枚で、正面から見て右に蝶番があります。扉をタップすると開け閉めできます。中は上から、制御の区画（端子台、小形の配線用遮断器、ヒューズ）、コンデンサを入り切りする真空電磁接触器（88C）の引出し、通気口のある下の化粧板です。扉の裏には、配線ダクトと補助リレー、書類入れがあります。', '見る点：接触器の開閉回数計の進み方、引出しの位置と制御プラグのはまり、端子のゆるみ・変色、配線用遮断器の入・切、下の通気口のほこり。下の奥のコンデンサ・直列リアクトルは、ふくらみ・油漏れ・うなり音・におい。', '※ 写真3枚から作りました。No.8 の中は No.7 と同じ形で、札の「88C2」は推測です。下の化粧板の奥は写真がなく、作っていません。点検の周期と項目は、保安規程（電気事業法第42条）で定めたものに従います。'],
     ['変圧器盤の列（No.21〜28・52）', [[-3.0, 1.8, -10.4], [-0.9, 1.2, -17]], '役割：CCR用、照明用、所内動力用などの変圧器を納めた盤です。', '見る点：温度計の指示、うなり音の変化、通気口のほこり、油入なら油面と漏れ。', '※ 盤の中身（変圧器の種類・容量）は、図面からは読めず、未確認です。'],
-    ['定電流調整器（CCR）の列（No.31〜52）', [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。', '並び（写真より。正面は北向き、西から）：予備器-4／PAPI、ALS-2、REDL-2、予備器-2／予備器-3、RTZL、RCLL-2、ALS-1／予備器-1、ALS-1、RCLL-1、REDL-1。同じ回路名は、上段が操作部、下段がCCR本体です。', '操作部のパネル：押しボタン、遠方／直接の切換、絶縁抵抗の数字表示（MΩ）、接地警報設定（10・5・3・1・0.5MΩ・OFF）、警報音の入／切。', 'CCR本体のパネル：押しボタン3つ、遠方／直接の切換、液晶の表示画面。', '見る点：絶縁抵抗の表示と、その下がり方。接地警報の設定値。遠方／直接の位置。故障表示。通気口の詰まり。予備器へ切り換えられるか。', '※ 押しボタンの文字は写真で読めず、色だけにしてあります。接地警報設定の値は写真から読んだもので、要確認です。形式名は表示していません。南の面は背面です。'],
+    ['定電流調整器（CCR）の列（No.31〜52）', [[-1.9, 1.9, -19.5], [-4.2, 1.1, -14]], '役割：灯火の直列回路に、一定の電流を流す装置です。光度の段階（タップ）ごとに、出力電流を切り換えます。', '並び（写真より。正面は北向き、西から）：予備器-4／PAPI、ALS-2、REDL-2、予備器-2／予備器-3、RTZL、RCLL-2、ALS-1／予備器-1、ALS-1、RCLL-1、REDL-1。同じ回路名は、上段が操作部、下段がCCR本体です。', '操作部のパネル：押しボタン、遠方／直接の切換、絶縁抵抗の数字表示（MΩ）、接地警報設定（10・5・3・1・0.5MΩ・OFF）、警報音の入／切。', 'CCR本体のパネル：押しボタン3つ、遠方／直接の切換、液晶の表示画面。', '見る点：絶縁抵抗の表示と、その下がり方。接地警報の設定値。遠方／直接の位置。故障表示。通気口の詰まり。予備器へ切り換えられるか。', '扉：上段・下段とも、タップで開け閉めできます。中身は REDL-2 の写真に合わせ、全部の盤を同じ形にしてあります。上段（操作部）：一番上に照明、小形変圧器・操作箱、リレー・端子のユニット、基板、長い端子台、配線用遮断器・小形リレー、下に常用↔予備切替器（予備／常用、切・入の表示、手動操作のつまみ、動作回数計）。下段（CCR本体）：端子ユニット4つ、遮断器・電磁接触器・電源ユニット、リレー・端子の列、左に太いケーブルの束。扉の裏に、表示器の裏・基板・回路図。', '※ 盤ごとの中身の違い、部品の名前・数・配線は未確認です（写真1面分からの想像）。', '※ 押しボタンの文字は写真で読めず、色だけにしてあります。接地警報設定の値は写真から読んだもので、要確認です。形式名は表示していません。南の面は背面です。'],
     ['ケーブル切替盤・CCT（No.51・53〜58・87）', [[-1.9, 1.6, -20.9], [-4.1, 1.2, -20.9]], '並び（写真より。正面は北向き）：西から、掲示を貼った盤、ケーブル切替盤（上）と予備器（下）、TEDL-1・2（上）と TCLL-1・2（下）、RGL（下段だけの低い盤）。', '回路ごとの計器パネル：出力電流計（A）、絶縁抵抗計（MΩ）、表示灯（受電・開路・過電流・接地）、遠方／直接の切換、OFF・ON・RESET の押しボタン。', 'ケーブル切替盤：切換スイッチで、TEDL-1・2、TCLL-1・2 のどれか1回路を、予備器へ切り換えます。ふだんは OFF です。', '見る点：出力電流の指示、絶縁抵抗計の指示（低下の傾向）、開路・過電流・接地の表示、切換スイッチの位置、通気口の詰まり。', '※ 表示灯とボタンの文字は、写真から読んだもので、細部は要確認です。ケーブル導入盤（No.45）の位置は、写真では分からず、作っていません。形式名は表示していません。'],
     ['監視用UPS（No.61-1〜3）', [[0.3, 1.7, -8.6], [0.3, 1.1, -5.4]], '役割：監視・制御の機器へ、停電のときも電気を送り続けます。インバータ盤、直流電源盤、蓄電池盤の3面です。', '見る点：入出力の電圧・電流、故障表示、蓄電池の電圧・液面・温度、ファンの音。', '※ 盤面は写真に合わせました。正面の向きは推測です。'],
     ['CCR用UPS（No.62・63）', [[-11.3, 1.6, -19.0], [-9.2, 1.1, -21.3]], '役割：図面の名称は、CCR-U の入出力盤、UPS盤、蓄電池盤（No.1・No.2）です。図面では破線で描かれています。', '※ 盤面は No.1・No.2 の写真に合わせました。実物は1組6面（入出力盤、UPS盤、操作パネルの盤、蓄電池盤1、直流電流計の盤、蓄電池盤2）ですが、図面の3面に詰めて描いています。写真では UPS盤と蓄電池盤の間に操作パネルの盤がもう1面ありますが、図面の面数に合わせて省いています。破線の意味は未確認です。'],
     ['論理制御盤・灯火インタフェース盤（No.71〜73）', [[-8.5, 1.7, -24.2], [-8.5, 1.1, -26.4]], '役割：監視室の操作卓と、機器室の盤の間で、灯火の入・切と光度の指令、状態の信号を受け渡します。', '見る点：故障表示、電源表示、通信の異常表示。', '※ 論理制御盤（3面）と灯火インタフェース盤の正面は、写真のとおり扉だけです（表示・計器は扉の中）。電流計測処理装置（No.73）は推測です。'],
   ]];
-  return { hv, openFor, group: g, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info };
+  return { hv, openFor, road, group: g, doors: ccrDoors, blocks, room: [X0 + 0.1, X1 - 0.1, Z0 + 0.1, Z1 - 0.1], door: [DX0, DX1], views, info, capDoors };
 }
