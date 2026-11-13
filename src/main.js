@@ -1725,7 +1725,7 @@ const FIRE_MODES = ['accel', 'run', 'xfer', 'supply'];
 
 // ================= 機器室（入口のドアの向こう） =================
 const kiki = buildKiki({ M, canvasTex, plateMat: mat.plate });
-scene.add(kiki.group); window.__kiki = kiki;
+scene.add(kiki.group); window.__kiki = kiki; window.__view = { camera, controls, step: viewStep };
 REARS.push(...kiki.doors);   // 機器室の CCR の扉（上段・下段）も、盤の裏扉と同じくタップで開閉
 
 // ================= UI =================
@@ -1882,6 +1882,21 @@ function goThroughDoor() {
   const toKiki = walk.pos.z >= DOOR.z;
   walk.pos.set(DOOR.x, 1.65, toKiki ? -4.3 : -2.6); walk.yaw = toKiki ? 0 : Math.PI; walk.pitch = -0.05;
 }
+// 全体の視点でも、右下のスティックで動く（利用者の指示）。カメラと見る中心を一緒に、水平に動かす。
+// 上＝前・下＝後ろ・左右＝横へ（斜めも可）。横へ倒すと、向きも少しずつ回る。歩く／走る と ↻ 180° も効く。遠くから見ているときは速く動く
+function viewStep(dt) {
+  const f = walk.pad.f || 0, sx = walk.pad.x || 0, Y = new THREE.Vector3(0, 1, 0);
+  if (!f && !sx && !walk.turnRem) return;
+  fly = null;
+  const off = controls.target.clone().sub(camera.position);
+  let turn = -sx * 0.7 * dt;
+  if (walk.turnRem) { const st = Math.sign(walk.turnRem) * Math.min(Math.abs(walk.turnRem), 6.3 * dt); turn += st; walk.turnRem -= st; if (Math.abs(walk.turnRem) < 1e-4) walk.turnRem = 0; }
+  off.applyAxisAngle(Y, turn); controls.target.copy(camera.position).add(off);
+  const d = new THREE.Vector3(off.x, 0, off.z); if (d.lengthSq() < 1e-8) return; d.normalize();
+  const sp = 1.5 * (walk.runOn ? 2.2 : 1) * Math.max(1, off.length() / 4) * dt;
+  const mv = new THREE.Vector3((d.x * f - d.z * sx) * sp, 0, (d.z * f + d.x * sx) * sp);
+  camera.position.add(mv); controls.target.add(mv);
+}
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight || walk.runOn ? 2.2 : 1;   // 走る：Shift キー、または 🏃 ボタン
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
@@ -1997,7 +2012,7 @@ $('runBtn').onclick = () => setRun(!walk.runOn);
 setRun(true);   // 始まったときは「走る」にしておく（利用者の指示）。ボタンで歩くに切り替えられる
 protectControl($('runBtn'));
 $('doorGo').onclick = goThroughDoor;
-{ const cs = document.createElement('style'); cs.textContent = '#padBox{right:8px!important;bottom:8px!important;padding:4px!important;width:auto}#padBox button{font-size:12px!important;padding:3px 6px!important;margin:1px!important;min-height:30px;display:inline-block!important;width:auto!important}#padBox .pbRow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;max-width:200px}';
+{ const cs = document.createElement('style'); cs.textContent = '#padBox button.pbHide{display:none!important}#padBox{right:8px!important;bottom:8px!important;padding:4px!important;width:auto}#padBox button{font-size:12px!important;padding:3px 6px!important;margin:1px!important;min-height:30px;display:inline-block!important;width:auto!important}#padBox .pbRow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;max-width:200px}';
   document.head.appendChild(cs); pad.id = 'padBox'; const row = document.createElement('div'); row.className = 'pbRow'; ['runBtn', 'turnBtn', 'personView', 'doorGo'].forEach(id => row.appendChild($(id))); pad.insertBefore(row, pad.firstChild); }
  protectControl($('doorGo'));
 $('personView').onclick = () => {
@@ -2844,5 +2859,7 @@ renderer.setAnimationLoop(() => {
   kiki.hv.tick(dt);
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
-  if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);
+  { const show = walk.on || (started && !(typeof RT !== 'undefined' && RT.open)), v = show ? 'block' : 'none'; if (pad.style.display !== v) pad.style.display = v;
+    for (const id of ['doorGo', 'personView']) $(id).classList.toggle('pbHide', !walk.on); }   // スティックは全体の視点でも出す（視点・ドアのボタンは歩く視点だけ）
+  if (walk.on) walkStep(dt); else { viewStep(dt); controls.update(); } renderer.render(scene, camera);
 });
