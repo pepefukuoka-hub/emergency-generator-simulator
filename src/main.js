@@ -1186,7 +1186,7 @@ function buildCabinet(i, x, nm) {
   const tx = panelTex(nm, i), rec = tx.userData.rec, hingeX = x - 0.465, W = 0.93;
   // 盤の躯体（背板・側板・天板・底・前枠）
   bx(x - 0.47, x + 0.47, 0, 2.3, -3.38, -3.36, sheetM, pnl); bx(x - 0.47, x - 0.45, 0, 2.3, -4.88, -2.88, cream, pnl); bx(x + 0.45, x + 0.47, 0, 2.3, -4.88, -2.88, cream, pnl);
-  if (i < 1) bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
+  bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.28, 2.3, -3.38, -2.88, cream, pnl); bx(x - 0.47, x + 0.47, 0, 0.12, -3.38, -2.88, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.25, 2.3, -2.9, -2.875, cream, pnl); bx(x - 0.47, x + 0.47, 0.1, 0.14, -2.9, -2.875, cream, pnl);
   const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i);
@@ -1388,7 +1388,58 @@ const rearDoor4 = (() => {
     bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
   return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
 })();
-const REARS = [rearDoor, rearDoor2, rearDoor3, rearDoor4]; window.__rearDoor4 = rearDoor4; window.__rearDoor2 = rearDoor2; window.__rearDoor3 = rearDoor3;
+// 高圧配電盤 GF2/GF1（一番端）の裏：両開きの裏扉と、中（写真3枚より）。裏から見て上から：ひし形の金網のカバー（取っ手・「89GR」の札）、
+// 3相の導体（裏から見て左から 赤・白・青の札。ほかの盤と逆だが写真どおり）と外側2相のたる形の変流器、制御の列（端子・電磁接触器・小形リレー）、
+// 下段に真空遮断器2台（上下。白い真空バルブ3本・灰色の円板・操作機構）。寸法は近似
+const rearDoor5 = (() => {
+  const x = -8.3, cr = M(0xd3d0c0, 0.25, 0.6), hm = M(0xc9ccce, 0.8, 0.3), g = new THREE.Group(); pnl.add(g);
+  const zb = -3.42, brass = M(0xc9a64a, 0.8, 0.3), steel = M(0x9ea09d, 0.55, 0.55), brown = M(0x6e2a1c, 0.1, 0.4), yel = M(0xf2d21b, 0, 0.55);
+  bx(x - 0.45, x + 0.45, 0.12, 2.28, zb - 0.01, zb, M(0xd6d3c8, 0.2, 0.7), g);
+  const tube = (pts, r, m) => g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 24, r, 8, false), m));
+  const lbl = (t, w, h, px, bg = '#fff') => canvasTex(w, h, (c, W, H) => { c.fillStyle = bg; c.fillRect(0, 0, W, H); c.fillStyle = '#111'; c.font = px + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, W / 2, H / 2 + 1); });
+  const plane = (w, h, tex, px, py, pz, opt = {}) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, ...opt })); m.rotation.y = Math.PI; m.position.set(px, py, pz); g.add(m); return m; };
+  // 一番上：ひし形の金網のカバー（取っ手・89GR の札）
+  const mesh = canvasTex(128, 96, (c, w, h) => { c.fillStyle = '#dcdad2'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'destination-out'; for (let yy = 0; yy < h + 8; yy += 8) for (let xx = (yy / 8 % 2) * 6; xx < w + 12; xx += 12) { c.beginPath(); c.moveTo(xx, yy - 3.4); c.lineTo(xx + 5, yy); c.lineTo(xx, yy + 3.4); c.lineTo(xx - 5, yy); c.fill(); } }, [3, 2]);
+  plane(0.62, 0.36, mesh, x + 0.06, 2.06, -3.91, { alphaTest: 0.5, side: THREE.DoubleSide });
+  for (const [a, b2, c2, d2] of [[x - 0.44, x - 0.25, 1.84, 2.27], [x + 0.37, x + 0.44, 1.84, 2.27], [x - 0.25, x + 0.37, 1.84, 1.88], [x - 0.25, x + 0.37, 2.24, 2.27]]) bx(a, b2, c2, d2, -3.92, -3.9, M(0xcfcdc4, 0.3, 0.55), g);
+  plane(0.11, 0.045, lbl('89GR', 128, 52, 34), x - 0.33, 1.95, -3.922);
+  bx(x - 0.36, x - 0.32, 2.1, 2.2, -3.95, -3.92, M(0xdfe2e4, 0.9, 0.2), g);
+  // 3相の導体と札（裏から見て左から 赤・白・青）、外側2相の変流器（たる形・黄色い札）、後ろの灰色の取付板と配線ダクト
+  bx(x - 0.38, x + 0.38, 1.4, 1.62, -3.6, -3.56, M(0xb5b8ba, 0.4, 0.5), g); bx(x - 0.34, x + 0.34, 1.64, 1.68, -3.58, zb, M(0xc4c7cb, 0.2, 0.55), g);
+  for (const [dx, col, ct] of [[0.24, 0xd8232a, true], [0, 0xf0efe8, false], [-0.24, 0x1f4fd8, true]]) {
+    bx(x + dx - 0.022, x + dx + 0.022, 1.36, 1.84, -3.67, -3.65, steel, g);
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.02, 20), M(col, 0.1, 0.4)); dot.rotation.y = Math.PI; dot.position.set(x + dx, 1.78, -3.672); g.add(dot);
+    if (ct) { const pts = []; for (let k = 0; k <= 10; k++) { const t = k / 10; pts.push(new THREE.Vector2(0.05 + 0.03 * Math.sin(t * Math.PI) + (k === 0 || k === 10 ? 0.012 : 0), -0.11 + 0.22 * t)); }
+      const c = new THREE.Mesh(new THREE.LatheGeometry(pts, 28), brown); c.position.set(x + dx, 1.5, -3.66); g.add(c);
+      plane(0.04, 0.012, lbl('CT', 64, 20, 14, '#f2d21b'), x + dx, 1.58, -3.745); plane(0.035, 0.05, lbl('', 8, 8, 8, '#f4f4f0'), x + dx, 1.5, -3.745); }
+  }
+  // 制御の列：横の配線ダクト2本の間に、端子2・電磁接触器・小形リレー・電磁接触器・端子2（黄色い線）
+  for (const y of [1.3, 0.96]) bx(x - 0.44, x + 0.44, y - 0.03, y + 0.03, -3.58, zb, M(0xb9bcc0, 0.2, 0.55), g);
+  bx(x - 0.2, x + 0.2, 1.12, 1.14, -3.46, zb, M(0xc9cbcd, 0.7, 0.35), g);
+  for (const [dx, kind] of [[0.36, 't'], [0.28, 't'], [0.15, 'mc'], [0, 'ry'], [-0.15, 'mc'], [-0.28, 't'], [-0.36, 't']]) {
+    if (kind === 't') { bx(x + dx - 0.015, x + dx + 0.015, 1.12, 1.15, -3.45, zb, M(0x1a1a1a, 0.3, 0.5), g); tube([[x + dx, 1.12, -3.45], [x + dx, 1.05, -3.46], [x + dx + 0.005, 0.99, -3.48]], 0.004, yel); }
+    else { const big = kind === 'mc'; bx(x + dx - (big ? 0.045 : 0.022), x + dx + (big ? 0.045 : 0.022), 1.06, 1.2, -3.5, -3.44, M(0x1b1b1d, 0.3, 0.5), g);
+      if (big) bx(x + dx - 0.04, x + dx + 0.04, 1.08, 1.12, -3.505, -3.5, M(0xf0ead0, 0.1, 0.6), g);
+      for (let t = 0; t < (big ? 4 : 2); t++) { const ox = x + dx + (t - (big ? 1.5 : 0.5)) * 0.02; tube([[ox, 1.2, -3.49], [ox + 0.01, 1.25, -3.5], [ox, 1.27, -3.52]], 0.0035, yel); tube([[ox, 1.06, -3.49], [ox - 0.01, 1.01, -3.5], [ox, 0.99, -3.52]], 0.0035, yel); } }
+  }
+  // 下段：真空遮断器2台（上下）。枠、白い真空バルブ3本、灰色の円板、操作機構（真ちゅう色の板・黄色い銘板・赤い表示）
+  bx(x - 0.3, x + 0.3, 0.14, 0.9, -3.62, -3.6, M(0xcfccbf, 0.3, 0.55), g);
+  for (const y0 of [0.52, 0.16]) {
+    bx(x - 0.24, x + 0.24, y0, y0 + 0.34, -3.6, -3.58, M(0x9fa3a6, 0.5, 0.5), g);
+    for (const dx of [0.14, 0, -0.14]) {
+      const v = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.1, 22), M(0xf2f1ec, 0.05, 0.3)); v.position.set(x + dx, y0 + 0.26, -3.66); g.add(v);
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.012, 26), M(0xb6babd, 0.4, 0.4)); d.position.set(x + dx, y0 + 0.19, -3.66); g.add(d);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.06, 12), M(0xb6babd, 0.4, 0.4)); st.position.set(x + dx, y0 + 0.15, -3.66); g.add(st); }
+    bx(x - 0.22, x + 0.22, y0 + 0.02, y0 + 0.12, -3.7, -3.6, M(0xb9a24a, 0.7, 0.35), g);
+    bx(x - 0.05, x + 0.08, y0 + 0.05, y0 + 0.1, -3.705, -3.7, M(0xf2ecd0, 0.1, 0.6), g);
+    bx(x - 0.17, x - 0.13, y0 + 0.06, y0 + 0.09, -3.705, -3.7, M(0xd8232a, 0.1, 0.5), g);
+  }
+  const light = new THREE.PointLight(0xfff2dc, 0, 2.4, 1.6); light.position.set(x, 1.6, -4.3); pnl.add(light);
+  const leaves = [[x - 0.47, 1], [x + 0.47, -1]].map(([hx, k]) => { const lg = new THREE.Group(); lg.position.set(hx, 0, -4.88); pnl.add(lg); lg.userData.k = k;
+    bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
+  return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+})();
+const REARS = [rearDoor, rearDoor2, rearDoor3, rearDoor4, rearDoor5]; window.__rearDoor5 = rearDoor5; window.__rearDoor4 = rearDoor4; window.__rearDoor2 = rearDoor2; window.__rearDoor3 = rearDoor3;
 // 盤の右隣（-z壁）：給気ガラリ、鋼製棚、灰色キャビネット、扉　／　盤の左端：ケーブルドラム（写真1・2より）
 _hn = room.children.length;
 const lv = new THREE.Group(); lv.position.set(-3.0, 3.0, -3.36); room.add(lv);
@@ -1592,10 +1643,11 @@ views.push([[-12.75, 1.5, -1.25], [-10.4, 1.3, -0.6]]);   // 12：自動操作�
 views.push([[-12.75, 1.4, -0.35], [-10.4, 1.1, 0.3]]);   // 13：発電機盤の裏
 views.push([[-12.75, 1.4, 0.6], [-10.4, 1.1, 1.25]]);   // 14：電源自動切換盤の裏
 views.push([[-12.75, 1.4, 1.55], [-10.4, 1.1, 2.2]]);   // 15：補機盤の裏
-h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button><button data-v=13>発電機盤の裏</button><button data-v=14>電源自動切換盤の裏</button><button data-v=15>補機盤の裏</button>');
+views.push([[-12.75, 1.4, 2.5], [-10.4, 1.1, 3.15]]);   // 16：高圧配電盤 GF2/GF1 の裏
+h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button><button data-v=13>発電機盤の裏</button><button data-v=14>電源自動切換盤の裏</button><button data-v=15>補機盤の裏</button><button data-v=16>高圧配電盤の裏</button>');
 h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
 h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
-h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; if (b.dataset.v === '14') rearDoor3.target = rearDoor3.OPEN; if (b.dataset.v === '15') rearDoor4.target = rearDoor4.OPEN; });
+h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; if (b.dataset.v === '14') rearDoor3.target = rearDoor3.OPEN; if (b.dataset.v === '15') rearDoor4.target = rearDoor4.OPEN; if (b.dataset.v === '16') rearDoor5.target = rearDoor5.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
 cameraPad.className = 'campad';
