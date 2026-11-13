@@ -427,7 +427,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   { const xa = xc(970), xb = xc(1107), nm = [['71', '論理制御盤'], ['71', '論理制御盤'], ['71', '論理制御盤'], ['72', '灯火インタフェース盤']];
     // 盤面は写真より：扉だけ（名札・番号札・ハンドル）。左から 72、71×3
     nm.forEach(([no, name], i) => cab(xa + (xb - xa) * (i + 1) / 4 + 0.004, xa + (xb - xa) * i / 4 - 0.004, Z0 + 0.02, Z0 + 0.72, 2.1, 'z+', 'trp', no, { parts: [['plt', 0.06, name, no === '72' ? 0.45 : 0.55, 0.45], ['tag', 0.88, 0.035, no, 0.12], ['handle', 0.15, 0.55]] })); blocks.push([xb, xa, Z0, Z0 + 0.72]);
-    cab(xc(765), xc(730), Z0 + 0.02, Z0 + 0.72, 2.1, 'z+', 'ctl', '73', '電流計測処理装置'); blocks.push([xc(765), xc(730), Z0, Z0 + 0.72]); }
+    cab(xc(765), xc(730), Z0 + 0.02, Z0 + 0.72, 2.1, 'z+', 'trp', '73', { parts: [['plt', 0.035, '電流計測処理装置', 0.5, 0.5], ['tag', 0.88, 0.03, '73', 0.1], ['paper', 0.06, 0.2, 0.94, 0.45], ['paper', 0.2, 0.53, 0.8, 0.72], ['handle', 0.13, 0.55]] }); blocks.push([xc(765), xc(730), Z0, Z0 + 0.72]); }
 
   // ---------- 壁の物（扉・換気扇・壁掛けの盤）。扉は絵だけで、開かない ----------
   const doorTex = two => canvasTex(128, 256, (c, w, h) => {
@@ -439,7 +439,30 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   const e = 0.012;
   for (const [a, b] of [[290, 400], [1030, 1135]]) plane(zc(b) - zc(a), 2.2, dm2, X1 - e, 1.1, zc((a + b) / 2), 'x-');   // 外への両開き
   plane(0.9, 2.1, dm1, X1 - e, 1.05, zc(920), 'x-');
-  for (const py of [690, 820]) plane(1.6, 2.1, dm2, xc(py), 1.05, Z0 + e, 'z+');                                        // 監視室への扉
+  const glassDoor = canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = '#d4d2c8'; c.fillRect(0, 0, w, h); c.strokeStyle = '#8d8b82'; c.lineWidth = 3; c.strokeRect(2, 2, w - 4, h - 4); c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke();
+    for (const x0 of [16, w / 2 + 12]) { c.fillStyle = '#b9c6c8'; c.fillRect(x0, 34, w / 2 - 28, 76); c.strokeStyle = 'rgba(80,90,92,.45)'; c.lineWidth = 0.6; for (let k = 0; k < 76; k += 5) { c.beginPath(); c.moveTo(x0, 34 + k); c.lineTo(x0 + w / 2 - 28, 34 + k); c.stroke(); } for (let k = 0; k < w / 2 - 28; k += 5) { c.beginPath(); c.moveTo(x0 + k, 34); c.lineTo(x0 + k, 110); c.stroke(); } }
+    c.fillStyle = '#f2ea2a'; c.fillRect(22, 116, 88, 40); c.strokeStyle = '#333'; c.lineWidth = 1; c.strokeRect(24, 118, 84, 36); c.fillStyle = '#111'; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText('注 意', 66, 129);
+    c.font = '5px sans-serif'; c.fillText('二酸化炭素消火設備があります', 66, 139); c.fillText('放送の指示に従い退避', 66, 147);
+    c.fillStyle = '#c9cccf'; c.beginPath(); c.arc(w / 2 + 14, 140, 5, 0, 7); c.fill(); });
+  for (const py of [690, 820]) plane(1.6, 2.1, M(0xffffff, 0.2, 0.6, { map: glassDoor }), xc(py), 1.05, Z0 + e, 'z+');
+  // 入口の横：細長い保安器盤兼電気錠制御盤と、青い箱・書庫（写真より。位置は推測）
+  cab(xc(690) - 1.0, xc(690) - 1.45, Z0 + 0.02, Z0 + 0.32, 1.9, 'z+', 'trp', '', { parts: [['plt', 0.05, '保安器盤兼電気錠制御盤', 0.5, 0.8], ['handle', 0.18, 0.5]] });
+  box(xc(690) - 1.5, xc(690) - 0.95, 0, 0.32, Z0 + 0.34, Z0 + 0.74, M(0x1f5fd0, 0.1, 0.5)); blocks.push([xc(690) - 1.5, xc(690) - 0.95, Z0, Z0 + 0.74]);
+  // CCT の前：キャスター付きの回路表示板（緑の札。文字は読めない線。位置は推測）
+  { const wb = canvasTex(256, 160, (c, w, h) => { c.fillStyle = '#f4f4f0'; c.fillRect(0, 0, w, h); for (let r = 0; r < 13; r++) for (const x0 of [8, 130]) { c.fillStyle = '#1f4a34'; c.fillRect(x0, 8 + r * 11, 110, 9); c.fillStyle = '#dfe7df'; c.fillRect(x0 + 6, 12 + r * 11, 70 - (r * 7) % 30, 1.6); c.fillStyle = '#3ad15a'; c.beginPath(); c.arc(x0 + 112, 12 + r * 11, 3, 0, 7); c.fill(); } });
+    const zx = zc(400), xx = xc(820);
+    plane(1.2, 0.8, M(0xffffff, 0.2, 0.5, { map: wb, side: THREE.DoubleSide }), xx, 1.35, zx, 'x+');
+    const fr = M(0xb8b6ac, 0.5, 0.5); for (const dz of [-0.62, 0.62]) box(xx - 0.02, xx + 0.02, 0.1, 1.85, zx + dz - 0.02, zx + dz + 0.02, fr); box(xx - 0.3, xx + 0.3, 0.06, 0.1, zx - 0.65, zx + 0.65, fr); blocks.push([xx - 0.3, xx + 0.3, zx - 0.65, zx + 0.65]); }
+  // 南の壁ぎわ：縦のケーブルダクト（アーチ形の上部）と、作業の札（作業対象＝青、操作禁止＝赤、点検中＝青）。灰色の書庫（位置は推測）
+  { const tags = canvasTex(128, 256, (c, w, h) => { c.fillStyle = '#c9c4b4'; c.fillRect(0, 0, w, h);
+      const tg = (x, y, bg, t) => { c.fillStyle = bg; c.fillRect(x, y, 14, 30); c.fillStyle = '#fff'; c.font = 'bold 7px sans-serif'; c.textAlign = 'center'; [...t].forEach((ch, i) => c.fillText(ch, x + 7, y + 8 + i * 7)); };
+      for (let i = 0; i < 7; i++) tg(8 + i * 16, 20, '#1d4fc4', '作業対象'); for (let i = 0; i < 7; i++) tg(8 + i * 16, 110, '#d42a2a', '操作禁止'); for (let i = 0; i < 4; i++) tg(56 + i * 16, 150, '#1d3f9a', '点検中'); });
+    for (const pz of [1010, 1060, 1110]) { const z = zc(pz);
+      box(X0, X0 + 0.25, 0, 2.6, z - 0.33, z + 0.33, M(0xcbc6b6, 0.3, 0.6)); plane(0.6, 1.6, M(0xffffff, 0.2, 0.6, { map: tags }), X0 + 0.255, 1.5, z, 'x+');
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.06, 8, 20, Math.PI / 2), M(0xcbc6b6, 0.3, 0.6)); arc.rotation.y = Math.PI / 2; arc.position.set(X0 + 0.6, 2.6, z); arc.rotation.z = Math.PI / 2; g.add(arc); }
+    box(X0, X0 + 0.45, 0, 1.8, zc(930) - 0.45, zc(930) + 0.45, M(0x9b9a91, 0.3, 0.55)); blocks.push([X0, X0 + 0.45, zc(930) - 0.45, zc(930) + 0.45]);
+    blocks.push([X0, X0 + 0.3, zc(1010) - 0.35, zc(1110) + 0.35]); }                                        // 監視室への扉
   const fanM = M(0x8d9296, 0.5, 0.5), fanD = M(0x2a2d30, 0.3, 0.7);
   for (const px of [450, 790, 1180]) { const z = zc(px); box(X1 - 0.08, X1, 2.5, 3.2, z - 0.35, z + 0.35, fanM); const d = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.02, 24), fanD); d.rotation.z = Math.PI / 2; d.position.set(X1 - 0.09, 2.85, z); g.add(d); }
   for (const px of [450, 790, 1085]) { const z = zc(px); box(X0, X0 + 0.06, 0.24, 0.84, z - 0.4, z + 0.4, fanM); }                // 給気ファン（FL+240）
