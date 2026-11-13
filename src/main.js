@@ -1539,7 +1539,7 @@ function goThroughDoor() {
   walk.pos.set(DOOR.x, 1.65, toKiki ? -4.3 : -2.6); walk.yaw = toKiki ? 0 : Math.PI; walk.pitch = -0.05;
 }
 function walkStep(dt) {
-  const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
+  const k = walk.keys, run = k.ShiftLeft || k.ShiftRight || walk.runOn ? 2.2 : 1;   // 走る：Shift キー、または 🏃 ボタン
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
   walk.yaw -= sd * 1.6 * dt;   // 左右：その場で回る
   const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
@@ -1624,6 +1624,9 @@ hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろ�
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
 pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
+pad.insertAdjacentHTML('afterbegin', '<button id=runBtn style="display:block;width:100%;margin:2px 0">🚶 歩く（押すと 🏃 走る）</button>');
+$('runBtn').onclick = () => { walk.runOn = !walk.runOn; $('runBtn').textContent = walk.runOn ? '🏃 走る（押すと 🚶 歩く）' : '🚶 歩く（押すと 🏃 走る）'; $('runBtn').classList.toggle('on', walk.runOn); };
+protectControl($('runBtn'));
 $('doorGo').onclick = goThroughDoor; protectControl($('doorGo'));
 $('personView').onclick = () => {
   // 本人の目線 → 後ろから見る → 正面から見る → 本人の目線 の順に切り替える。向き（yaw・pitch）は、そのまま引き継ぐ
@@ -1633,7 +1636,7 @@ $('personView').onclick = () => {
 };
 protectControl($('personView'));
 $('bw').onclick = () => setWalk(!walk.on);
-h1.insertAdjacentHTML('beforeend', '<label style="display:inline-block;margin:6px">キャラクター <select id="workerChoice" aria-label="キャラクターを選ぶ"><option value="natural">作業員 B（新しい歩行）</option><option value="legacy">作業員 A（保存版）</option></select></label>');
+h1.insertAdjacentHTML('beforeend', '<label style="display:inline-block;margin:6px">キャラクター <select id="workerChoice" aria-label="キャラクターを選ぶ"><option value="natural">作業員 B（新しい歩行）</option><option value="legacy">作業員 A（保存版）</option><option value="casual">38歳（私服）</option></select></label>');
 $('workerChoice').value = worker.selected;
 $('workerChoice').onchange = e => { stopMovement(); worker.select(e.target.value); };
 protectControl($('workerChoice'));

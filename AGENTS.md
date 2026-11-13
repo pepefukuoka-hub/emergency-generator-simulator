@@ -92,6 +92,7 @@ npm run dev      # 監視ビルド
 
 ## 6.5 作業員（歩く視点の「後ろから見る」）
 - A（保存版）は `src/worker-legacy.js` と `src/worker/` を維持。B（新しい歩行）は `src/worker.js` と `src/worker-natural/`。切替は `src/workers.js`、生成は `blender/worker/build-natural.py`。詳細は `blender/worker/NATURAL.md`。Aを上書きしない。
+- C「38歳」（私服の男性、架空）：`src/worker-casual.js`・`src/worker-casual/`、生成は `blender/worker/build-casual.py`。歩く・走るは `src/worker.js` の `pose(p, a, r)`（r＝走る度合い）。走るは Shift か右下の 🏃 ボタン。詳しくは `blender/worker/NATURAL.md`。
 - キャラクター選択は画面のセレクト、localStorageに保存。既定はB。Bの手首に旧版の大きな回転を戻さない。
 - モデルは `src/worker/worker.glb`（＋ `body.jpg`・`outfit.jpg`）。`blender/worker/build.py` で作る（手順は `blender/worker/README.md`）。体・骨・ウェイト・目は MakeHuman / MPFB の CC0 データ、服・帽子・靴・髪はスクリプトで作成。**架空の人物。実在の人の写真・顔・氏名・所属・ロゴは使わない。**
 - `src/worker.js` の `createWorker()` が `{ root, update(進んだ距離) }` を返す。歩く動きは、骨の回転で付けている（`turn(骨, [軸, 角度]…)`。軸はモデルの向きで、X＝左右、Y＝上、Z＝前）。
