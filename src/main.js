@@ -1883,6 +1883,10 @@ function walkStep(dt) {
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
   const sx = walk.pad.x || 0;
   walk.yaw -= (sd * 1.6 + (walk.third ? 0 : sx * 0.7)) * dt;   // 左右キー：見る向きを回す。本人の目線では、スティックの横で体も少しずつ回る
+  if (walk.turnRem) {   // ↻ 180° ボタン：その場で後ろを向く（約0.5秒で回る。体の向きも一緒に回す）
+    const st = Math.sign(walk.turnRem) * Math.min(Math.abs(walk.turnRem), 6.3 * dt);
+    walk.yaw += st; if (walk.bodyYaw !== undefined) walk.bodyYaw += st; walk.turnRem -= st; if (Math.abs(walk.turnRem) < 1e-4) walk.turnRem = 0;
+  }
   const sp = 1.5 * run * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
   const before = walk.pos.clone();
   const dx = (fx * f - fz * sx) * sp, dz = (fz * f + fx * sx) * sp;
@@ -1981,11 +1985,14 @@ document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
 pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none" title="押すたびに 本人の目線→後ろから→正面から">👁 本人</button><button id=doorGo style="background:#2a6;color:#fff">🚪 機器室へ</button>');
 pad.insertAdjacentHTML('afterbegin', '<button id=runBtn>🚶 歩く</button>');
+pad.insertAdjacentHTML('afterbegin', '<button id=turnBtn title="その場で後ろを向く（180°回る）">↻ 180°</button>');
+$('turnBtn').onclick = () => { if (!walk.turnRem) walk.turnRem = Math.PI; };
+protectControl($('turnBtn'));
 $('runBtn').onclick = () => { walk.runOn = !walk.runOn; $('runBtn').textContent = walk.runOn ? '🏃 走る' : '🚶 歩く'; $('runBtn').classList.toggle('on', walk.runOn); };
 protectControl($('runBtn'));
 $('doorGo').onclick = goThroughDoor;
 { const cs = document.createElement('style'); cs.textContent = '#padBox{right:8px!important;bottom:8px!important;padding:4px!important;width:auto}#padBox button{font-size:12px!important;padding:3px 6px!important;margin:1px!important;min-height:30px;display:inline-block!important;width:auto!important}#padBox .pbRow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;max-width:200px}';
-  document.head.appendChild(cs); pad.id = 'padBox'; const row = document.createElement('div'); row.className = 'pbRow'; ['runBtn', 'personView', 'doorGo'].forEach(id => row.appendChild($(id))); pad.insertBefore(row, pad.firstChild); }
+  document.head.appendChild(cs); pad.id = 'padBox'; const row = document.createElement('div'); row.className = 'pbRow'; ['runBtn', 'turnBtn', 'personView', 'doorGo'].forEach(id => row.appendChild($(id))); pad.insertBefore(row, pad.firstChild); }
  protectControl($('doorGo'));
 $('personView').onclick = () => {
   // 本人の目線 → 後ろから見る → 正面から見る → 本人の目線 の順に切り替える。向き（yaw・pitch）は、そのまま引き継ぐ
