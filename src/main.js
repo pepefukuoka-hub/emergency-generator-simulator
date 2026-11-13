@@ -1186,7 +1186,7 @@ function buildCabinet(i, x, nm) {
   const tx = panelTex(nm, i), rec = tx.userData.rec, hingeX = x - 0.465, W = 0.93;
   // 盤の躯体（背板・側板・天板・底・前枠）
   bx(x - 0.47, x + 0.47, 0, 2.3, -3.38, -3.36, sheetM, pnl); bx(x - 0.47, x - 0.45, 0, 2.3, -4.88, -2.88, cream, pnl); bx(x + 0.45, x + 0.47, 0, 2.3, -4.88, -2.88, cream, pnl);
-  if (i < 3) bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
+  if (i < 2) bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.28, 2.3, -3.38, -2.88, cream, pnl); bx(x - 0.47, x + 0.47, 0, 0.12, -3.38, -2.88, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.25, 2.3, -2.9, -2.875, cream, pnl); bx(x - 0.47, x + 0.47, 0.1, 0.14, -2.9, -2.875, cream, pnl);
   const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i);
@@ -1292,7 +1292,53 @@ const rearDoor2 = (() => {
     bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
   return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
 })();
-const REARS = [rearDoor, rearDoor2]; window.__rearDoor2 = rearDoor2;
+// 電源自動切換盤（発電機盤の隣）の裏：両開きの裏扉と、中の主回路（写真3枚より）。裏から見て上から：ひし形の金網、黒いがいし、
+// 茶色のモールドの計器用変圧器2台（一次ヒューズ2本ずつ。VT と推測）、横はり、3相の端子（青・白・赤）、横はり、下段に3相の端子と、
+// 下りる黒いケーブル（段付きの端末）・灰色の枠の開閉器・左奥の赤いモールドの機器、床板の穴。写真の赤い仮設のリード線は入れていない。寸法は近似
+const rearDoor3 = (() => {
+  const x = -8.3 + 2 * 0.95, cr = M(0xd3d0c0, 0.25, 0.6), hm = M(0xc9ccce, 0.8, 0.3), g = new THREE.Group(); pnl.add(g);
+  const zb = -3.42, beige = M(0xd6d3c8, 0.2, 0.7), beamM = M(0xcfccbf, 0.3, 0.55), brass = M(0xc9a64a, 0.8, 0.3), steel = M(0xa9aba7, 0.6, 0.55), cab = M(0x1c1d20, 0.05, 0.55);
+  const PH = [[0.24, 0x1f4fd8], [0.0, 0xf0efe8], [-0.24, 0xd8232a]];   // 裏から見て左から 青・白・赤
+  bx(x - 0.45, x + 0.45, 0.12, 2.28, zb - 0.01, zb, beige, g);
+  const tube = (pts, r, m) => g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 32, r, 10, false), m));
+  // 一番上：ひし形の穴の金網（Canvas の絵を透かす）
+  const mesh = canvasTex(128, 64, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#e4e2da'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'destination-out'; for (let yy = 0; yy < h + 8; yy += 8) for (let xx = (yy / 8 % 2) * 6; xx < w + 12; xx += 12) { c.beginPath(); c.moveTo(xx, yy - 3.4); c.lineTo(xx + 5, yy); c.lineTo(xx, yy + 3.4); c.lineTo(xx - 5, yy); c.fill(); } }, [3, 2]);
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.22), new THREE.MeshStandardMaterial({ map: mesh, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 })); m.rotation.y = Math.PI; m.position.set(x, 2.1, -3.62); g.add(m); }
+  bx(x - 0.44, x + 0.44, 1.97, 1.99, -3.9, zb, beamM, g);
+  // 黒いひだ付きのがいし（4本）と、後ろの穴あき配線ダクト
+  for (const dx of [0.3, 0.1, -0.1, -0.3]) { for (let k = 0; k < 4; k++) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.018, 18), M(0x15161a, 0.1, 0.35)); d.position.set(x + dx, 1.8 + k * 0.03, -3.55); g.add(d); }
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.13, 14), M(0x15161a, 0.1, 0.35)); core.position.set(x + dx, 1.84, -3.55); g.add(core); bx(x + dx - 0.02, x + dx + 0.02, 1.75, 1.77, -3.57, -3.53, brass, g); }
+  bx(x - 0.42, x + 0.42, 1.6, 1.66, -3.52, zb, M(0xc4c7cb, 0.2, 0.55), g);
+  // 茶色のモールドの計器用変圧器2台と、白い筒のヒューズ2本ずつ
+  const vt = M(0x7a3a22, 0.1, 0.45), fuse = M(0xeee6c8, 0.05, 0.5), clip = M(0xd8dadc, 0.8, 0.3);
+  for (const [cx, lug] of [[x + 0.2, 0x1f4fd8], [x - 0.2, 0xd8232a]]) {
+    bx(cx - 0.11, cx + 0.11, 1.38, 1.66, -3.74, -3.56, vt, g); bx(cx - 0.02, cx + 0.02, 1.4, 1.64, -3.78, -3.74, vt, g);
+    for (const fx of [-0.06, 0.06]) { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.22, 16), fuse); f.position.set(cx + fx, 1.52, -3.77); g.add(f);
+      for (const fy of [1.42, 1.62]) bx(cx + fx - 0.018, cx + fx + 0.018, fy - 0.012, fy + 0.012, -3.79, -3.75, clip, g); }
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.04, 12), M(lug, 0.1, 0.5)); l.rotation.z = Math.PI / 2; l.position.set(cx + (cx > x ? 0.13 : -0.13), 1.66, -3.78); g.add(l);
+    tube([[cx + (cx > x ? 0.15 : -0.15), 1.66, -3.78], [cx + (cx > x ? 0.2 : -0.2), 1.74, -3.7], [cx + (cx > x ? 0.1 : -0.1), 1.8, -3.58]], 0.009, cab);
+  }
+  tube([[x + 0.08, 1.63, -3.78], [x, 1.72, -3.8], [x - 0.08, 1.63, -3.78]], 0.009, cab);
+  // 横はり（ボルト付き）2本と、間の3相の端子
+  for (const y of [1.3, 0.98]) { bx(x - 0.45, x + 0.45, y - 0.06, y + 0.06, -3.92, -3.84, beamM, g); for (const dx of [0.24, 0, -0.24]) for (const dy of [-0.025, 0.025]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.01, 12), brass); b.rotation.x = Math.PI / 2; b.position.set(x + dx, y + dy, -3.925); g.add(b); } }
+  for (const [dx, col] of PH) { bx(x + dx - 0.03, x + dx + 0.03, 1.12, 1.24, -3.7, -3.68, steel, g); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.05, 12), M(col, 0.1, 0.5)); l.position.set(x + dx + 0.03, 1.2, -3.72); g.add(l);
+    tube([[x + dx + 0.03, 1.22, -3.72], [x + dx + 0.06, 1.3, -3.7], [x + dx + 0.04, 1.37, -3.66]], 0.011, cab); }
+  // 下段：3相の端子（相色の圧着端子）から、段付きの端末の黒いケーブルが床の穴へ
+  for (const [dx, col] of PH) { bx(x + dx - 0.03, x + dx + 0.03, 0.82, 0.92, -3.7, -3.68, steel, g); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.05, 12), M(col, 0.1, 0.5)); l.position.set(x + dx, 0.8, -3.74); g.add(l);
+    tube([[x + dx, 0.78, -3.74], [x + dx * 0.9, 0.55, -3.82], [x + dx * 0.45, 0.35, -3.9], [x + dx * 0.12, 0.2, -3.95], [x + dx * 0.05, 0.13, -3.96]], 0.014, cab);
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.022, 0.1, 12), M(0x3a3b3e, 0.1, 0.5)); cone.position.set(x + dx * 0.3, 0.3, -3.92); cone.rotation.z = -dx * 1.2; g.add(cone); }
+  // 灰色の枠の開閉器（奥）と、左奥の赤いモールドの機器
+  bx(x - 0.16, x + 0.16, 0.42, 0.8, -3.58, -3.46, M(0xbfc2c4, 0.4, 0.5), g); bx(x - 0.13, x + 0.13, 0.46, 0.76, -3.6, -3.58, M(0xdfe0dc, 0.2, 0.6), g); bx(x - 0.15, x + 0.15, 0.42, 0.45, -3.62, -3.58, brass, g);
+  bx(x + 0.3, x + 0.44, 0.45, 0.95, -3.7, -3.48, M(0xc8262a, 0.05, 0.45), g);
+  // 床板と、ケーブルの穴
+  bx(x - 0.3, x + 0.3, 0.12, 0.125, -4.25, -3.75, M(0xc8cacd, 0.2, 0.5), g);
+  { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.006, 20), M(0x3a3b3e, 0.1, 0.8)); h.position.set(x, 0.127, -3.96); g.add(h); }
+  const light = new THREE.PointLight(0xfff2dc, 0, 2.4, 1.6); light.position.set(x, 1.6, -4.3); pnl.add(light);
+  const leaves = [[x - 0.47, 1], [x + 0.47, -1]].map(([hx, k]) => { const lg = new THREE.Group(); lg.position.set(hx, 0, -4.88); pnl.add(lg); lg.userData.k = k;
+    bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
+  return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+})();
+const REARS = [rearDoor, rearDoor2, rearDoor3]; window.__rearDoor2 = rearDoor2; window.__rearDoor3 = rearDoor3;
 // 盤の右隣（-z壁）：給気ガラリ、鋼製棚、灰色キャビネット、扉　／　盤の左端：ケーブルドラム（写真1・2より）
 _hn = room.children.length;
 const lv = new THREE.Group(); lv.position.set(-3.0, 3.0, -3.36); room.add(lv);
@@ -1494,10 +1540,11 @@ const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0
 views.push([[-8.3, 0.55, -0.65], [-9.8, 0.55, -0.65]], [[-1.05, 0.5, -3.6], [-1.05, 0.5, -2.22]]);
 views.push([[-12.75, 1.5, -1.25], [-10.4, 1.3, -0.6]]);   // 12：自動操作盤の裏（裏の通路から）
 views.push([[-12.75, 1.4, -0.35], [-10.4, 1.1, 0.3]]);   // 13：発電機盤の裏
-h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button><button data-v=13>発電機盤の裏</button>');
+views.push([[-12.75, 1.4, 0.6], [-10.4, 1.1, 1.25]]);   // 14：電源自動切換盤の裏
+h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button><button data-v=13>発電機盤の裏</button><button data-v=14>電源自動切換盤の裏</button>');
 h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
 h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
-h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; });
+h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; if (b.dataset.v === '14') rearDoor3.target = rearDoor3.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
 cameraPad.className = 'campad';
@@ -2515,7 +2562,7 @@ renderer.setAnimationLoop(() => {
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.rotation.y = roomDoor.cur;
-  for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor2 ? 0.8 : 1.6) * Math.min(1, r.cur / 1.2); }
+  for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor ? 1.6 : 0.8) * Math.min(1, r.cur / 1.2); }
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);
