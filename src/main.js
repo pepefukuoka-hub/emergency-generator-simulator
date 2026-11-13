@@ -1759,7 +1759,7 @@ views.push([[-12.75, 1.4, 1.55], [-10.4, 1.1, 2.2]]);   // 15：補機盤の裏
 views.push([[-12.75, 1.4, 2.5], [-10.4, 1.1, 3.15]]);   // 16：高圧配電盤 GF2/GF1 の裏
 h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button><button data-v=13>発電機盤の裏</button><button data-v=14>電源自動切換盤の裏</button><button data-v=15>補機盤の裏</button><button data-v=16>高圧配電盤の裏</button>');
 h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
-h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
+h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); (kiki.openFor[b.dataset.kv] || []).forEach(i => kiki.hv.open(i)); });
 h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; if (b.dataset.v === '13') rearDoor2.target = rearDoor2.OPEN; if (b.dataset.v === '14') rearDoor3.target = rearDoor3.OPEN; if (b.dataset.v === '15') rearDoor4.target = rearDoor4.OPEN; if (b.dataset.v === '16') rearDoor5.target = rearDoor5.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
@@ -2040,6 +2040,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
     if (raycaster.intersectObjects(roomDoor.g, true).length) { roomDoor.toggle(); return; }
     { const r = REARS.find(r => raycaster.intersectObjects(r.leaves, true).length); if (r) { r.toggle(); return; } }
+    if (kiki.group.visible) { const k = kiki.hv.hit(raycaster); if (k !== undefined) { kiki.hv.toggle(k); return; } }   // 機器室の高圧の盤の区画の扉
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
@@ -2833,6 +2834,7 @@ renderer.setAnimationLoop(() => {
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.forEach(l => { l.rotation.y = -l.userData.k * roomDoor.cur; });
   for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor ? 1.6 : 0.8) * Math.min(1, r.cur / 1.2); }
+  kiki.hv.tick(dt);
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);
