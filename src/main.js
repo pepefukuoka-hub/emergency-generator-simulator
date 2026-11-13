@@ -1439,6 +1439,35 @@ const rearDoor5 = (() => {
     bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
   return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
 })();
+// 自動操作盤の貼り紙「予備自家発電設備 停止・起動準備手順」（利用者の写真の文面。会社名・ファイル名は省略）。盤の外側の側面（入口側）に貼る（貼る位置は推測）。タップで全文
+const AUTO_NOTE = [['t', '予備自家発電設備 停止・起動準備手順'], ['h', '●停止操作'],
+  ['r', '※この操作は、停電が発生した場合自動的に発電機が起動する（運転待機）状態であることを想定して作成している'],
+  ['r', '※この操作は、原動機・発電機等の各機関の短期間停止（概ね1週間以内）を目的としたもので、停止が長期間におよぶ場合は、別途電気的、機械的な養生等を検討すること'],
+  ['r', '※この操作の停止範囲は、原動機・発電機・蓄電池（発電機用）・自動充電装置であり、補機やエンジン室の各キュービクルの停電等は該当しないので注意すること'],
+  ['n', '1．自動操作盤「43E」自動→手動'], ['n', '2．発電機盤 MCCB「52G」切'], ['n', '3．自動操作盤内で操作（制御回路の停止）'],
+  ['s', '(1)右側面 No.1非常用直流蛍光灯 COS「43DL1」切'], ['s', '(2)右側面 No.2非常用直流蛍光灯 COS「43DL2」切'], ['s', '(3)右側面 変換器電源 DC24V MCCB「8TRD」切'], ['s', '(4)右側面 操縦計器盤電源 DC24V MCCB「8DE」切'],
+  ['s', '(5)右側面 制御電源 DC24V MCCB「8D」切'], ['s', '(6)左側面 操作器電源 DC24V MCCB「8B」切'], ['s', '(7)自動充電装置 交流入力 MCCB 切'], ['s', '(8)自動充電装置 直流出力 MCCB 切'],
+  ['n', '4．燃料ソレノイド固定'], ['n', '5．機関操縦計器盤内バッテリースイッチ（CKS）切'], ['g', ''], ['h', '●起動準備'],
+  ['r', '※この操作は、上の停止操作により機関が停止している状態から停電時自動的に発電機が起動する状態にすることを想定している。上の状態以外の場合もしくは、自動的に発電機が起動する状態にしない場合は、別途必要な計画を行うこと'],
+  ['n', '1．自動操作盤「43E」手動 を確認'], ['n', '2．機関操縦計器盤内バッテリースイッチ（CKS）入'], ['n', '3．自動操作盤内で操作（制御回路の復旧）'],
+  ['s', '(1)右側面 No.1非常用直流蛍光灯 COS「43DL1」自動'], ['s', '(2)右側面 No.2非常用直流蛍光灯 COS「43DL2」自動'], ['s', '(3)右側面 変換器電源 DC24V MCCB「8TRD」入'], ['s', '(4)右側面 操縦計器盤電源 DC24V MCCB「8DE」入'],
+  ['s', '(5)右側面 制御電源 DC24V MCCB「8D」入'], ['s', '(6)左側面 操作器電源 DC24V MCCB「8B」入'], ['s', '(7)自動充電装置 交流入力 MCCB 入'], ['s', '(8)自動充電装置 直流出力 MCCB 入'],
+  ['n', '4．燃料ソレノイド固定解除'], ['n', '5．発電機盤 MCCB「52G」入'], ['n', '6．自動操作盤「43E」手動→自動']];
+function paintAutoNote(c, W, H) {
+  c.fillStyle = '#fbfbf8'; c.fillRect(0, 0, W, H); const k = W / 1000, L = 120 * k, Rr = W - 110 * k; let y = 150 * k;
+  const wrap = (t, x, fs, col) => { c.font = fs + 'px sans-serif'; c.fillStyle = col; let line = ''; for (const ch of t) { if (c.measureText(line + ch).width > Rr - x) { c.fillText(line, x, y); y += fs * 1.25; line = '  '; } line += ch; } c.fillText(line, x, y); c.strokeStyle = '#555'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, y + fs * 0.3); c.lineTo(Rr, y + fs * 0.3); c.stroke(); y += fs * 1.28; };
+  for (const [t, tx] of AUTO_NOTE) {
+    if (t === 't') { c.font = 'bold ' + 34 * k + 'px sans-serif'; c.fillStyle = '#111'; c.textAlign = 'center'; c.fillText(tx, W / 2, y); c.textAlign = 'left'; y += 70 * k; }
+    else if (t === 'h') { c.font = 'bold ' + 30 * k + 'px sans-serif'; c.fillStyle = '#111'; c.fillText(tx, L + 10 * k, y); y += 40 * k; }
+    else if (t === 'r') wrap(tx, L, 26 * k, '#c4241f'); else if (t === 'n') wrap(tx, L + 20 * k, 26 * k, '#111'); else if (t === 's') wrap(tx, L + 40 * k, 24 * k, '#111'); else y += 30 * k;
+  }
+}
+window.__autoNotePaint = paintAutoNote;
+const autoNote = (() => { const tex = canvasTex(512, 720, (c, w, h) => paintAutoNote(c, w, h));
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.59), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35 })); m.rotation.y = Math.PI / 2; m.position.set(-8.3 + 4 * 0.95 + 0.476, 1.45, -3.6); pnl.add(m); return m; })();
+function showAutoNote() { const cv = document.createElement('canvas'); cv.width = 1000; cv.height = 1400; paintAutoNote(cv.getContext('2d'), 1000, 1400);
+  modal('<h2>予備自家発電設備 停止・起動準備手順（自動操作盤の掲示）</h2><div id=autoNoteImg style="max-height:62vh;overflow:auto;background:#8a8a86;padding:8px;border-radius:6px"></div><div style="margin-top:12px;font-size:12px;color:#9fc">※ 自動操作盤に掲示してある手順を、文面どおりに描き直したものです（会社名・ファイル名は省略）。実際の操作は、その設備の保安規程・取扱説明書と、現場の手順に従ってください。</div>');
+  cv.style.width = '100%'; document.getElementById('autoNoteImg').appendChild(cv); }
 const REARS = [rearDoor, rearDoor2, rearDoor3, rearDoor4, rearDoor5]; window.__rearDoor5 = rearDoor5; window.__rearDoor4 = rearDoor4; window.__rearDoor2 = rearDoor2; window.__rearDoor3 = rearDoor3;
 // 盤の右隣（-z壁）：給気ガラリ、鋼製棚、灰色キャビネット、扉　／　盤の左端：ケーブルドラム（写真1・2より）
 _hn = room.children.length;
@@ -1897,6 +1926,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (Math.hypot(e.clientX - dx, e.clientY - dy) > 6 || performance.now() - t0 > 600 || ov.style.display !== 'none') return;
     const r = el.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera);
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
+    if (raycaster.intersectObject(autoNote, false).length) { showAutoNote(); return; }
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
     if (raycaster.intersectObjects(roomDoor.g, true).length) { roomDoor.toggle(); return; }
     { const r = REARS.find(r => raycaster.intersectObjects(r.leaves, true).length); if (r) { r.toggle(); return; } }
