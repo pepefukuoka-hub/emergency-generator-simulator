@@ -1,4 +1,5 @@
 import { createWorker } from './workers.js';
+import { buildKiki } from './kikishitsu.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -103,9 +104,15 @@ const room = new THREE.Group(); scene.add(room);
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(16.6, 8.0), mat.floor);
 floor.rotation.x = -Math.PI / 2; floor.position.set(-4.7, 0, 0.6); floor.receiveShadow = true; room.add(floor);
 const wallMat = M(0xffffff, 0, 1, { map: concreteTex([5, 2]), side: THREE.BackSide });
-const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), wallMat); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
+const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), [wallMat, wallMat, wallMat, wallMat, wallMat, new THREE.MeshBasicMaterial({ visible: false })]); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
+// 入口側（−Z）の壁は、機器室へ抜けるドアの穴（X −5.8〜−4.8、高さ 2.15）をあけた3枚の面
+const doorWall = [];
+for (const [x0, x1, y0, y1] of [[-13, -5.8, 0, 4.4], [-4.8, 3.6, 0, 4.4], [-5.8, -4.8, 2.15, 4.4]]) {
+  const o = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), M(0xffffff, 0, 1, { map: concreteTex([(x1 - x0) / 3.3, (y1 - y0) / 2.2]) }));
+  o.position.set((x0 + x1) / 2, (y0 + y1) / 2, -3.4); room.add(o); doorWall.push(o);
+}
 // 表示を消せる組：wall＝壁・天井まわりと壁ぎわの物、small＝床に置いた小物
-const hideSets = { wall: [walls], small: [] }; let _hn = 0; const grab = (k, n0) => hideSets[k].push(...room.children.slice(n0));
+const hideSets = { wall: [walls, ...doorWall], small: [] }; let _hn = 0; const grab = (k, n0) => hideSets[k].push(...room.children.slice(n0));
 for (const [x0, x1, z0, z1] of [[-3.6, 3.2, -1.95, -1.85], [-3.6, 3.2, 2.0, 2.1], [-3.6, -3.5, -1.95, 2.1], [3.1, 3.2, -1.95, 2.1]])
   bx(x0, x1, 0, 0.01, z0, z1, mat.black, room);
 const lamp = M(0xffffff, 0, 0.3, { emissive: 0xffffff, emissiveIntensity: 1 });
@@ -333,7 +340,7 @@ for (const x of [-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0]) bx(x - 0.15, x + 0.15
 grab('wall', _hn);
 // 左壁（-z側）の下部ベージュ帯と、床の縞鋼板
 _hn = room.children.length;
-bx(-10.5, 3.6, 0, 1.25, -3.4, -3.37, M(0x9c9d83, 0, 0.9), room);
+{ const bm = M(0x9c9d83, 0, 0.9); bx(-10.5, -5.95, 0, 1.25, -3.4, -3.37, bm, room); bx(-4.65, 3.6, 0, 1.25, -3.4, -3.37, bm, room); }
 grab('wall', _hn);
 bx(-4.1, 3.6, 0, 0.012, -3.3, -2.5, mat.plate, room); bx(-10.4, -9.5, 0, 0.012, -3.3, -1.0, mat.plate, room);
 // 排気管（天井まで→入口側へ）と、風道の曲がり
@@ -694,7 +701,7 @@ function relay3D(type, tag) {
   const lug = ext(rrShape(0.05, 0.03, 0.008), 0.016, blkG, 0.002); lug.position.set(0, -bh / 2 - 0.006, 0.0); g3.add(lug);
   const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.01, 18), chrome); sc.rotation.x = Math.PI / 2; sc.position.set(0, -bh / 2 - 0.006, 0.02); g3.add(sc);
   { const xs = f.vert ? [-0.036, -0.012, 0.012, 0.036] : [-0.06, -0.02, 0.02, 0.06]; g3.userData.ports = xs.map(x => new THREE.Vector3(x, -bh / 2 - 0.006, 0.03));
-    xs.forEach(x => { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.022, 10), chrome); st.rotation.x = Math.PI / 2; st.position.set(x, -bh / 2 - 0.006, 0.02); g3.add(st); const hd = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.006, 12), M(0xc9a24a, 0.8, 0.35)); hd.rotation.x = Math.PI / 2; hd.position.set(x, -bh / 2 - 0.006, 0.033); g3.add(hd); }); }
+  }
   g3.userData.size = [bw, bh]; return g3;
 }
 function blockFace(t, red) {
@@ -911,13 +918,14 @@ function box3D(b) {
   }
   return g3;
 }
+const RELAY_BACK = {};   // 継電器の背面（扉の裏）。tag → 端子の位置と、盤側の線
 const RELAYS = {};
 function buildDevices(parent, px, rec, z0 = -2.875) {
   const P = (x, y) => [px + (x - 256) * KM, 2.29 - y * KM];
   const put = (o, x, y, z = 0.001) => { const [wx, wy] = P(x, y); o.position.set(wx, wy, z0 + z); parent.add(o); return o; };
   rec.name.forEach(n => put(name3D(n), n.cx, n.cy));
   rec.meter.forEach(m => put(meter3D(m), m.cx, m.cy));
-  rec.relay.forEach(r => { const [type, tag] = r.title.split(':'); const o = relay3D(type, tag); if (z0 > -3) RELAYS[tag] = o; put(o, r.x + r.w / 2, r.y + r.h / 2); });
+  rec.relay.forEach(r => { const [type, tag] = r.title.split(':'); const o = relay3D(type, tag); o.userData.relayTag = tag; o.userData.relayType = type; if (z0 > -3) RELAYS[tag] = o; put(o, r.x + r.w / 2, r.y + r.h / 2); });
   rec.block.forEach(b => put(block3D(b.t, b.red), b.x + 23, b.y + 20));
   rec.knob.forEach(k => { const o = put(knob3D(k.t, k.tag), k.x, k.y); o.userData.knob.rotation.z = k.tag ? -0.75 : 0.6 - ((k.x * 13 + k.y * 7) % 3) * 0.6; });
   rec.pistol.forEach(k => put(pistol3D(k.t), k.x, k.y));
@@ -1111,12 +1119,36 @@ function cabinetInside(ig, kind) {
   }
 }
 const i0 = y => (y > 1.5 ? darkP : cream);
+// 継電器の背面：黒い箱の後ろに、ねじ端子が2段。端子の名前・並びは、写真がなく推測（教材での仮の名前）。
+// 過電流：C1・C2（電流入力）、T1・T2（接点出力）。電圧：P1・P2（電圧入力）、T1・T2（接点出力）、＋・−（制御電源 DC24V）。
+function relayBack3D(dg, type, tag, x, y) {
+  const vert = type === 'lvg' || type === 'elr', w = vert ? 0.1 : 0.14, h = vert ? 0.17 : 0.16, D = 0.11, sp = vert ? 0.021 : 0.03;
+  const g = new THREE.Group(); g.position.set(x, y, -0.03); dg.add(g);
+  bx(-w / 2, w / 2, -h / 2, h / 2, -D, 0, darkP, g);
+  const rowsT = type === 'ocr' ? [['C1', 'C2', '', ''], ['T1', 'T2', '', '']] : [['P1', 'P2', '＋', '−'], ['T1', 'T2', '', '']];
+  const tx = c => (c - 1.5) * sp, ty = r => (r ? -0.036 : 0.03), ports = {}, wires = { in: [], trip: [], dc: [] };
+  const lab = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.006, h - 0.006), new THREE.MeshStandardMaterial({ map: canvasTex(280, 320, (c, W, H) => {
+    c.fillStyle = '#1b1c1f'; c.fillRect(0, 0, W, H); c.fillStyle = '#d8d4c2'; c.textAlign = 'center'; c.font = 'bold 22px sans-serif'; c.fillText(tag + ' 背面', W / 2, 30);
+    rowsT.forEach((r, ri) => { const py = (0.5 - ty(ri) / (h - 0.006)) * H; c.fillStyle = '#cfc9b4'; c.fillRect(14, py - 30, W - 28, 60); c.fillStyle = '#16171a';
+      r.forEach((nm, ci) => { const px = (0.5 - tx(ci) / (w - 0.006)) * W; c.font = 'bold ' + (vert ? 17 : 21) + 'px sans-serif'; c.fillText(nm, px, py + 27); }); });
+    c.fillStyle = '#9aa0a4'; c.font = '13px sans-serif'; c.fillText('端子名は教材の仮の名前', W / 2, H - 10);
+  }), roughness: 0.6 })); lab.rotation.y = Math.PI; lab.position.z = -D - 0.0006; g.add(lab);
+  const brass = M(0xd0b060, 0.8, 0.3), washerM = M(0xa9aeb3, 0.7, 0.4);
+  rowsT.forEach((r, ri) => r.forEach((nm, ci) => {
+    const X = tx(ci), Y = ty(ri); cyl(0.0075, 0.003, washerM, X, Y, -D - 0.002, 'z', g, 14); cyl(0.005, 0.009, brass, X, Y, -D - 0.006, 'z', g, 10);
+    if (!nm) return; ports[nm] = new THREE.Vector3(X, Y, -D - 0.011);
+    // 盤側の線（黄色）。試験のときに外す線は、表示を消して「外した」ことを見せる
+    const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(X, Y, -D - 0.008), new THREE.Vector3(X, Y - 0.014, -D - 0.022), new THREE.Vector3(X - 0.01, -h / 2 - 0.02 - ci * 0.004, -D - 0.012), new THREE.Vector3(-w / 2 - 0.06, -h / 2 - 0.03 - ci * 0.004 - ri * 0.012, -0.06)]), 16, 0.0022, 6), /[CP]/.test(nm) ? yelM : /T/.test(nm) ? whtM : redM); g.add(m);
+    wires[/[CP]/.test(nm) ? 'in' : /T/.test(nm) ? 'trip' : 'dc'].push(m);
+  }));
+  g.userData = { ports, wires, type, relayTag: tag, relayType: type }; RELAY_BACK[tag] = g; return g;
+}
 function doorBack(dg, rec, cx, kind) {
   const P = (xx, yy) => [cx + (xx - 256) * KM, 2.29 - yy * KM];
   const termDots = (g, x, y, w) => { for (let i = 0; i < 6; i++) { const t = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.012, 8), M(0xd0b060, 0.8, 0.3)); t.rotation.x = Math.PI / 2; t.position.set(x - w / 2 + 0.01 + i * (w - 0.02) / 5, y, -0.115); g.add(t); } };
   const rows = new Set();
   rec.meter.forEach(m => { const [x, y] = P(m.cx, m.cy); const r = m.r * KM * 0.62; const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.07, 22), darkP); b.rotation.x = Math.PI / 2; b.position.set(x, y, -0.065); b.castShadow = true; dg.add(b); termDots(dg, x, y - r * 0.5, r * 1.6); rows.add(Math.round(y * 5)); if (rnd() > 0.2) wire(dg, [x - r * 0.4, y - r * 0.55, -0.12], [Math.min(x + 0.1, 0.12), y - r - 0.04, -0.09]); });
-  rec.relay.forEach(rl => { const [x, y] = P(rl.x + rl.w / 2, rl.y + rl.h / 2); const b = bx(x - 0.055, x + 0.055, y - 0.06, y + 0.06, -0.14, -0.03, darkP, dg); termDots(dg, x, y - 0.05, 0.1); termDots(dg, x, y + 0.05, 0.1); for (let k = 0; k < 8; k++) cyl(0.007, 0.004, whtM, x - 0.03 + (k % 4) * 0.02, y + 0.012 - (k >> 2) * 0.024, -0.141, 'z', dg, 10); rows.add(Math.round(y * 5)); wire(dg, [x - 0.04, y + 0.065, -0.15], [0.08, y + 0.12, -0.09]); wire(dg, [x + 0.04, y - 0.065, -0.15], [0.08, y - 0.12, -0.09]); });
+  rec.relay.forEach(rl => { const [x, y] = P(rl.x + rl.w / 2, rl.y + rl.h / 2), [type, tag] = rl.title.split(':'); relayBack3D(dg, type, tag, x, y); rows.add(Math.round(y * 5)); });
   rec.knob.forEach(k => { const [x, y] = P(k.x, k.y); cyl(0.02, 0.05, darkP, x, y, -0.055, 'z', dg, 12); const t = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.012), M(0xd0b060, 0.8, 0.3)); t.position.set(x, y - 0.03, -0.085); dg.add(t); if (rnd() > 0.5) wire(dg, [x, y - 0.03, -0.09], [0.08, y - 0.06, -0.09]); });
   rec.block.forEach(b => { const [x, y] = P(b.x + 23, b.y + 20); bx(x - 0.04, x + 0.04, y - 0.035, y + 0.035, -0.09, -0.03, darkP, dg); wire(dg, [x, y - 0.03, -0.09], [0.08, y - 0.1, -0.09]); });
   // 盤面に追加した部品の背面（表の位置に合わせる。形は一般的な盤用部品の形で、実機の写真を見たものではない＝推測）
@@ -1154,7 +1186,7 @@ function buildCabinet(i, x, nm) {
   const tx = panelTex(nm, i), rec = tx.userData.rec, hingeX = x - 0.465, W = 0.93;
   // 盤の躯体（背板・側板・天板・底・前枠）
   bx(x - 0.47, x + 0.47, 0, 2.3, -3.38, -3.36, sheetM, pnl); bx(x - 0.47, x - 0.45, 0, 2.3, -4.88, -2.88, cream, pnl); bx(x + 0.45, x + 0.47, 0, 2.3, -4.88, -2.88, cream, pnl);
-  bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
+  if (i !== 4) bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.28, 2.3, -3.38, -2.88, cream, pnl); bx(x - 0.47, x + 0.47, 0, 0.12, -3.38, -2.88, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.25, 2.3, -2.9, -2.875, cream, pnl); bx(x - 0.47, x + 0.47, 0.1, 0.14, -2.9, -2.875, cream, pnl);
   const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i);
@@ -1170,6 +1202,36 @@ function buildCabinet(i, x, nm) {
 }
 
 panelNames.forEach((nm, i) => buildCabinet(i, -8.3 + i * 0.95, nm));
+// 自動操作盤（発電機から見て一番右）の裏：両開きの裏扉（タップで開閉）と、中の制御リレーの棚（写真3枚より。細部・配線の本数は簡略）
+const rearDoor = (() => {
+  const x = -8.3 + 4 * 0.95, cr = M(0xd3d0c0, 0.25, 0.6), hm = M(0xc9ccce, 0.8, 0.3);
+  // 棚の絵（中仕切りの裏面に貼る）。上：抵抗器・端子台／電磁接触器、中：差し込み式リレーの列×4、下：カバーと変圧器
+  const tex = canvasTex(256, 640, (c, w, h) => {
+    c.fillStyle = '#d9d6cb'; c.fillRect(0, 0, w, h);
+    const relays = (y, n) => { c.fillStyle = '#1a1a1a'; c.fillRect(18, y - 6, w - 36, 50); for (let i = 0; i < n; i++) { const x0 = 22 + i * (w - 44) / n, ww = (w - 44) / n - 2;
+      c.fillStyle = '#e8e6dc'; c.fillRect(x0, y, ww, 30); c.fillStyle = '#f2d21b'; c.fillRect(x0 + 1, y + 10, ww - 2, 8); c.fillStyle = '#c4c0b0'; c.fillRect(x0 + 2, y + 2, ww - 4, 6);
+      for (const [yy, dir] of [[y - 6, -1], [y + 44, 1]]) for (let k = 0; k < 3; k++) { c.strokeStyle = k === 1 ? '#f1d22a' : '#efefea'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x0 + 2 + k * ww / 3, yy); c.lineTo(x0 + 2 + k * ww / 3 + (k - 1), yy + dir * 22); c.stroke();
+        c.fillStyle = '#c8233c'; c.fillRect(x0 + 1 + k * ww / 3, yy + (dir < 0 ? -4 : 0), 2.4, 4); } } };
+    // 上段：抵抗器（緑の筒）・端子台、接触器
+    c.fillStyle = '#2e7a4a'; c.fillRect(20, 14, 16, 70); c.fillRect(40, 14, 16, 70); c.fillStyle = '#ddd'; c.fillRect(80, 30, 50, 40); c.fillStyle = '#222'; c.fillRect(86, 36, 38, 28); c.fillStyle = '#7a4a2c'; c.beginPath(); c.arc(170, 46, 18, 0, 7); c.fill();
+    for (let i = 0; i < 5; i++) { const x0 = 30 + i * 42; c.fillStyle = i === 4 ? '#e8e6dc' : '#17191c'; c.fillRect(x0, 120, 32, 50); c.fillStyle = '#1f5fbf'; c.fillRect(x0 + 4, 128, 24, 8); c.fillStyle = '#f2d21b'; c.fillRect(x0 + 6, 150, 20, 6); }
+    for (const y of [235, 330, 425, 520]) relays(y, 17);
+  });
+  const g = new THREE.Group(); pnl.add(g);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 2.12), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 })); face.rotation.y = Math.PI; face.position.set(x, 1.16, -3.39); g.add(face);
+  // 立体の配線ダクト（横5本・縦2本）と、下の変圧器2つ・束ねたケーブル
+  const duct = M(0xb9bcc0, 0.2, 0.6);
+  for (const y of [1.98, 1.66, 1.38, 1.1, 0.82, 0.54]) bx(x - 0.42, x + 0.42, y - 0.035, y + 0.035, -3.5, -3.39, duct, g);
+  for (const dx of [-0.4, 0.4]) bx(x + dx - 0.035, x + dx + 0.035, 0.5, 2.2, -3.47, -3.39, duct, g);
+  bx(x - 0.3, x - 0.12, 0.14, 0.32, -3.62, -3.42, M(0x8a5a2a, 0.5, 0.5), g); bx(x + 0.05, x + 0.27, 0.14, 0.34, -3.62, -3.42, M(0x1b1b1b, 0.3, 0.6), g);
+  { const coil = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 8, 20), M(0x777a80, 0.1, 0.8)); coil.rotation.x = Math.PI / 2; coil.position.set(x, 0.17, -4.0); g.add(coil); }
+  const light = new THREE.PointLight(0xfff2dc, 0, 2.4, 1.6); light.position.set(x, 1.6, -4.3); pnl.add(light);
+  // 裏扉：両開き。外（裏の通路側、−z）へ開く
+  const leaves = [[x - 0.47, 1], [x + 0.47, -1]].map(([hx, k]) => { const lg = new THREE.Group(); lg.position.set(hx, 0, -4.88); pnl.add(lg); lg.userData.k = k;
+    bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
+  return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+})();
+window.__rearDoor = rearDoor;
 // 盤の右隣（-z壁）：給気ガラリ、鋼製棚、灰色キャビネット、扉　／　盤の左端：ケーブルドラム（写真1・2より）
 _hn = room.children.length;
 const lv = new THREE.Group(); lv.position.set(-3.0, 3.0, -3.36); room.add(lv);
@@ -1185,8 +1247,9 @@ bx(-7.5, -6.6, 0, 0.3, -3.3, -2.7, M(0xf0f0ee, 0, 0.8), room);                  
 grab('small', _hn);
 _hn = room.children.length;
 bx(-8.75, -7.7, 0, 2.0, -3.4, -2.95, M(0xbfc3b8, 0.2, 0.7), room); bx(-8.22, -8.18, 0, 2.0, -2.97, -2.93, M(0x8a8e84), room); for (const x of [-8.28, -8.12]) bx(x - 0.01, x + 0.01, 0.95, 1.1, -2.98, -2.93, chrome, room);
-bx(-5.95, -4.65, 0, 2.55, -3.4, -3.36, M(0xc8c4a8, 0, 0.9), room); bx(-5.8, -4.8, 0, 2.15, -3.36, -3.3, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.31, -5.29, 0, 2.15, -3.3, -3.29, M(0x888c86), room); for (const x of [-5.36, -5.24]) bx(x - 0.01, x + 0.01, 1.0, 1.15, -3.31, -3.27, chrome, room);
-{ const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('入口', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
+// 機器室へのドア（開けた状態。枠と、発電機室側へ開いた扉）
+{ const fm = M(0xc8c4a8, 0, 0.9); bx(-5.95, -5.8, 0, 2.55, -3.4, -3.36, fm, room); bx(-4.8, -4.65, 0, 2.55, -3.4, -3.36, fm, room); bx(-5.8, -4.8, 2.15, 2.55, -3.4, -3.36, fm, room); bx(-5.84, -5.8, 0, 2.15, -3.36, -2.36, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.8, -5.76, 1.0, 1.15, -2.5, -2.48, chrome, room); }
+{ const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('機器室', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
 { const n2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.42), M(0xf2f2f0, 0, 0.8)); n2.position.set(-0.75, 1.55, -3.285); n2.rotation.y = Math.PI; n2.visible = false; room.add(n2); }
 bx(0.2, 1.1, 0, 0.75, -3.4, -3.05, M(0xe9dfc0, 0.1, 0.7), room); for (let i = 0; i < 6; i++) bx(0.35, 0.95, 0.5 + i * 0.03, 0.52 + i * 0.03, -3.05, -3.04, M(0x9a9482), room); // 温風機
 bx(0.0, 0.14, 1.9, 2.04, -3.4, -3.33, M(0xc0141a, 0, 0.5), room);               // 火災報知機
@@ -1339,12 +1402,16 @@ function stepState(dt) {
 }
 const FIRE_MODES = ['accel', 'run', 'xfer', 'supply'];
 
+// ================= 機器室（入口のドアの向こう） =================
+const kiki = buildKiki({ M, canvasTex, plateMat: mat.plate });
+scene.add(kiki.group); window.__kiki = kiki;
+
 // ================= UI =================
 const css = document.createElement('style');
 css.textContent = '.hud{position:fixed;color:#fff;font:13px/1.6 sans-serif;background:#000b;padding:8px 12px;border-radius:8px}.hud button{font-size:13px;padding:4px 8px;margin:2px;cursor:pointer}.hud button.on{background:#3a7;color:#fff}#hud2{left:12px;bottom:12px;max-width:640px}#stt{font-weight:bold;font-size:15px;color:#ffd866}#rd{color:#9fe;font-family:monospace}.hudtg{background:#1c3a46;color:#fff;border:1px solid #7fe0d0;border-radius:6px;font-weight:bold;display:block;width:100%;text-align:left}.hud.min{padding:4px}.hud.min .hb{display:none}.hud.min .hudtg{width:auto}#std,#stw{display:none}#hud2.ex #std,#hud2.ex #stw{display:block}#stt{cursor:pointer;padding:4px 0}@media (pointer:coarse){.hud button,.hud select{min-height:34px}}';
 document.head.appendChild(css);
 const h1 = document.createElement('div'); h1.className = 'hud'; h1.style.cssText = 'top:12px;left:12px';
-h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
+h1.innerHTML = '<b>非常用発電機シミュレータ</b><br>ドラッグ:回転 / 右ドラッグ:移動 / ホイール:拡大<br>スマホ:2本指で移動・ピンチで拡大<br><label><input id=w type=checkbox checked> 機械室</label> <label><input id=wk type=checkbox checked> 機器室</label> <label><input id=a type=checkbox> 自動回転</label><br>' +
   '<button data-v=0>全体</button><button data-v=4>入口から</button><button data-v=5>蓄電池</button><button data-v=6>配電盤</button><button data-v=7>盤面アップ</button><button data-v=10>盤の下側</button><button data-v=11>操作盤の下側</button><button data-v=1>点検側</button><button data-v=2>操作盤側</button><button data-v=3>発電機端面</button><button data-v=8>内部を見る位置</button><button data-v=9>盤の内部</button>';
 document.body.appendChild(h1);
 const h2 = document.createElement('div'); h2.className = 'hud'; h2.id = 'hud2';
@@ -1353,6 +1420,7 @@ h2.innerHTML = '<b>運転</b> <button id=bs>▶ 始動（試験運転）</button
 document.body.appendChild(h2);
 function $(id) { return document.getElementById(id); }
 $('w').onchange = e => room.visible = e.target.checked;
+$('wk').onchange = e => kiki.group.visible = e.target.checked;
 $('a').onchange = e => controls.autoRotate = e.target.checked;
 $('snd').onchange = e => { S.sound = e.target.checked; };
 $('spd').onchange = e => { S.scale = +e.target.value; };
@@ -1363,17 +1431,25 @@ $('bi').onclick = () => { xray = !xray; applyView(); };
 $('bc').onclick = () => { section = !section; applyView(); };
 const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0]], [[-3.4, 1.8, -3.0], [-1.5, 1.1, -1.0]], [[-6.2, 1.9, 0.4], [-1, 1.5, 0]], [[-5.3, 1.65, -2.8], [0.5, 1.3, 1.0]], [[-1, 0.85, 1.25], [-1, 0.7, 2.7]], [[-6.3, 1.6, 1.0], [-9.8, 1.5, 1.0]], [[-8.2, 1.5, 1.25], [-9.8, 1.4, 1.25]], [[-0.4, 2.4, 6.4], [-0.6, 1.6, 0]], [[-7.4, 1.6, -0.2], [-9.9, 1.4, 0.1]]];
 views.push([[-8.3, 0.55, -0.65], [-9.8, 0.55, -0.65]], [[-1.05, 0.5, -3.6], [-1.05, 0.5, -2.22]]);
-h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
+views.push([[-12.75, 1.5, -1.25], [-10.4, 1.3, -0.6]]);   // 12：自動操作盤の裏（裏の通路から）
+h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button>');
+h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
+h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
+h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
-cameraPad.innerHTML = '<span>視点移動 </span><button data-pan="left" aria-label="視点を左へ">←</button><button data-pan="up" aria-label="視点を上へ">↑</button><button data-pan="down" aria-label="視点を下へ">↓</button><button data-pan="right" aria-label="視点を右へ">→</button><button data-zoom="0.8">＋ 拡大</button><button data-zoom="1.25">− 縮小</button>';
+cameraPad.className = 'campad';
+cameraPad.innerHTML = '<div class=cpl>見る位置を動かす</div><div><button data-move="1" aria-label="前へ進む">⬆ 前へ</button><button data-move="-1" aria-label="後ろへ下がる">⬇ 後ろへ</button><button data-zoom="0.8">＋ 拡大</button><button data-zoom="1.25">− 縮小</button></div><div>' + '<button data-pan="left" aria-label="視点を左へ">← 左</button><button data-pan="up" aria-label="視点を上へ">↑ 上</button><button data-pan="down" aria-label="視点を下へ">↓ 下</button><button data-pan="right" aria-label="視点を右へ">右 →</button></div>';
 h1.appendChild(cameraPad);
 cameraPad.querySelectorAll('button').forEach(b => b.onclick = () => {
   if (walk.on) setWalk(false);
   fly = null;
   controls.autoRotate = false; $('a').checked = false;
   const offset = camera.position.clone().sub(controls.target);
-  if (b.dataset.zoom) {
+  if (b.dataset.move) {   // 前へ・後ろへ：見ている向きに、注視点ごと進む
+    const dir = offset.clone().normalize().negate(), st = Math.min(1.5, Math.max(0.3, offset.length() * 0.25)) * Number(b.dataset.move);
+    camera.position.addScaledVector(dir, st); controls.target.addScaledVector(dir, st);
+  } else if (b.dataset.zoom) {
     offset.setLength(Math.max(controls.minDistance, offset.length() * Number(b.dataset.zoom)));
     camera.position.copy(controls.target).add(offset);
   } else {
@@ -1436,11 +1512,30 @@ new MutationObserver(() => { const sel = $('o_spd'); if (sel) sel.value = String
 
 // ================= 歩く視点（一人称） =================
 const worker = createWorker(); scene.add(worker.root); worker.root.visible = false; window.__worker = worker;
-const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.5), keys: {}, pad: { f: 0, s: 0 }, saved: null };
+const walk = { third: false, on: false, yaw: Math.PI + 0.5, pitch: -0.05, pos: new THREE.Vector3(-5.3, 1.65, -2.3), keys: {}, pad: { f: 0, s: 0 }, saved: null };
 const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.15, -2.55, -1.4], [-0.9, 1.1, 0.0, 1.1], [1.3, 3.5, -1.95, 0.55],
   [1.7, 3.3, 1.3, 3.0], [-2.0, 0.0, 2.1, 3.3], [0.15, 1.15, -3.4, -3.0], [-4.4, -3.4, 1.6, 2.2], [-3.8, -3.5, 2.2, 2.8], [-12.0, -9.5, -1.2, 3.65], [-9.85, -7.7, -3.4, -2.75], [-7.5, -6.6, -3.4, -2.75], [-4.4, -3.2, -3.4, -2.65]];
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
-const hitAt = (x, z) => x < ROOM[0] || x > ROOM[1] || z < ROOM[2] || z > ROOM[3] || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
+BLOCKS.push(...kiki.blocks);
+const inRect = (r, x, z) => x >= r[0] && x <= r[1] && z >= r[2] && z <= r[3];
+const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || (roomDoor.cur > -1.0 && Math.abs(z + 3.4) < PR && x > -5.9 && x < -4.7) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
+window.__walk = { walk, hitAt, goThroughDoor: () => goThroughDoor(), step: dt => walkStep(dt), setWalk: on => setWalk(on) };
+// 発電機室と機器室の間のドア（中心）。ボタンで、ドアの向こうへ移る
+const DOOR = { x: -5.3, z: -3.4 };
+// ドアの扉（蝶番は X −5.8。発電機室側 +Z へ開く）。タップで開け閉め。閉まっていると通れない
+const roomDoor = (() => {
+  const g = new THREE.Group(); g.position.set(-5.8, 0, -3.4); scene.add(g);
+  const dm = M(0xa9aeb2, 0.4, 0.5), hm = M(0xdfe2e4, 0.9, 0.25);
+  const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.98, 2.12, 0.045), dm); leaf.position.set(0.5, 1.06, 0); g.add(leaf);
+  for (const z of [0.04, -0.04]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.025, 0.025), hm); h.position.set(0.86, 1.0, z); g.add(h); const r = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16), hm); r.rotation.x = Math.PI / 2; r.position.set(0.9, 1.0, z * 0.6); g.add(r); }
+  return { g, cur: 0, target: 0, OPEN: -1.65, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+})();
+window.__roomDoor = roomDoor;
+function goThroughDoor() {
+  stopMovement(); roomDoor.target = roomDoor.OPEN;
+  const toKiki = walk.pos.z >= DOOR.z;
+  walk.pos.set(DOOR.x, 1.65, toKiki ? -4.3 : -2.6); walk.yaw = toKiki ? 0 : Math.PI; walk.pitch = -0.05;
+}
 function walkStep(dt) {
   const k = walk.keys, run = k.ShiftLeft || k.ShiftRight ? 2.2 : 1;
   const f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + walk.pad.f, sd = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + walk.pad.s;
@@ -1449,32 +1544,24 @@ function walkStep(dt) {
   const before = walk.pos.clone();
   const dx = fx * f * sp, dz = fz * f * sp;
   if (!hitAt(walk.pos.x + dx, walk.pos.z)) walk.pos.x += dx; if (!hitAt(walk.pos.x, walk.pos.z + dz)) walk.pos.z += dz;
+  // ドアの前で前へ進むと、ドアの真ん中へ寄せる（狭い通り道に入りやすくする）
+  if (f > 0 && Math.abs(walk.pos.z - DOOR.z) < 1.0 && Math.abs(walk.pos.x - DOOR.x) < 1.1 && Math.abs(fz) > 0.4) {
+    const nx = walk.pos.x + Math.sign(DOOR.x - walk.pos.x) * Math.min(Math.abs(DOOR.x - walk.pos.x), 1.2 * dt);
+    if (!hitAt(nx, walk.pos.z)) walk.pos.x = nx;
+  }
+  const inKiki = walk.pos.z < DOOR.z; if (inKiki !== walk.inKiki) { walk.inKiki = inKiki; $('doorGo').textContent = inKiki ? '🚪 発電機室へ戻る' : '🚪 ドアを通って機器室へ'; }
   const bob = f ? Math.sin(vt * 9 * run) * 0.012 : 0;
   worker.root.position.set(walk.pos.x, 0, walk.pos.z);
   worker.root.rotation.y = walk.yaw;
   worker.update(walk.pos.distanceTo(before) * Math.sign(f));
   worker.root.visible = walk.third;
   if (walk.third) {
-    const target = new THREE.Vector3(walk.pos.x, 1.1, walk.pos.z);
-    // 背後が壁際なら斜め後ろ・横の空いている方向へ回す。
-    let best = null;
-    for (const angle of [0, Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2]) {
-      const offset = new THREE.Vector3(Math.sin(walk.yaw + angle) * 2.7,
-        1.25 - walk.pitch * 1.2, Math.cos(walk.yaw + angle) * 2.7);
-      let fraction = 1;
-      for (let i = 1; i <= 50; i++) {
-        const t = i / 50;
-        if (hitAt(target.x + offset.x * t, target.z + offset.z * t)) {
-          fraction = Math.max(0.02, (i - 1) / 50); break;
-        }
-      }
-      if (!best || fraction > best.fraction) best = { offset, fraction };
-      if (fraction >= 0.8) break;
-    }
-    camera.position.copy(target).addScaledVector(best.offset, best.fraction);
-    camera.position.y = Math.max(camera.position.y, 2.15);
-    camera.lookAt(target);
-
+    // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
+    const bx = Math.sin(walk.yaw), bz = Math.cos(walk.yaw);
+    let d = 2.7;
+    for (let i = 1; i <= 54; i++) { const t = i * 0.05; if (hitAt(walk.pos.x + bx * t, walk.pos.z + bz * t)) { d = Math.max(0.5, t - 0.15); break; } }
+    camera.position.set(walk.pos.x + bx * d, 1.65 + 0.2 * d + bob, walk.pos.z + bz * d);
+    camera.rotation.set(walk.pitch - 0.2, walk.yaw, 0, 'YXZ');
   } else {
     camera.position.set(walk.pos.x, 1.65 + bob, walk.pos.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
   }
@@ -1524,12 +1611,13 @@ pad.querySelectorAll('button').forEach(b => {
   });
 });
 const hint = document.createElement('div'); hint.className = 'hud'; hint.style.cssText = 'left:50%;top:70px;transform:translateX(-50%);display:none;text-align:center;pointer-events:none';
-hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
+hint.innerHTML = '<b>歩く視点</b><br>W／S（↑／↓）：前へ・後ろへ　A／D（←／→）：その場で左右に回る　Shift：小走り　<br>機器室へは、入口の緑の「機器室」の札の下のドアを通る（右下の「🚪 ドアを通って機器室へ」でも移れる）<br>ドラッグ：見回す　画面右下のパッド（スマホ）';
 document.body.appendChild(hint);
 h1.insertAdjacentHTML('beforeend', '<br><button id=bw style="background:#2a6;color:#fff;font-weight:bold">🚶 歩く視点</button>');
-pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button>');
+pad.insertAdjacentHTML('afterbegin', '<button id=personView style="display:none">本人の目線 → 後ろから見る</button><button id=doorGo style="display:block;width:100%;margin:2px 0 6px;font-weight:bold;background:#2a6;color:#fff">🚪 ドアを通って機器室へ</button>');
+$('doorGo').onclick = goThroughDoor; protectControl($('doorGo'));
 $('personView').onclick = () => {
-  stopMovement(); walk.third = !walk.third; walk.pitch = -0.05;
+  stopMovement(); walk.third = !walk.third;   // 向き（yaw・pitch）は、そのまま引き継ぐ
   $('personView').textContent = walk.third ? '後ろから見る → 本人の目線' : '本人の目線 → 後ろから見る';
 };
 protectControl($('personView'));
@@ -1556,6 +1644,9 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (Math.hypot(e.clientX - dx, e.clientY - dy) > 6 || performance.now() - t0 > 600 || ov.style.display !== 'none') return;
     const r = el.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera);
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
+    if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
+    if (raycaster.intersectObject(roomDoor.g, true).length) { roomDoor.toggle(); return; }
+    if (raycaster.intersectObjects(rearDoor.leaves, true).length) { rearDoor.toggle(); return; }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
@@ -1592,6 +1683,7 @@ const INFO = [
     ['試験端子（VT/CT）', [[-8.0, 0.6, pz(2) + 0.1], [-9.8, 0.1, pz(2) + 0.1]], '役割：継電器の試験をする時に、計器用変成器（VT／CT）の二次側を安全に切り離したり、試験電流・電圧をつなぐ端子です。', '注意：CTの二次側は、絶対に開放しないでください。高電圧が発生して危険です。VTの二次側は短絡しないでください。'],
     ['非常停止（5E）', [[-8.0, 0.95, pz(4) - 0.27], [-9.8, 0.75, pz(4) - 0.27]], '役割：緊急の時に、エンジンを止めます。', '見る点：押されたままになっていないか（押したままだと始動しません）。点検後は引いて復帰させます。']]],
 ];
+INFO.push(kiki.info);
 const dwBtn = document.createElement('button'); dwBtn.id = 'dwBtn'; dwBtn.textContent = '📖 設備の説明'; document.body.appendChild(dwBtn);
 const dw = document.createElement('div'); dw.id = 'dw'; document.body.appendChild(dw);
 const css3 = document.createElement('style');
@@ -1669,18 +1761,21 @@ const RT = { open: false, plug: false, plugRev: true, earth: false, pbPol: false
   fine: 0, sel: 5, mode: 0, trip: 1, vr: 2, io: 0, am: 0, cnt: 0, uvt: 1, s7: 0, tCount: 0, counting: false, over: false, tripped: false, lastOp: null,
   target: '51GF2', hasPower: false, polLamp: 'off', test: 'oc_pick', bad: false, iso: { outage: false, ctShort: false, ctLift: false, vtLift: false, tripLift: false, restored: [] }, leads: {}, rec: [], log: [], pt: 0,
   Iv: 0, Vv: 0, Ia: 0, Va: 0, needleA: 0, needleV: 0, rel: { op: false, acc: 0, armed: false, instTime: null }, dirty: true, hold: null, danger: 0, ex: {} };
+// 整定は、継電器の前面の写真（つまみの位置）から読み取ったもの。読み取りは目安で、自信のないものは「推測」。
+// 動作時間特性（300%での秒数）は、写真からは読めないので架空（時間レバー 10 で 4秒 → レバー 1 で 0.4秒 と仮定）。
 const RDEF = {
-  '51GF2': { type: 'ocr', panel: 0, name: '過電流継電器 51GF2', Is: 4, T300: 1.0, Iinst: 40, lever: '4' },
-  '51GF1': { type: 'ocr', panel: 0, name: '過電流継電器 51GF1', Is: 4, T300: 1.0, Iinst: 40, lever: '4' },
-  '51G': { type: 'ocr', panel: 3, name: '過電流継電器 51G（発電機盤）', Is: 5, T300: 0.8, Iinst: 50, lever: '3' },
-  '27R1': { type: 'uvr', panel: 2, name: '不足電圧継電器 27R1', Vs: 80, T: 1.0 },
-  '27R2': { type: 'uvr', panel: 2, name: '不足電圧継電器 27R2', Vs: 80, T: 1.0 },
-  '27RR1': { type: 'ovr', panel: 2, name: '過電圧継電器 27RR1', Vs: 120, T: 1.0 },
-  '27RR2': { type: 'ovr', panel: 2, name: '過電圧継電器 27RR2', Vs: 120, T: 1.0 },
-  '59G': { type: 'ovr', panel: 3, name: '過電圧継電器 59G（発電機盤）', Vs: 125, T: 1.0 },
+  '51GF2': { type: 'ocr', panel: 0, name: '過電流継電器 51GF2', Is: 5, T300: 0.4, Iinst: null, lever: '1' },
+  '51GF1': { type: 'ocr', panel: 0, name: '過電流継電器 51GF1', Is: 5, T300: 0.4, Iinst: null, lever: '1' },
+  '51G': { type: 'ocr', panel: 3, name: '過電流継電器 51G（発電機盤）', Is: 5, T300: 0.4, Iinst: null, lever: '1' },
+  '27R1': { type: 'uvr', panel: 2, name: '不足電圧継電器 27R1', Vs: 95, T: 0.4 },
+  '27R2': { type: 'uvr', panel: 2, name: '不足電圧継電器 27R2', Vs: 95, T: 0.4 },
+  '27RR1': { type: 'ovr', panel: 2, name: '過電圧継電器 27RR1', Vs: 100, T: 0.2 },
+  '27RR2': { type: 'ovr', panel: 2, name: '過電圧継電器 27RR2', Vs: 100, T: 0.2 },
+  '59G': { type: 'ovr', panel: 3, name: '過電圧継電器 59G（発電機盤）', Vs: 120, T: 2.0 },
   // 64G：零相電圧の入力に試験電圧を入れて、過電圧継電器と同じ手順で試験する扱い（教材での簡略化）。整定 10%（110V 基準で 11V）・0.5秒は架空
   '64G': { type: 'ovr', panel: 3, name: '地絡過電圧継電器 64G（発電機盤・整定は架空）', Vs: 11, T: 0.5 },
 };
+const setTxt = d => d.type === 'ocr' ? `限時電流 ${d.Is}A／時間レバー ${d.lever}／瞬時 ${d.Iinst ? d.Iinst + 'A' : '除外'}` : `${d.type === 'uvr' ? '不足電圧' : '動作電圧'} ${d.Vs}V／動作時間 ${d.T}秒`;
 const DEV = { good: { Is: 1.015, T: 1.03, Inst: 1.025, V: 1.006, TV: 1.02 }, bad: { Is: 1.12, T: 1.27, Inst: 1.22, V: 0.9, TV: 1.28 } };
 const TOL = { op: 0.05, inst: 0.15, time: 0.10, timeMin: 0.05 };
 const cur = () => RDEF[RT.target], devv = () => (RT.bad ? DEV.bad : DEV.good);
@@ -1715,10 +1810,13 @@ tset.visible = false;
 const tableBlock = [0, 0, 0, 0];
 function placeSet() {
   if (!RT.open) return;
-  const d = cur(), z = pz(d.panel); tset.position.set(-9.28, 0, z); tset.visible = true; leadGrp.visible = true;
+  // 単体試験は、扉を開けて、継電器の背面の端子につなぐ。机は、開いた扉（先端が盤面から約0.9m）に当たらない位置に置く
+  const d = cur(), z = pz(d.panel); tset.position.set(-8.48, 0, z); tset.visible = true; leadGrp.visible = true;
+  doors.forEach((dr, i) => { dr.target = i === d.panel ? OPEN : 0; });
   if (!BLOCKS.includes(tableBlock)) BLOCKS.push(tableBlock);
-  tableBlock[0] = -9.65; tableBlock[1] = -8.9; tableBlock[2] = z - 0.65; tableBlock[3] = z + 0.65; RT.leadsDirty = true;
+  tableBlock[0] = -8.85; tableBlock[1] = -8.1; tableBlock[2] = z - 0.65; tableBlock[3] = z + 0.65; RT.leadsDirty = true;
 }
+const rtView = () => { const z = pz(cur().panel); flyTo([-6.55, 1.8, z - 0.75], [-8.95, 0.95, z + 0.2]); };
 function termWorld(unit, px, py, pz = 0.012) { const u = unit.userData; const v = new THREE.Vector3((px / u.W - 0.5) * u.pw, (0.5 - py / u.H) * u.ph, pz); return u.pane.localToWorld(v); }
 
 // ---------- パネルの絵（クリックできる範囲も同時に登録） ----------
@@ -1884,10 +1982,11 @@ const TESTS = {
   ov_pick: { g: 'ovr', title: '動作電圧', pt: () => cur().Vs, unit: 'V', kind: 'pick' },
   ov_time: { g: 'ovr', title: '動作時間（整定の130%）', pt: () => 1.3 * cur().Vs, unit: 'V', kind: 'time', nom: () => cur().T },
 };
-const testsFor = g => Object.keys(TESTS).filter(k => TESTS[k].g === g);
+const testsFor = g => Object.keys(TESTS).filter(k => TESTS[k].g === g && (cur().Iinst || !/inst/.test(TESTS[k].kind)));   // 瞬時が「除外」の継電器は、瞬時の項目を出さない
 const RT_PORTS = { R: 0, P1: 0, E: 1, P2: 1, T1: 2, T2: 3 };
+const BACK_PORT = { R: 'C1', E: 'C2', P1: 'P1', P2: 'P2', T1: 'T1', T2: 'T2' };   // 試験機の端子 → 継電器の背面の端子
 const LEADSET = { ocr: ['R', 'E', 'T1', 'T2'], uvr: ['P1', 'P2', 'T1', 'T2'], ovr: ['P1', 'P2', 'T1', 'T2'] };
-const LEADTXT = { R: '電流出力 R → 継電器 電流入力①', E: '電流出力 E → 継電器 電流入力②（共通）', P1: '電圧出力 P1 → 継電器 電圧入力①', P2: '電圧出力 (E)P2 → 継電器 電圧入力②', T1: 'TRIP T1 → 継電器 接点出力③', T2: 'TRIP T2 → 継電器 接点出力④' };
+const LEADTXT = { R: '測定箱 R（電流出力）→ 継電器の背面 C1（電流入力）', E: '測定箱 E（電流出力・共通）→ 背面 C2（電流入力）', P1: '測定箱 P1（電圧出力）→ 背面 P1（電圧入力）', P2: '測定箱 (E)P2（電圧出力）→ 背面 P2（電圧入力）', T1: '測定箱 T1（TRIP）→ 背面 T1（接点出力）', T2: '測定箱 T2（TRIP）→ 背面 T2（接点出力）' };
 const TERMX = { T1: 161, T2: 224, P1: 287, P2: 349, R: 659, T: 724, E: 786 };
 function rtMsg(t, lv = 'w') { RT.log.unshift({ t, lv, at: performance.now() }); RT.log.length = Math.min(RT.log.length, 4); RT.guideDirty = true; }
 const grp = () => cur().type;
@@ -1901,7 +2000,7 @@ const sets = () => {
   r.push(['TRIP MODE = DC TRIP CONTACT（この継電器は a接点）', RT.trip === 0]);
   if (grp() === 'ocr') {
     const imax = OUTR[RT.rangeV] / Rtot(), need2 = pt * 1.15;
-    r.push(['AMMETER RANGE：目標 ' + pt.toFixed(1) + 'A を読める最小のレンジ（' + (AMR.find(v => v >= pt * 1.0) || 50) + 'A）', AMR[RT.am] >= pt && AMR[RT.am] <= (AMR.find(v => v >= pt) || 50)]);
+    r.push(['AMMETER RANGE：目標 ' + pt.toFixed(1) + 'A を読める最小のレンジ（' + (AMR.find(v => v >= pt * 1.1) || 50) + 'A）', AMR[RT.am] >= pt * 1.1 && AMR[RT.am] <= (AMR.find(v => v >= pt * 1.1) || 50)]);
     r.push(['OUTPUT RANGE と SERIES RESISTOR：最大電流が ' + need2.toFixed(1) + 'A 以上（今：' + imax.toFixed(1) + 'A）', imax >= need2 && OUTR[RT.rangeV] <= 30]);
     if (t.kind !== 'pick') r.push(['COUNTER RANGE = 10S', RT.cnt === 1]);
   } else {
@@ -1938,7 +2037,7 @@ function rtTick(dt) {
   let want = false;
   if (ready && (on || prev)) {
     if (t.g === 'ocr') {
-      const Is = d.Is * dv.Is, Ti = d.Iinst * dv.Inst, T3 = d.T300 * dv.T;
+      const Is = d.Is * dv.Is, Ti = d.Iinst ? d.Iinst * dv.Inst : Infinity, T3 = d.T300 * dv.T;
       if (on) { if (lv >= Ti) rel.acc += dt / 0.045; else if (lv >= Is) { const Tm = RT.mode === 1 ? Math.min(Tcurve(lv / d.Is, T3), 0.25) : Tcurve(lv / d.Is, T3); rel.acc += dt / Math.min(Tm, 300); } else { rel.acc = 0; if (RT.mode === 1 && lv < Is * 0.9) rel.op = false; } }
     } else if (t.g === 'uvr') {
       const Vs = d.Vs * dv.V, Tt = d.T * dv.TV;
@@ -1963,28 +2062,33 @@ function rtTick(dt) {
 }
 // ---------- 配線（3D のリード線） ----------
 const leadGrp = new THREE.Group(); leadGrp.visible = false; scene.add(leadGrp);
+function rtBackSync() {   // 背面の盤側の線：試験の対象で「外した」ものは消す
+  for (const [tag, g] of Object.entries(RELAY_BACK)) { const on = RT.open && tag === RT.target, w = g.userData.wires;
+    w.in.forEach(m => { m.visible = !(on && (g.userData.type === 'ocr' ? RT.iso.ctLift : RT.iso.vtLift)); }); w.trip.forEach(m => { m.visible = !(on && RT.iso.tripLift); }); }
+}
 function rebuildLeads() {
   while (leadGrp.children.length) { const o = leadGrp.children[0]; leadGrp.remove(o); o.geometry.dispose(); if (!o.userData.keepMat) o.material.dispose(); }
-  if (!tset.visible) return; const rel = RELAYS[RT.target]; if (!rel) return; scene.updateMatrixWorld(true);
+  rtBackSync();
+  if (!tset.visible) return; const back3 = RELAY_BACK[RT.target], rel = RELAYS[RT.target]; if (!back3 && !rel) return; scene.updateMatrixWorld(true);
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   const tube = (pts, col, r = 0.0032, tension = 0.5) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'catmullrom', tension), 56, r, 7), M(col, 0.05, 0.55)); m.castShadow = true; leadGrp.add(m); };
   const stub = (a, b, r, col, metal = 0) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, a.distanceTo(b), 10), M(col, metal, metal ? 0.3 : 0.5)); m.position.copy(a).lerp(b, 0.5); m.quaternion.setFromUnitVectors(V(0, 1, 0), b.clone().sub(a).normalize()); m.castShadow = true; leadGrp.add(m); };
-  // 机の奥の縁（盤側）。線は、端子の上 → 机の奥の縁の外 → 机と盤のすき間 → 継電器の端子、と通す（机・箱を突き抜けない）
+  // 机の奥の縁（盤側）。線は、端子の上 → 机の奥の縁の外 → 開いた扉の裏にある、継電器の背面の端子、と通す（机・箱を突き抜けない）
   const back = tset.position.x - 0.35 - 0.035, topY = 0.78;
+  const nB = back3 ? V(0, 0, -1).transformDirection(back3.matrixWorld) : V(1, 0, 0);     // 背面の端子が向いている方向
   Object.keys(RT.leads).filter(id => RT.leads[id]).forEach((id, n) => {
-    const col = new THREE.Color(LC[id]).getHex(), A = termWorld(uM, TERMX[id], 44, 0.021), B = rel.localToWorld(rel.userData.ports[RT_PORTS[id]].clone());
-    // 端子側：差し込みプラグ（色つきの絶縁筒。形は推測）
+    const col = new THREE.Color(LC[id]).getHex(), A = termWorld(uM, TERMX[id], 44, 0.021);
+    const B = back3 && back3.userData.ports[BACK_PORT[id]] ? back3.localToWorld(back3.userData.ports[BACK_PORT[id]].clone()) : rel.localToWorld(rel.userData.ports[RT_PORTS[id]].clone());
+    // 試験機側：差し込みプラグ（色つきの絶縁筒。形は推測）
     stub(A, A.clone().add(V(0, 0.022, 0)), 0.0042, col); const A1 = A.clone().add(V(0, 0.022, 0));
-    // 継電器側：ワニ口クリップ（色つきの絶縁カバーと金属の先。形は推測）
-    const C = B.clone().add(V(0.03, -0.012, 0)); stub(B, B.clone().lerp(C, 0.4), 0.0022, 0xc8ccce, 0.9); stub(B.clone().lerp(C, 0.4), C, 0.0045, col);
+    // 継電器側：ねじ端子をはさむクリップ（金属の先と、色つきの絶縁カバー。形は推測）
+    const C = B.clone().addScaledVector(nB, 0.035).add(V(0, -0.006, 0)); stub(B, B.clone().lerp(C, 0.4), 0.0022, 0xc8ccce, 0.9); stub(B.clone().lerp(C, 0.4), C, 0.0045, col);
     const dz = (n - 1.5) * 0.012, edge = V(back, Math.max(topY + 0.06, A1.y - 0.02), A1.z + dz * 0.5);
-    const pts = [A1, A1.clone().add(V(-0.012, 0.035, 0)), edge];
-    if (C.y < topY + 0.03) pts.push(V(back - 0.012, topY - 0.04, (edge.z + C.z) / 2 + dz), V(Math.max(C.x + 0.03, back - 0.03), C.y - 0.07 - n * 0.008, C.z + dz * 0.4));
-    else pts.push(V((back + C.x) / 2, Math.min(edge.y, C.y) - 0.05, (edge.z + C.z) / 2));
-    pts.push(C.clone().add(V(0.012, -0.03, 0)), C); tube(pts, col);
+    const mid = edge.clone().lerp(C, 0.55); mid.y = Math.min(edge.y, C.y) - 0.07 - n * 0.008; mid.addScaledVector(nB, 0.05);
+    tube([A1, A1.clone().add(V(-0.012, 0.035, 0)), edge, mid, C.clone().addScaledVector(nB, 0.03).add(V(0, -0.02, 0)), C], col);
   });
   if (RT.earth) { const A = termWorld(uT, 956, 28, 0.016), A1 = A.clone().add(V(0, 0.016, 0)); stub(A, A1, 0.004, 0x3fd163);
-    tube([A1, A1.clone().add(V(-0.02, 0.02, 0)), V(back, topY + 0.05, A.z - 0.01), V(back - 0.01, 0.45, A.z - 0.02), V(back - 0.03, 0.03, A.z - 0.03), V(back - 0.09, 0.012, A.z - 0.03)], 0x3fd163); }
+    tube([A1, A1.clone().add(V(-0.02, 0.02, 0)), V(back, topY + 0.05, A.z - 0.01), V(back - 0.01, 0.45, A.z - 0.02), V(back - 0.03, 0.03, A.z - 0.03), V(-9.8, 0.012, A.z - 0.05)], 0x3fd163); }
   if (RT.mc) { const A = termWorld(uM, 926, 54, 0.03), B = termWorld(uT, 72, 62, 0.036), m = A.clone().lerp(B, 0.5); m.y = Math.max(A.y, B.y) + 0.035; m.x -= 0.05; tube([A, A.clone().add(V(0, 0.03, 0)), m, B.clone().add(V(0, 0.03, 0)), B], 0x1b1b1f, 0.007); }
   if (RT.plug) { const A = termWorld(uT, 920, 262, 0.034), fz = tset.position.z - 0.62 - 0.05; tube([A, A.clone().add(V(0, 0.03, 0)), V(A.x + 0.005, A.y + 0.035, A.z - 0.05), V(A.x + 0.02, topY + 0.06, fz + 0.03), V(A.x + 0.04, 0.3, fz - 0.02), V(A.x + 0.1, 0.012, fz - 0.03), V(A.x + 0.5, 0.01, fz - 0.05)], 0x1b1b1f, 0.005); }
 }
@@ -2005,7 +2109,7 @@ function rtAct(a) {
     case 'tripLift': if (I.tripLift && Object.values(RT.leads).some(Boolean)) break; I.tripLift = !I.tripLift; break;
     case 'clearLeads': if (RT.nfb) { rtMsg('先に POWER(NFB) を OFF にしてから、リードを外します。', 'w'); break; } RT.leads = {}; RT.leadsDirty = true; break;
   }
-  RT.guideDirty = true;
+  RT.guideDirty = true; RT.leadsDirty = true;
 }
 function rtLead(id) {
   if (RT.leads[id]) { if (RT.nfb) { rtMsg('通電中は外せません。POWER(NFB) を OFF にしてください。'); return; } RT.leads[id] = false; RT.leadsDirty = true; RT.guideDirty = true; return; }
@@ -2065,14 +2169,14 @@ css4.textContent = '#rtp{position:fixed;top:0;right:0;bottom:0;width:min(700px,1
 document.head.appendChild(css4);
 const rtp = document.createElement('div'); rtp.id = 'rtp'; document.body.appendChild(rtp);
 const rtBtn = document.createElement('button'); h1.insertAdjacentHTML('beforeend', ' <button id=bt style="background:#2563a8;color:#fff;font-weight:bold">🧪 継電器試験</button>');
-rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 終了して収納</button></span></div><div id=rtZoomRow style="margin:4px 0">3Dで寄る：<button id=rtZoomM>測定箱</button><button data-z="M,204,230,0.3">電圧計</button><button data-z="M,796,230,0.3">電流計</button><button data-z="M,496,120,0.17">カウンタ</button><button data-z="M,882,566,0.13">TEST SELECT</button><button id=rtZoomT>電源箱</button><button data-z="T,698,484,0.2">調整器</button><button data-z="T,399,500,0.2">出力レンジ</button></div><div class=rtbody>' +
+rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 終了して収納</button></span></div><div id=rtZoomRow style="margin:4px 0">3Dで寄る：<button id=rtZoomM>測定箱</button><button data-z="M,204,230,0.3">電圧計</button><button data-z="M,796,230,0.3">電流計</button><button data-z="M,496,120,0.17">カウンタ</button><button data-z="M,882,566,0.13">TEST SELECT</button><button id=rtZoomT>電源箱</button><button data-z="T,698,484,0.2">調整器</button><button data-z="T,399,500,0.2">出力レンジ</button><button data-zb=1>継電器の背面</button><button data-zb=2>継電器の前面</button></div><div class=rtbody>' +
   '<div>試験対象：<select id=rtTarget></select> 試験項目：<select id=rtTest></select> <label><input id=rtBad type=checkbox> 不良個体（判定を体験）</label></div><div id=rtLog></div>' +
-  '<h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div id=rtStat class=info></div><div class=info>ロータリー：つまみの左半分で左へ・右半分で右へ回る　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
+  '<div class=info>盤の継電器を<b>1回タップ</b>すると名前と整定が出ます。同じ継電器を<b>もう1回タップ</b>すると、その継電器の試験を始めます。</div><h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div id=rtStat class=info></div><div class=info>ロータリー：つまみの左半分で左へ・右半分で右へ回る　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
 const rtTargetSel = $('rtTarget'), rtTestSel = $('rtTest'), rtStatEl = $('rtStat');
 rtTargetSel.innerHTML = Object.keys(RDEF).map(k => `<option value="${k}">${RDEF[k].name}</option>`).join('');
 function fillTests() { rtTestSel.innerHTML = testsFor(grp()).map(k => `<option value="${k}">${TESTS[k].title}</option>`).join('') + '<option value="_ground">地絡（OCG／DG）・漏電リレー：解説のみ</option>'; rtTestSel.value = RT.test; }
 function selectTarget(tag) { RT.target = tag; RT.test = testsFor(grp())[0]; RT.leads = {}; RT.iso = { outage: false, ctShort: false, ctLift: false, vtLift: false, tripLift: false }; RT.rel = { op: false, acc: 0, armed: false }; RT.lastOp = null; rtTargetSel.value = tag; fillTests(); placeSet(); RT.leadsDirty = true; RT.guideDirty = true; }
-rtTargetSel.onchange = () => { selectTarget(rtTargetSel.value); flyTo([-7.3, 1.55, pz(cur().panel)], [-9.3, 0.9, pz(cur().panel)]); };
+rtTargetSel.onchange = () => { selectTarget(rtTargetSel.value); rtView(); };
 rtTestSel.onchange = () => { RT.test = rtTestSel.value; RT.lastOp = null; RT.rel = { op: false, acc: 0, armed: false }; RT.tCount = 0; RT.over = false; RT.guideDirty = true; };
 $('rtBad').onchange = e => { RT.bad = e.target.checked; RT.lastOp = null; rtMsg(RT.bad ? '不良個体にしました（整定値からずれた継電器）。測定して、判定が「不合格」になるのを体験できます。' : '良品に戻しました。', 'i'); };
 const unitsDiv = $('rtUnits'); unitsDiv.append(uM.userData.cv, uT.userData.cv);
@@ -2168,6 +2272,9 @@ $('rtZoomM').onclick = () => rtFocusUnit(uM); $('rtZoomT').onclick = () => rtFoc
 rtp.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.z) { const [w, x, y, d] = b.dataset.z.split(','); rtp.classList.add('min'); $('rtMin').textContent = '▲ 開く'; tset.updateWorldMatrix(true, true); const q = termWorld(w === 'M' ? uM : uT, +x, +y, 0.02), fit = Math.max(1, 1.05 / camera.aspect); fly = null; view([q.x + d * 0.3 * fit, q.y + d * fit, q.z], q.toArray()); controls.update(); return; }
+  if (b.dataset.zb) { const back = b.dataset.zb === '1', o = back ? RELAY_BACK[RT.target] : RELAYS[RT.target]; if (!o) return; rtp.classList.add('min'); $('rtMin').textContent = '▲ 開く'; scene.updateMatrixWorld(true);
+    const q = o.getWorldPosition(new THREE.Vector3()), n = new THREE.Vector3(0, 0, back ? -1 : 1).transformDirection(o.matrixWorld); if (back) q.addScaledVector(n, 0.11);
+    fly = null; view(q.clone().addScaledVector(n, 0.5).add(new THREE.Vector3(0, 0.06, 0)).toArray(), q.toArray()); controls.update(); return; }
   if (b.dataset.flip) { rtClick('T', { k: 'btn', id: 'plugflip' }); RT.dirty = true; drawT(); return; }
   if (b.dataset.a) rtAct(b.dataset.a); if (b.dataset.l) rtLead(b.dataset.l); if (b.dataset.rec) rtRecord();
   if (b.dataset.del) { RT.rec.splice(+b.dataset.del - 1, 1); RT.guideDirty = true; } if (b.dataset.cp) { navigator.clipboard && navigator.clipboard.writeText(RT.rec.map(r => [r.name, r.point, r.rng, r.txt, r.ok ? '合格' : '不合格'].join('\t')).join('\n')); rtMsg('記録表をコピーしました。', 'i'); }
@@ -2180,7 +2287,8 @@ function guideHTML() {
   const rows = [];
   const row = (ok, txt, extra = '', why = '') => rows.push({ ok, h: `<div class="st __C__"><span>${ok ? '✅' : '⬜'}</span><div>${txt}${extra}${why ? `<div class=why>${why}</div>` : ''}</div></div>` });
   row(I.outage, '① 高圧側の<b>停電・検電・接地</b>を確認する（盤の「停電時実施」の表示）', btnA('outage', I.outage ? '確認済み（クリックで取り消し）' : '確認した'), '継電器の試験は、停電して、遮断器の動作に影響しない状態で行います。');
-  row(true, '② 試験機を、盤の前に置く（置き済み）');
+  row(true, '【整定】この継電器の整定（前面の写真のつまみから読み取り）：<b>' + setTxt(cur()) + '</b>', '', '読み取りは目安です。51 の瞬時＝除外、27R の 95V、27RR の 0.2秒は、読み取りに自信がなく推測。動作時間の特性（300%で 0.4秒）は架空です。');
+  row(true, '② 試験機を盤の前に置き、<b>盤の扉を開けて、継電器の背面の端子を出す</b>（置き済み・開け済み）', '', '単体試験なので、試験端子（CTT・VTT）は使わず、継電器の背面の端子に、じかにつなぎます。');
   row(RT.mc, '③ 測定箱（PRT-3M）と電源箱（PRT-3TR）を、<b>MC コネクタ</b>で接続する', '', '電源箱の「MC」の丸をクリック。');
   row(RT.earth, '④ 電源箱の <b>E 端子</b>を、接地コードで接地する', '', '電源箱の右上の E 端子をクリック。');
   row(RT.plug, '⑤ 電源プラグ（AC110V）を差す', '', '電源箱の右側の「SOURCE AC110V」をクリック。');
@@ -2188,10 +2296,10 @@ function guideHTML() {
   row(RT.reg === 0 && !RT.nfb, '⑦ <b>調整器を 0</b> に、POWER（NFB）を OFF にしておく', '', '銘板：調整用スライダック（T1）と VR は、必ず零位置で準備。');
   if (g === 'ocr') {
     row(I.ctShort, '⑧ 継電器の電流回路を、<b>CT二次側を短絡</b>して切り離す（CT試験端子の短絡）', btnA('ctShort', I.ctShort ? '短絡済み（解除する）' : 'CT二次側を短絡'), 'CT二次側は、<b>先に短絡してから</b>継電器の線を外す。開放すると高電圧が出て危険です。');
-    row(I.ctLift, '⑨ 継電器の電流入力の線を、外す', btnA('ctLift', I.ctLift ? '外した（戻す）' : '継電器の線を外す'));
-  } else row(I.vtLift, '⑧ 継電器の電圧入力を、VT二次側から切り離す（ヒューズ・端子を外す）', btnA('vtLift', I.vtLift ? '切り離し済み（戻す）' : 'VT二次側を切り離す'), 'VT二次側は、<b>短絡してはいけません</b>（短絡電流で焼損）。切り離すだけにします。');
-  row(I.tripLift, '⑩ <b>遮断器のトリップ回路</b>を切り離す（試験中に実際の遮断器が落ちないように）', btnA('tripLift', I.tripLift ? '切り離し済み（戻す）' : 'トリップ回路を切り離す'));
-  const ls = LEADSET[g]; row(ls.every(k => RT.leads[k]), '⑪ 試験リードを接続する（継電器の下端の端子①〜④）', ls.map(k => `<br>${RT.leads[k] ? '🟢' : '⚪'} ${LEADTXT[k]} <button data-l="${k}">${RT.leads[k] ? '外す' : '接続'}</button>`).join('') + btnA('clearLeads', 'すべて外す'), '接続は、停電・切り離しのあと、POWER が OFF の間に行います。');
+    row(I.ctLift, '⑨ 継電器の背面の<b>電流入力（C1・C2）の線</b>を、外す', btnA('ctLift', I.ctLift ? '外した（戻す）' : '継電器の線を外す'));
+  } else row(I.vtLift, '⑧ 継電器の背面の<b>電圧入力（P1・P2）の線</b>を、VT二次側から切り離す（ヒューズ・端子を外す）', btnA('vtLift', I.vtLift ? '切り離し済み（戻す）' : 'VT二次側を切り離す'), 'VT二次側は、<b>短絡してはいけません</b>（短絡電流で焼損）。切り離すだけにします。');
+  row(I.tripLift, '⑩ <b>遮断器のトリップ回路</b>を切り離す（背面の接点出力 T1・T2 の線を外す。試験中に実際の遮断器が落ちないように）', btnA('tripLift', I.tripLift ? '切り離し済み（戻す）' : 'トリップ回路を切り離す'));
+  const ls = LEADSET[g]; row(ls.every(k => RT.leads[k]), '⑪ 試験リードを、<b>継電器の背面の端子</b>に接続する', ls.map(k => `<br>${RT.leads[k] ? '🟢' : '⚪'} ${LEADTXT[k]} <button data-l="${k}">${RT.leads[k] ? '外す' : '接続'}</button>`).join('') + btnA('clearLeads', 'すべて外す'), '接続は、停電・切り離しのあと、POWER が OFF の間に行います。' + (g === 'ocr' ? '' : ' 制御電源（背面の ＋・−、DC24V）は、盤からの供給のままにします（推測。実機は取扱説明書で確認）。') + ' 背面の端子の名前と並びは、教材の仮のものです。');
   const sp = sets(); row(sp.every(x => x[1]), '⑫ 試験機の設定', '<br>' + sp.map(x => (x[1] ? '✔ ' : '✘ ') + x[0]).join('<br>'), '設定を変えるときは、STOP を押して、通電をやめてから。');
   row(RT.nfb && RT.plug, '⑬ POWER（NFB）を ON → PL1 点灯', '', '電源箱の右下のスイッチをクリック。');
   const pt = t.pt(), unit = t.unit; let m = '';
@@ -2207,7 +2315,7 @@ function recHTML() { if (!RT.rec.length) return '<div class=why>測定したあ�
 const REFHTML = '<div class=info>・<b>この教材の判定値は目安</b>です。限時・瞬時要素の動作値：整定値の ±5%／瞬時 ±15%（メーカー資料の一例）、不足・過電圧の動作電圧 ±5%・動作時間 ±10%（下限 ±50ms）（メーカー資料の一例）。<b>JIS C 4602 など規格の本文の数値は確認できていません。</b>実際の管理値は、継電器の取扱説明書、JEM-TR 156（保護継電器の保守・点検指針）、現場の自主検査要領で確認してください。</div>' +
   '<div class=info>・不足電圧継電器の時間試験は、定格電圧から 0V へ急変させて測る形式が、自主検査の様式（例：岡山市の様式）で確認できます。PRT-3M の「UV TIME」スイッチの正確な意味は、取扱説明書で確認してください（この教材では「TEST＝STARTで 0V に急変」と解釈しています）。</div>' +
   '<div class=info>・試験機の銘板（PRT-3M／PRT-3TR）の結線図・端子名・操作の注意（極性確認、調整器は零位置、通電中にロータリースイッチを切換えない、ヒューズ定格）は、実機の銘板の写真に合わせています。</div>' +
-  '<div class=warn>・教材での簡略化：継電器の特性は模擬モデルです（限時＝反限時カーブの近似）。動作確認モードでは、待ち時間を短くしてあります。TIME MEASURING の「通電前の指示」は、教材のための表示です。整定値（4A／80V／120V など）も架空です。</div>';
+  '<div class=warn>・教材での簡略化：継電器の特性は模擬モデルです（限時＝反限時カーブの近似）。動作確認モードでは、待ち時間を短くしてあります。TIME MEASURING の「通電前の指示」は、教材のための表示です。整定値は、継電器の前面の写真のつまみの位置から読み取った目安です（一部は推測）。動作時間の特性と、背面の端子の名前・並びは架空です。</div>';
 let guideSig = '';
 function rtRender() {
   const sig = JSON.stringify([RT.iso, RT.leads, RT.mc, RT.earth, RT.plug, RT.polOK, RT.nfb, RT.reg === 0, RT.sel, RT.mode, RT.trip, RT.vr, RT.am, RT.rs, RT.rangeV, RT.cnt, RT.uvt, RT.test, RT.target, RT.rec.length, RT.lastOp && (RT.lastOp.v || RT.lastOp.time), RT.log.length && RT.log[0].t, RT.bad]);
@@ -2215,7 +2323,27 @@ function rtRender() {
   $('rtGuide').innerHTML = guideHTML(); $('rtRec').innerHTML = recHTML(); $('rtRef').innerHTML = REFHTML;
   $('rtLog').innerHTML = RT.log.map(l => `<div class="lg ${l.lv}">${l.lv === 'e' ? '⚠ ' : l.lv === 'i' ? 'ℹ ' : '・'}${l.t}</div>`).join('');
 }
-function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; flyTo([-7.3, 1.55, pz(cur().panel)], [-9.3, 0.9, pz(cur().panel)]); }
+// ---------- 盤の継電器をタップ：1回目で名前を表示、同じ継電器をもう1回で、その継電器の試験を始める（継電器試験を開いている間だけ） ----------
+const RELAY_KIND = { ocr: '過電流継電器', uvr: '不足電圧継電器', ovr: '過電圧継電器', lvg: '地絡過電圧継電器', elr: '漏電リレー' };
+const rtTip = document.createElement('div'); rtTip.style.cssText = 'position:fixed;z-index:19;display:none;max-width:280px;background:#0a1820f2;color:#fff;border:1px solid #7fe0d0;border-radius:8px;padding:8px 10px;font:13px/1.6 sans-serif;pointer-events:none'; document.body.appendChild(rtTip);
+let rtTipTimer = 0;
+function rtTipShow(html, e) { rtTip.innerHTML = html; rtTip.style.display = 'block'; const w = rtTip.offsetWidth, h = rtTip.offsetHeight; rtTip.style.left = clamp(e.clientX + 14, 6, innerWidth - w - 6) + 'px'; rtTip.style.top = clamp(e.clientY - h - 14, 6, innerHeight - h - 6) + 'px'; clearTimeout(rtTipTimer); rtTipTimer = setTimeout(() => { rtTip.style.display = 'none'; RT.pick = null; }, 8000); }
+function rtRelayTap(rc, e) {
+  if (!RT.open) return false;
+  let tag = null, type = null;
+  for (const h of rc.intersectObjects([...Object.values(RELAYS), ...Object.values(RELAY_BACK)], true)) { let o = h.object; while (o && !o.userData.relayTag) o = o.parent; if (o) { tag = o.userData.relayTag; type = o.userData.relayType; break; } }
+  if (!tag) { rtTip.style.display = 'none'; RT.pick = null; return false; }
+  const d = RDEF[tag], name = d ? d.name : (RELAY_KIND[type] || '継電器') + ' ' + tag;
+  if (!d) { RT.pick = null; rtTipShow(`<b>${name}</b><br>この教材では、試験の対象にしていません。`, e); return true; }
+  if (tag === RT.target) { RT.pick = null; rtTipShow(`<b>${name}</b><br>整定（写真から・目安）：${setTxt(d)}<br><span style="color:#7fe0d0">いま試験している継電器です。</span>`, e); return true; }
+  if (RT.pick !== tag) { RT.pick = tag; rtTipShow(`<b>${name}</b><br>整定（写真から・目安）：${setTxt(d)}<br><span style="color:#ffd54a">もう一度タップすると、この継電器の試験を始めます。</span>`, e); return true; }
+  RT.pick = null;
+  // 通電中・リード接続中・切り離し中は、対象を変えない（復旧の手順を飛ばさないため）
+  if (RT.nfb || RT.started || RT.applied || Object.values(RT.leads).some(Boolean) || RT.iso.ctLift || RT.iso.vtLift || RT.iso.ctShort || RT.iso.tripLift) { rtTipShow(`<b>${name}</b><br><span style="color:#ff9d7a">今の継電器の復旧が先です。</span>調整器 0 → STOP → POWER OFF → リードを外す → 線を戻す、の順で戻してから、もう一度タップしてください。`, e); rtMsg('対象を変える前に、今の継電器を復旧してください（POWER OFF・リードを外す・線とトリップ回路を戻す）。', 'e'); return true; }
+  selectTarget(tag); rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; rtView(); rtTipShow(`<b>${name}</b> の試験を始めます。<br>盤の扉を開けて、試験機を前に置きました。`, e); rtMsg(name + ' を試験の対象にしました。手順ガイドの ① から進めてください。', 'i');
+  return true;
+}
+function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; rtView(); }
 function rtClose() {
   // 収納で電気的な復旧手順を飛ばさない。記録・対象・設定は次回も保持する。
   if (RT.reg !== 0 || RT.started || RT.applied || RT.counting || RT.nfb || Object.values(RT.leads).some(Boolean) || RT.iso.ctLift || RT.iso.vtLift || RT.iso.ctShort || RT.iso.tripLift) {
@@ -2223,13 +2351,13 @@ function rtClose() {
     rtMsg('収納前に、調整器0 → STOP → POWER OFF → リードを外す → 継電器の線を戻す → CT短絡（VT）を戻す → トリップ回路を戻す、の順で復旧してください。', 'e'); return;
   }
   RT.plug = RT.mc = RT.earth = RT.polOK = RT.pbPol = RT.hasPower = false; RT.polLamp = 'off'; RT.hold = null;
-  RT.open = false; tset.visible = leadGrp.visible = false;
+  RT.open = false; tset.visible = leadGrp.visible = false; doors.forEach(d => { d.target = 0; }); rtTip.style.display = 'none'; RT.pick = null;
   const i = BLOCKS.indexOf(tableBlock); if (i !== -1) BLOCKS.splice(i, 1);
   rebuildLeads(); RT.dirty = RT.guideDirty = true;
   rtp.style.display = 'none'; dwBtn.style.display = 'block';
 }
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
-window.__rt = { tset, HIT: () => HIT, screenOf: (w, x, y, z) => { const v = termWorld(w === 'M' ? uM : uT, x, y, z).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
+window.__rt = { relayScreen: tag => { scene.updateMatrixWorld(true); const v = RELAYS[tag].localToWorld(new THREE.Vector3(0, 0, 0.06)).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, tset, HIT: () => HIT, screenOf: (w, x, y, z) => { const v = termWorld(w === 'M' ? uM : uT, x, y, z).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 drawM(); drawT();
 
 // ---------- スマホ向け：画面の文字を収納できるようにする ----------
@@ -2243,7 +2371,30 @@ function wrapHud(h, label, openLabel) {
   const narrow = innerWidth < 760 || matchMedia('(pointer:coarse)').matches;
   if (narrow) h.classList.add('min'); sync();
 }
+// ---------- メニューの整理：よく使うものを上に、細かい設定は「表示の設定・使い方」にしまう ----------
+(function tidyMenu() {
+  const det = document.createElement('details'); det.className = 'mdet';
+  det.innerHTML = '<summary>⚙ 表示の設定・使い方</summary>';
+  while (h1.firstChild) det.appendChild(h1.firstChild);
+  const btns = ['bw', 'bt', 'bd', 'bhs', 'bhw'].map(id => det.querySelector('#' + id)).filter(Boolean);
+  const top = document.createElement('div'); top.className = 'mtop'; btns.slice(0, 3).forEach(b => top.appendChild(b));
+  const sel = document.createElement('select'); sel.id = 'viewSel'; sel.setAttribute('aria-label', '見る場所');
+  const vb = [...det.querySelectorAll('[data-v]')], kb = [...det.querySelectorAll('[data-kv]')];
+  sel.innerHTML = '<option value="">📍 見る場所を選ぶ</option><optgroup label="発電機室">' + vb.map(b => `<option value="v${b.dataset.v}">${b.textContent}</option>`).join('') +
+    '</optgroup><optgroup label="機器室">' + kb.map(b => `<option value="k${b.dataset.kv}">${b.textContent}</option>`).join('') + '</optgroup>';
+  sel.onchange = () => { const v = sel.value; sel.value = ''; if (!v) return; const b = v[0] === 'v' ? vb.find(x => x.dataset.v === v.slice(1)) : kb.find(x => x.dataset.kv === v.slice(1)); if (b) b.click(); if (h1._collapse && h1.dataset.narrow) h1._collapse(); };
+  [...vb, ...kb].forEach(b => { b.style.display = 'none'; });
+  det.querySelectorAll('b').forEach(b => { if (b.textContent === '機器室') b.remove(); });
+  det.querySelectorAll('br').forEach(b => b.remove());
+  const lab = document.createElement('div'); lab.className = 'mlab'; lab.textContent = '見る場所';
+  const extra = document.createElement('div'); btns.slice(3).forEach(b => extra.appendChild(b));
+  const tip = document.createElement('div'); tip.className = 'mtip'; tip.innerHTML = '画面をドラッグで回す・ピンチ／ホイールで拡大。<b>盤の扉や部屋のドアは、タップで開け閉め</b>できます。';
+  h1.append(top, lab, sel, det.querySelector('.campad'), tip, det);
+  det.insertBefore(extra, det.children[1]);
+})();
+css.textContent += '.mtop button{font-size:15px!important;padding:8px 12px!important;min-height:44px}#viewSel{font-size:16px;padding:8px;min-height:44px;width:100%;max-width:420px;margin:2px 0 6px}.mlab{font-weight:bold;margin-top:4px}.campad{margin:4px 0}.campad .cpl{font-weight:bold}.campad button{min-width:64px}.mtip{font-size:12px;color:#cde;margin:4px 0}.mdet summary{cursor:pointer;color:#9de;margin-top:4px;padding:6px 0}.mdet{font-size:12px}';
 wrapHud(h1, '📋 視点・操作', '▲ 収納');
+h1.dataset.narrow = h1.classList.contains('min') ? '1' : '';
 wrapHud(h2, '🎛 運転・内部', '▼ 収納');
 if (h1.classList.contains('min')) h1.querySelector('.hb').addEventListener('click', e => { const b = e.target.closest('button'); if (b && (b.dataset.v || b.id === 'bw' || b.id === 'bd')) h1._collapse(); });
 $('stt').addEventListener('click', () => { h2.classList.toggle('ex'); showStat(); });
@@ -2286,6 +2437,9 @@ renderer.setAnimationLoop(() => {
   texAcc += dt; if (texAcc > 0.12) { texAcc = 0; dynTex.forEach(t => t.userData.redraw()); } dyn3.forEach(f => f(dt));
   $('rd').textContent = `回転 ${Math.round(S.rpm)} min⁻¹ ｜ 電圧 ${Math.round(210 * S.volt)} V ｜ 周波数 ${S.hz.toFixed(1)} Hz ｜ ${S.mains ? '商用' : S.brk ? '発電' : '停電'}`;
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
+  if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
+  roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.rotation.y = roomDoor.cur;
+  rearDoor.cur += (rearDoor.target - rearDoor.cur) * Math.min(1, dt * 4); rearDoor.leaves.forEach(l => { l.rotation.y = l.userData.k * rearDoor.cur; }); rearDoor.light.intensity = 1.6 * Math.min(1, rearDoor.cur / 1.2);
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);

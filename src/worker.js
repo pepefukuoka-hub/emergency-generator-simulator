@@ -51,6 +51,7 @@ export function createWorker() {
   const pos = name => root.children[0].worldToLocal(B[name].getWorldPosition(new THREE.Vector3()));
   const v = (x,y,z) => new THREE.Vector3(x,y,z);
   function pose(p, a) {
+    const breath = Math.sin(performance.now() / 1000 * 1.35) * 0.006 * (1-a);
     for (const [name,bone] of Object.entries(B)) bone.quaternion.copy(rest[name]);
     const model = root.children[0];
     model.position.y = 0;
@@ -75,7 +76,7 @@ export function createWorker() {
       aim('thigh_'+sd,'calf_'+sd,kneeGoal.sub(hip));
       aim('calf_'+sd,'foot_'+sd,goal.sub(pos('calf_'+sd)));
       aim('foot_'+sd,'ball_'+sd,v(0,-0.12,1));
-      const swing = -Math.cos(cycle*Math.PI*2)*0.23*a;
+      const swing = -z * 0.85; // 同側の足の前後位置と必ず逆に振る
       aim('upperarm_'+sd,'lowerarm_'+sd,v(k*0.08,-1,swing));
       aim('lowerarm_'+sd,'hand_'+sd,v(k*0.025,-1,0.09+swing));
       // Neutral wrists: retain the hand's rest rotation relative to the forearm.
@@ -88,6 +89,9 @@ export function createWorker() {
       }
     }
     model.position.y = floorY - Math.min(pos('foot_l').y, pos('foot_r').y);
+    // 小さな呼吸。足の接地と首・手首の自然な向きを保つ。
+    if (B.spine_03) B.spine_03.quaternion.multiply(q.setFromAxisAngle(X, breath));
+    if (B.head) B.head.quaternion.multiply(q.setFromAxisAngle(X, -breath * 0.5));
   }
   return { root, get ready() { return ready; }, preview(p, a=1) { if (ready) pose(p,a); }, update(distance) {
     if (!ready) return;
