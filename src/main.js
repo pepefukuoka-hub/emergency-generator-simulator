@@ -1216,7 +1216,7 @@ function buildCabinet(i, x, nm) {
   const tx = panelTex(nm, i), rec = tx.userData.rec, hingeX = x - 0.465, W = 0.93;
   // 盤の躯体（背板・側板・天板・底・前枠）
   bx(x - 0.47, x + 0.47, 0, 2.3, -3.38, -3.36, sheetM, pnl); bx(x - 0.47, x - 0.45, 0, 2.3, -4.88, -2.88, cream, pnl); bx(x + 0.45, x + 0.47, 0, 2.3, -4.88, -2.88, cream, pnl);
-  bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
+  if (i !== 4) bx(x - 0.47, x + 0.47, 0, 2.3, -4.88, -4.86, sheetM, pnl); bx(x - 0.45, x + 0.45, 2.28, 2.3, -4.88, -3.38, cream, pnl); bx(x - 0.45, x + 0.45, 0, 0.12, -4.88, -3.38, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.28, 2.3, -3.38, -2.88, cream, pnl); bx(x - 0.47, x + 0.47, 0, 0.12, -3.38, -2.88, M(0xbdb8a5, 0.2, 0.7), pnl);
   bx(x - 0.47, x + 0.47, 2.25, 2.3, -2.9, -2.875, cream, pnl); bx(x - 0.47, x + 0.47, 0.1, 0.14, -2.9, -2.875, cream, pnl);
   const ig = new THREE.Group(); ig.position.set(x, 0, -3.36); pnl.add(ig); cabinetInside(ig, i);
@@ -1232,6 +1232,36 @@ function buildCabinet(i, x, nm) {
 }
 
 panelNames.forEach((nm, i) => buildCabinet(i, -8.3 + i * 0.95, nm));
+// 自動操作盤（発電機から見て一番右）の裏：両開きの裏扉（タップで開閉）と、中の制御リレーの棚（写真3枚より。細部・配線の本数は簡略）
+const rearDoor = (() => {
+  const x = -8.3 + 4 * 0.95, cr = M(0xd3d0c0, 0.25, 0.6), hm = M(0xc9ccce, 0.8, 0.3);
+  // 棚の絵（中仕切りの裏面に貼る）。上：抵抗器・端子台／電磁接触器、中：差し込み式リレーの列×4、下：カバーと変圧器
+  const tex = canvasTex(256, 640, (c, w, h) => {
+    c.fillStyle = '#d9d6cb'; c.fillRect(0, 0, w, h);
+    const relays = (y, n) => { c.fillStyle = '#1a1a1a'; c.fillRect(18, y - 6, w - 36, 50); for (let i = 0; i < n; i++) { const x0 = 22 + i * (w - 44) / n, ww = (w - 44) / n - 2;
+      c.fillStyle = '#e8e6dc'; c.fillRect(x0, y, ww, 30); c.fillStyle = '#f2d21b'; c.fillRect(x0 + 1, y + 10, ww - 2, 8); c.fillStyle = '#c4c0b0'; c.fillRect(x0 + 2, y + 2, ww - 4, 6);
+      for (const [yy, dir] of [[y - 6, -1], [y + 44, 1]]) for (let k = 0; k < 3; k++) { c.strokeStyle = k === 1 ? '#f1d22a' : '#efefea'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x0 + 2 + k * ww / 3, yy); c.lineTo(x0 + 2 + k * ww / 3 + (k - 1), yy + dir * 22); c.stroke();
+        c.fillStyle = '#c8233c'; c.fillRect(x0 + 1 + k * ww / 3, yy + (dir < 0 ? -4 : 0), 2.4, 4); } } };
+    // 上段：抵抗器（緑の筒）・端子台、接触器
+    c.fillStyle = '#2e7a4a'; c.fillRect(20, 14, 16, 70); c.fillRect(40, 14, 16, 70); c.fillStyle = '#ddd'; c.fillRect(80, 30, 50, 40); c.fillStyle = '#222'; c.fillRect(86, 36, 38, 28); c.fillStyle = '#7a4a2c'; c.beginPath(); c.arc(170, 46, 18, 0, 7); c.fill();
+    for (let i = 0; i < 5; i++) { const x0 = 30 + i * 42; c.fillStyle = i === 4 ? '#e8e6dc' : '#17191c'; c.fillRect(x0, 120, 32, 50); c.fillStyle = '#1f5fbf'; c.fillRect(x0 + 4, 128, 24, 8); c.fillStyle = '#f2d21b'; c.fillRect(x0 + 6, 150, 20, 6); }
+    for (const y of [235, 330, 425, 520]) relays(y, 17);
+  });
+  const g = new THREE.Group(); pnl.add(g);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 2.12), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 })); face.rotation.y = Math.PI; face.position.set(x, 1.16, -3.39); g.add(face);
+  // 立体の配線ダクト（横5本・縦2本）と、下の変圧器2つ・束ねたケーブル
+  const duct = M(0xb9bcc0, 0.2, 0.6);
+  for (const y of [1.98, 1.66, 1.38, 1.1, 0.82, 0.54]) bx(x - 0.42, x + 0.42, y - 0.035, y + 0.035, -3.5, -3.39, duct, g);
+  for (const dx of [-0.4, 0.4]) bx(x + dx - 0.035, x + dx + 0.035, 0.5, 2.2, -3.47, -3.39, duct, g);
+  bx(x - 0.3, x - 0.12, 0.14, 0.32, -3.62, -3.42, M(0x8a5a2a, 0.5, 0.5), g); bx(x + 0.05, x + 0.27, 0.14, 0.34, -3.62, -3.42, M(0x1b1b1b, 0.3, 0.6), g);
+  { const coil = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 8, 20), M(0x777a80, 0.1, 0.8)); coil.rotation.x = Math.PI / 2; coil.position.set(x, 0.17, -4.0); g.add(coil); }
+  const light = new THREE.PointLight(0xfff2dc, 0, 2.4, 1.6); light.position.set(x, 1.6, -4.3); pnl.add(light);
+  // 裏扉：両開き。外（裏の通路側、−z）へ開く
+  const leaves = [[x - 0.47, 1], [x + 0.47, -1]].map(([hx, k]) => { const lg = new THREE.Group(); lg.position.set(hx, 0, -4.88); pnl.add(lg); lg.userData.k = k;
+    bx(k > 0 ? 0.002 : -0.468, k > 0 ? 0.468 : -0.002, 0.12, 2.29, -0.02, 0, cr, lg); bx(k * 0.42 - 0.012, k * 0.42 + 0.012, 1.05, 1.25, -0.045, -0.02, hm, lg); return lg; });
+  return { leaves, light, cur: 0, target: 0, OPEN: 1.75, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+})();
+window.__rearDoor = rearDoor;
 // 盤の右隣（-z壁）：給気ガラリ、鋼製棚、灰色キャビネット、扉　／　盤の左端：ケーブルドラム（写真1・2より）
 _hn = room.children.length;
 const lv = new THREE.Group(); lv.position.set(-3.0, 3.0, -3.36); room.add(lv);
@@ -1431,9 +1461,11 @@ $('bi').onclick = () => { xray = !xray; applyView(); };
 $('bc').onclick = () => { section = !section; applyView(); };
 const views = [[[-5.6, 2.4, 5.2], [0, 1.4, 0]], [[-0.3, 1.9, 3.3], [-0.3, 1.5, 0]], [[-3.4, 1.8, -3.0], [-1.5, 1.1, -1.0]], [[-6.2, 1.9, 0.4], [-1, 1.5, 0]], [[-5.3, 1.65, -2.8], [0.5, 1.3, 1.0]], [[-1, 0.85, 1.25], [-1, 0.7, 2.7]], [[-6.3, 1.6, 1.0], [-9.8, 1.5, 1.0]], [[-8.2, 1.5, 1.25], [-9.8, 1.4, 1.25]], [[-0.4, 2.4, 6.4], [-0.6, 1.6, 0]], [[-7.4, 1.6, -0.2], [-9.9, 1.4, 0.1]]];
 views.push([[-8.3, 0.55, -0.65], [-9.8, 0.55, -0.65]], [[-1.05, 0.5, -3.6], [-1.05, 0.5, -2.22]]);
+views.push([[-12.75, 1.5, -1.25], [-10.4, 1.3, -0.6]]);   // 12：自動操作盤の裏（裏の通路から）
+h1.insertAdjacentHTML('beforeend', '<button data-v=12>自動操作盤の裏</button>');
 h1.insertAdjacentHTML('beforeend', '<div><b>機器室</b> ' + Object.keys(kiki.views).map(k => `<button data-kv="${k}">${k}</button>`).join('') + '<div style="font-size:11px;color:#bcd">※ 配置図からの想像モデル。盤面の絵は推測</div></div>');
 h1.querySelectorAll('[data-kv]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); $('wk').checked = kiki.group.visible = true; view(...kiki.views[b.dataset.kv]); });
-h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } });
+h1.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { if (walk.on) setWalk(false); view(...views[b.dataset.v]); if (b.dataset.v === '9') { doors[3].target = OPEN; doors[4].target = OPEN; } if (b.dataset.v === '12') rearDoor.target = rearDoor.OPEN; });
 // 注視点ごと移動するので、下側へ移ってから拡大できる。
 const cameraPad = document.createElement('div');
 cameraPad.className = 'campad';
@@ -1639,6 +1671,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
     if (raycaster.intersectObject(roomDoor.g, true).length) { roomDoor.toggle(); return; }
+    if (raycaster.intersectObjects(rearDoor.leaves, true).length) { rearDoor.toggle(); return; }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
 h1.insertAdjacentHTML('beforeend', ' <button id=bd>🚪 盤の扉を開閉</button>');
@@ -2431,6 +2464,7 @@ renderer.setAnimationLoop(() => {
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.rotation.y = roomDoor.cur;
+  rearDoor.cur += (rearDoor.target - rearDoor.cur) * Math.min(1, dt * 4); rearDoor.leaves.forEach(l => { l.rotation.y = l.userData.k * rearDoor.cur; }); rearDoor.light.intensity = 1.6 * Math.min(1, rearDoor.cur / 1.2);
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);

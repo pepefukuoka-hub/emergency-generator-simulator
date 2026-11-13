@@ -41,25 +41,25 @@ export function createWorker() {
   }
   function pose(p, a) {
     const s = Math.sin(p), co = Math.cos(p), t = performance.now() / 1000, br = Math.sin(t * 1.3) * 0.012;
-    // 腕：組み立てたときは斜めに開いているので、下ろす。歩くときは、足と逆に振る
+    // 腕：体の横に下ろす。歩くときは、同じ側の足と逆に、小さく振る（左足が前なら左腕は後ろ）。前に出た腕だけ、ひじを少し曲げる
     for (const [sd, k] of [['l', 1], ['r', -1]]) {
-      const sw = -k * s * 0.5 * a;
-      turn('upperarm_' + sd, [X, sw], [Zf, -k * (0.72 + br)]);
-      turn('lowerarm_' + sd, [X, -0.22 - Math.max(0, sw) * 0.5 - 0.1 * a], [Zf, -k * 0.1], [Y, k * 0.2]);
+      const sw = k * s * 0.24 * a;                                                  // ＋＝後ろへ、−＝前へ（足の X 回転と同じ向き）
+      turn('upperarm_' + sd, [X, sw], [Zf, -k * (0.8 + br)]);
+      turn('lowerarm_' + sd, [X, -0.12 - Math.max(0, -sw) * 0.45 - 0.05 * a], [Zf, -k * 0.05], [Y, k * 0.1]);
       turn('hand_' + sd, [Zf, -k * 0.06], [Y, k * TW]);
       const lg = k * s;                                                             // 左足が前のとき＋
-      turn('thigh_' + sd, [X, -lg * 0.48 * a]);
-      turn('calf_' + sd, [X, (Math.max(0, -k * co) * 0.85 + 0.06) * a]);
-      turn('foot_' + sd, [X, (lg * 0.18 - Math.max(0, -k * co) * 0.25) * a]);
+      turn('thigh_' + sd, [X, -lg * 0.34 * a]);
+      turn('calf_' + sd, [X, (Math.max(0, -k * co) * 0.6 + 0.04) * a]);
+      turn('foot_' + sd, [X, (lg * 0.14 - Math.max(0, -k * co) * 0.18) * a]);
       for (const f of ['index', 'middle', 'ring', 'pinky']) for (const n of ['01', '02', '03']) turn(f + '_' + n + '_' + sd, [Zf, -k * 0.09]);
     }
     turn('spine_01', [Y, s * 0.05 * a]); turn('spine_03', [Y, -s * 0.09 * a], [X, br * 0.6 + 0.03 * a]); turn('head', [Y, s * 0.04 * a], [X, -br * 0.4]);
-    root.children[0].position.y = -Math.abs(Math.sin(p)) * 0.022 * a - 0.004 * a;    // 歩くときの上下
+    root.children[0].position.y = -Math.abs(Math.sin(p)) * 0.015 * a - 0.003 * a;    // 歩くときの上下
   }
   return { root, set tw(v) { TW = v; }, update(distance) {
     if (!ready) return;
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
-    const moving = distance > 0.00001; phase += distance * 4.4;                     // 1歩 約0.7m
+    const moving = distance > 0.00001; phase += distance * 5.2;                     // 1歩 約0.6m
     amp += ((moving ? 1 : 0) - amp) * Math.min(1, dt * 8);
     if (!moving && amp < 0.02) phase = 0;
     pose(phase, amp);
