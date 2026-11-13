@@ -1,3 +1,4 @@
+import { createDoorDemo } from './worker-door-demo.js';
 import { createWorker } from './workers.js';
 import { buildKiki } from './kikishitsu.js';
 import * as THREE from 'three';
@@ -1013,7 +1014,7 @@ function buildDevices(parent, px, rec, z0 = -2.875) {
   rec.lamp.forEach(l => put(lamp3D(l), l.x, l.y));
   rec.matrix.forEach(m => put(matrix3D(m), m.x + m.cols * m.cw / 2, m.y + m.rows * m.ch / 2));
   rec.box.forEach(b => put(box3D(b), b.x + b.w / 2, b.y + b.h / 2));
-  rec.handle.forEach(h => put(handle3D(), h.x, h.y));
+  rec.handle.forEach(h => { const handle = put(handle3D(), h.x, h.y); parent.userData.handle = handle; });
   rec.push.forEach(p => put(push3D(p.r, p.c, p.estop), p.x, p.y));
 }
 
@@ -2027,6 +2028,16 @@ h1.insertAdjacentHTML('beforeend', '<label style="display:inline-block;margin:6p
 $('workerChoice').value = worker.selected;
 $('workerChoice').onchange = e => { stopMovement(); worker.select(e.target.value); };
 protectControl($('workerChoice'));
+const doorDemo = createDoorDemo({worker, door: doors[4], camera, controls,
+  prepare() { if (walk.on) setWalk(false); stopMovement(); fly = null; },
+  available() { return started && !RT.open; },
+  hud: [h1,h2,pad]
+});
+h1.insertAdjacentHTML('beforeend', ' <button id="doorDemo">🖐 扉を引く動作（試作）</button>');
+$('doorDemo').onclick = () => doorDemo.start();
+protectControl($('doorDemo'));
+window.__doorDemo = doorDemo;
+
 
 addEventListener('keydown', e => { if (walk.on && !document.hidden && !e.target.closest('input,select,textarea,[contenteditable=true]')) { if (e.repeat && !walk.keys[e.code]) return; walk.keys[e.code] = true; if (/^(Arrow|Space)/.test(e.code)) e.preventDefault(); } if (e.key === 'Escape' && walk.on && mod.style.display !== 'flex') { /* メニューは既存処理 */ } });
 addEventListener('keyup', e => { walk.keys[e.code] = false; });
@@ -2791,8 +2802,8 @@ function wrapHud(h, label, openLabel) {
   const det = document.createElement('details'); det.className = 'mdet';
   det.innerHTML = '<summary>⚙ 表示の設定・使い方</summary>';
   while (h1.firstChild) det.appendChild(h1.firstChild);
-  const btns = ['bw', 'bt', 'bd', 'bhs', 'bhw'].map(id => det.querySelector('#' + id)).filter(Boolean);
-  const top = document.createElement('div'); top.className = 'mtop'; btns.slice(0, 3).forEach(b => top.appendChild(b));
+  const btns = ['bw', 'bt', 'bd', 'doorDemo', 'bhs', 'bhw'].map(id => det.querySelector('#' + id)).filter(Boolean);
+  const top = document.createElement('div'); top.className = 'mtop'; btns.slice(0, 4).forEach(b => top.appendChild(b));
   const sel = document.createElement('select'); sel.id = 'viewSel'; sel.setAttribute('aria-label', '見る場所');
   const vb = [...det.querySelectorAll('[data-v]')], kb = [...det.querySelectorAll('[data-kv]')];
   sel.innerHTML = '<option value="">📍 見る場所を選ぶ</option><optgroup label="発電機室">' + vb.map(b => `<option value="v${b.dataset.v}">${b.textContent}</option>`).join('') +
@@ -2802,7 +2813,7 @@ function wrapHud(h, label, openLabel) {
   det.querySelectorAll('b').forEach(b => { if (b.textContent === '機器室') b.remove(); });
   det.querySelectorAll('br').forEach(b => b.remove());
   const lab = document.createElement('div'); lab.className = 'mlab'; lab.textContent = '見る場所';
-  const extra = document.createElement('div'); btns.slice(3).forEach(b => extra.appendChild(b));
+  const extra = document.createElement('div'); btns.slice(4).forEach(b => extra.appendChild(b));
   const tip = document.createElement('div'); tip.className = 'mtip'; tip.innerHTML = '画面をドラッグで回す・ピンチ／ホイールで拡大。<b>盤の扉や部屋のドアは、タップで開け閉め</b>できます。';
   h1.append(top, lab, sel, det.querySelector('.campad'), tip, det);
   det.insertBefore(extra, det.children[1]);
@@ -2861,5 +2872,5 @@ renderer.setAnimationLoop(() => {
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   { const show = walk.on || (started && !(typeof RT !== 'undefined' && RT.open)), v = show ? 'block' : 'none'; if (pad.style.display !== v) pad.style.display = v;
     for (const id of ['doorGo', 'personView']) $(id).classList.toggle('pbHide', !walk.on); }   // スティックは全体の視点でも出す（視点・ドアのボタンは歩く視点だけ）
-  if (walk.on) walkStep(dt); else { viewStep(dt); controls.update(); } renderer.render(scene, camera);
+  if (doorDemo.active) doorDemo.tick(dt); else if (walk.on) walkStep(dt); else { viewStep(dt); controls.update(); } renderer.render(scene, camera);
 });

@@ -97,7 +97,34 @@ export function createWorker(A = { glb: GLB, body: BODY_URI, outfit: OUTFIT_URI,
     if (B.spine_03) B.spine_03.quaternion.multiply(q.setFromAxisAngle(X, breath));
     if (B.head) B.head.quaternion.multiply(q.setFromAxisAngle(X, -breath * 0.5));
   }
-  return { root, get ready() { return ready; }, preview(p, a=1, r=0) { if (ready) pose(p,a,r); }, update(distance) {
+  // World-space two-bone IK. Target is the centre of the palm, not the wrist.
+  function reach(targetWorld, weight = 1, grip = 0) {
+    if (!ready) return null;
+    const model = root.children[0]; root.updateMatrixWorld(true);
+    const armBones = ['upperarm_r','lowerarm_r','hand_r'];
+    const original = armBones.map(n => B[n].quaternion.clone());
+    const shoulder = pos('upperarm_r'), elbow = pos('lowerarm_r'), wrist = pos('hand_r');
+    const palmOffset = v(0, -0.085, 0);
+    const goal = model.worldToLocal(targetWorld.clone()).sub(palmOffset);
+
+    const l1 = shoulder.distanceTo(elbow), l2 = elbow.distanceTo(wrist);
+    const d = goal.clone().sub(shoulder), length = Math.max(0.001, Math.min(l1+l2-0.002, d.length()));
+    d.normalize();
+    const along = (l1*l1-l2*l2+length*length)/(2*length);
+    const pole = v(-0.55,-1,0).addScaledVector(d,-v(-0.55,-1,0).dot(d)).normalize();
+    const joint = shoulder.clone().addScaledVector(d,along).addScaledVector(pole,Math.sqrt(Math.max(0,l1*l1-along*along)));
+    aim('upperarm_r','lowerarm_r',joint.sub(shoulder));
+    aim('lowerarm_r','hand_r',goal.sub(pos('lowerarm_r')));
+    aim('hand_r','middle_01_r',v(0,-1,0));
+    for (const f of ['index','middle','ring','pinky']) for (const n of ['01','02','03']) {
+      const bone = B[f+'_'+n+'_r'];
+      if (bone) bone.quaternion.multiply(q.setFromAxisAngle(X,grip*(n==='01'?0.35:0.65)));
+    }
+    armBones.forEach((n,i) => B[n].quaternion.copy(original[i].slerp(B[n].quaternion,weight)));
+    root.updateMatrixWorld(true);
+    return model.localToWorld(pos('hand_r').add(palmOffset));
+  }
+  return { root, reach, get ready() { return ready; }, preview(p, a=1, r=0) { if (ready) pose(p,a,r); }, update(distance) {
     if (!ready) return;
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
     const moving = Math.abs(distance) > 0.00001, speed = Math.abs(distance) / Math.max(dt, 0.001);
