@@ -8,11 +8,31 @@ import BODY_URI from './worker-natural/body.jpg';
 import OUTFIT_URI from './worker-natural/outfit.jpg';
 
 function tex(uri) { const t = new THREE.TextureLoader().load(uri); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; }
-// 布の織り目（綾織りふうの細かい凹凸）。小さな Canvas を敷き詰める
-function weave() {
-  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = 'rgb(128,128,255)'; g.fillRect(0, 0, 64, 64);
-  for (let i = -64; i < 128; i += 4) { g.strokeStyle = 'rgb(108,116,255)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke(); g.strokeStyle = 'rgb(148,140,255)'; g.beginPath(); g.moveTo(i + 2, 0); g.lineTo(i + 66, 64); g.stroke(); }
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(90, 90); return t;
+// 衣服アトラスの灰色領域だけに織り目と粗さを付け、白い保護帽・黒い靴と区別。
+function fabricMaps(material, texture) {
+  const apply = () => {
+    const image = texture.image;
+    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
+    const ctx = c.getContext('2d'); ctx.drawImage(image, 0, 0);
+    const base = ctx.getImageData(0, 0, c.width, c.height);
+    const normal = ctx.createImageData(c.width, c.height), rough = ctx.createImageData(c.width, c.height);
+    const sheen = ctx.createImageData(c.width, c.height);
+    const smooth = (lo,hi,x) => {const t=Math.max(0,Math.min(1,(x-lo)/(hi-lo))); return t*t*(3-2*t);};
+    for (let y=0;y<c.height;y++) for(let x=0;x<c.width;x++) {
+      const i=(y*c.width+x)*4, l=(base.data[i]+base.data[i+1]+base.data[i+2])/765;
+      const mask=smooth(.17,.32,l)*(1-smooth(.67,.82,l));
+      const wave=Math.sin((x+y)*Math.PI/2), cross=Math.sin((x-y)*Math.PI/2);
+      normal.data.set([128+wave*9*mask,128+cross*7*mask,255,255],i);
+      const grain=((x*73+y*151)%101)/100;
+      const r= Math.round(255*(.36*(1-mask)+mask*(.78+.10*grain)));
+      rough.data.set([r,r,r,255],i);
+      const sh=Math.round(mask*100);sheen.data.set([sh,sh,sh,255],i);
+    }
+    const make = pixels => {const canvas=document.createElement('canvas');canvas.width=c.width;canvas.height=c.height;canvas.getContext('2d').putImageData(pixels,0,0);const t=new THREE.CanvasTexture(canvas);t.flipY=false;t.anisotropy=8;return t;};
+    material.normalMap=make(normal);material.roughnessMap=make(rough);material.sheenColorMap=make(sheen);material.needsUpdate=true;
+  };
+  if(texture.image?.complete) apply();
+  else { let attempts=0; const wait=()=>{if(texture.image?.complete)apply();else if(++attempts<200)setTimeout(wait,50);};wait(); }
 }
 
 
@@ -23,7 +43,9 @@ export function createWorker() {
   new GLTFLoader().parse(GLB.buffer.slice(GLB.byteOffset, GLB.byteOffset + GLB.byteLength), '', gltf => {
     const model = gltf.scene; model.rotation.y = Math.PI; root.add(model);          // モデルの正面（+Z）を、歩く向き（−Z）に合わせる
     const body = new THREE.MeshStandardMaterial({ map: tex(BODY_URI), roughness: 0.58 });
-    const outfit = new THREE.MeshStandardMaterial({ map: tex(OUTFIT_URI), roughness: 0.92, normalMap: weave(), normalScale: new THREE.Vector2(0.025, 0.025), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
+    const outfitMap = tex(OUTFIT_URI);
+    const outfit = new THREE.MeshPhysicalMaterial({ map: outfitMap, roughness: 1, sheen: 0.3, sheenColor: 0xb9bfc5, sheenRoughness: 0.8, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide, shadowSide: THREE.BackSide });
+    fabricMaps(outfit, outfitMap);
     model.traverse(o => {
       if (o.isMesh) { o.material = /body|skin/.test(o.name + o.material.name) ? body : outfit; o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; }
       if (o.isBone) B[o.name] = o;
@@ -63,7 +85,11 @@ export function createWorker() {
       const u = stance ? cycle/0.62 : (cycle-0.62)/0.38;
       const stride = 0.54 * a;
       const z = stance ? stride*(0.5-u) : stride*(-0.5 + u*u*(3-2*u));
-      const lift = stance ? 0 : Math.sin(Math.PI*u)*0.085*a;
+      const smooth = t => { t=Math.max(0,Math.min(1,t));return t*t*(3-2*t); };
+      const push = stance ? smooth((u-.68)/.32) : 1-smooth(u/.45);
+      const heelLift = push * 0.055 * a;
+      const lift = stance ? heelLift : (Math.sin(Math.PI*u)*0.16*a + heelLift);
+      const pitch = stance ? push * 0.50*a : (push * 0.50 - smooth((u-.55)/.45)*0.12)*a;
       const hip = pos('thigh_'+sd), knee = pos('calf_'+sd), ankle = pos('foot_'+sd);
       const l1 = hip.distanceTo(knee), l2 = knee.distanceTo(ankle);
       const goal = v(ankle.x, ankle.y + lift + 0.025*a, z + ankle.z);
@@ -75,10 +101,10 @@ export function createWorker() {
       const kneeGoal = hip.clone().addScaledVector(d,along).addScaledVector(forward,bend);
       aim('thigh_'+sd,'calf_'+sd,kneeGoal.sub(hip));
       aim('calf_'+sd,'foot_'+sd,goal.sub(pos('calf_'+sd)));
-      aim('foot_'+sd,'ball_'+sd,v(0,-0.12,1));
+      aim('foot_'+sd,'ball_'+sd,v(0,-0.12-Math.sin(pitch),Math.cos(pitch)));
       const swing = -z * 0.85; // 同側の足の前後位置と必ず逆に振る
-      aim('upperarm_'+sd,'lowerarm_'+sd,v(k*0.08,-1,swing));
-      aim('lowerarm_'+sd,'hand_'+sd,v(k*0.025,-1,0.09+swing));
+      aim('upperarm_'+sd,'lowerarm_'+sd,v(k*0.28,-1,swing));
+      aim('lowerarm_'+sd,'hand_'+sd,v(k*0.10,-1,0.09+swing));
       // Neutral wrists: retain the hand's rest rotation relative to the forearm.
       // Gentle local finger flexion, no global 132-degree wrist twist.
       for (const f of ['index','middle','ring','pinky']) {
@@ -88,7 +114,9 @@ export function createWorker() {
         }
       }
     }
-    model.position.y = floorY - Math.min(pos('foot_l').y, pos('foot_r').y);
+    // つま先への荷重移行では足首の高さを維持する。
+    const contact = ['l','r'].map(sd => Math.min(pos('foot_'+sd).y, pos('ball_'+sd).y + 0.012));
+    model.position.y = floorY - Math.min(...contact);
     // 小さな呼吸。足の接地と首・手首の自然な向きを保つ。
     if (B.spine_03) B.spine_03.quaternion.multiply(q.setFromAxisAngle(X, breath));
     if (B.head) B.head.quaternion.multiply(q.setFromAxisAngle(X, -breath * 0.5));
