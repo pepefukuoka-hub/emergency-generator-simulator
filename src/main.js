@@ -107,7 +107,7 @@ const wallMat = M(0xffffff, 0, 1, { map: concreteTex([5, 2]), side: THREE.BackSi
 const walls = new THREE.Mesh(new THREE.BoxGeometry(16.6, 4.4, 8.0), [wallMat, wallMat, wallMat, wallMat, wallMat, new THREE.MeshBasicMaterial({ visible: false })]); walls.position.set(-4.7, 2.2, 0.6); room.add(walls);
 // 入口側（−Z）の壁は、機器室へ抜けるドアの穴（X −5.8〜−4.8、高さ 2.15）をあけた3枚の面
 const doorWall = [];
-for (const [x0, x1, y0, y1] of [[-13, -5.8, 0, 4.4], [-4.8, 3.6, 0, 4.4], [-5.8, -4.8, 2.15, 4.4]]) {
+for (const [x0, x1, y0, y1] of [[-13, -6.1, 0, 4.4], [-4.5, 3.6, 0, 4.4], [-6.1, -4.5, 2.15, 4.4]]) {
   const o = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), M(0xffffff, 0, 1, { map: concreteTex([(x1 - x0) / 3.3, (y1 - y0) / 2.2]) }));
   o.position.set((x0 + x1) / 2, (y0 + y1) / 2, -3.4); room.add(o); doorWall.push(o);
 }
@@ -1456,7 +1456,10 @@ grab('small', _hn);
 _hn = room.children.length;
 bx(-8.75, -7.7, 0, 2.0, -3.4, -2.95, M(0xbfc3b8, 0.2, 0.7), room); bx(-8.22, -8.18, 0, 2.0, -2.97, -2.93, M(0x8a8e84), room); for (const x of [-8.28, -8.12]) bx(x - 0.01, x + 0.01, 0.95, 1.1, -2.98, -2.93, chrome, room);
 // 機器室へのドア（開けた状態。枠と、発電機室側へ開いた扉）
-{ const fm = M(0xc8c4a8, 0, 0.9); bx(-5.95, -5.8, 0, 2.55, -3.4, -3.36, fm, room); bx(-4.8, -4.65, 0, 2.55, -3.4, -3.36, fm, room); bx(-5.8, -4.8, 2.15, 2.55, -3.4, -3.36, fm, room); bx(-5.84, -5.8, 0, 2.15, -3.36, -2.36, M(0xd2d3cd, 0.3, 0.6), room); bx(-5.8, -5.76, 1.0, 1.15, -2.5, -2.48, chrome, room); }
+// 入口の枠（写真：モルタルで補修した灰色の枠）と、右の壁のスイッチ・掃除用の流し（位置は写真の見た目から）
+{ const mort = M(0x8d8a7a, 0, 0.95); bx(-6.6, -6.1, 0, 2.75, -3.4, -3.37, mort, room); bx(-4.5, -4.0, 0, 2.75, -3.4, -3.37, mort, room); bx(-6.1, -4.5, 2.15, 2.75, -3.4, -3.37, mort, room);
+  bx(-4.15, -4.07, 1.3, 1.42, -3.37, -3.35, M(0xb9bbbd, 0.6, 0.4), room);
+  bx(-3.95, -3.5, 0.55, 0.85, -3.37, -3.05, M(0xf2f2f0, 0.05, 0.25), room); bx(-3.9, -3.55, 0.8, 0.86, -3.33, -3.09, M(0xe2e4e5, 0.05, 0.3), room); cyl(0.04, 0.55, M(0xb8babc, 0.7, 0.35), -3.72, 0.27, -3.3, 'y', room, 12); }
 { const es = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.14), new THREE.MeshStandardMaterial({ map: canvasTex(256, 72, (g, w, h) => { g.fillStyle = '#1f7f3f'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = 'bold 44px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('機器室', w / 2, h / 2 + 2); }) })); es.position.set(-5.3, 2.35, -3.37 + 0.0); es.rotation.y = 0; room.add(es); }
 { const n2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.42), M(0xf2f2f0, 0, 0.8)); n2.position.set(-0.75, 1.55, -3.285); n2.rotation.y = Math.PI; n2.visible = false; room.add(n2); }
 bx(0.2, 1.1, 0, 0.75, -3.4, -3.05, M(0xe9dfc0, 0.1, 0.7), room); for (let i = 0; i < 6; i++) bx(0.35, 0.95, 0.5 + i * 0.03, 0.52 + i * 0.03, -3.05, -3.04, M(0x9a9482), room); // 温風機
@@ -1732,17 +1735,30 @@ const BLOCKS = [[-3.1, 1.35, -1.5, 0.1], [-2.95, -1.25, -2.25, -1.4], [-0.8, 1.1
 const ROOM = [-12.9, 3.5, -3.3, 4.5], PR = 0.28;
 BLOCKS.push(...kiki.blocks);
 const inRect = (r, x, z) => x >= r[0] && x <= r[1] && z >= r[2] && z <= r[3];
-const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || (roomDoor.cur > -1.0 && Math.abs(z + 3.4) < PR && x > -5.9 && x < -4.7) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
+const hitAt = (x, z) => !(inRect(ROOM, x, z) || inRect(kiki.room, x, z) || (x > kiki.door[0] + PR - 0.1 && x < kiki.door[1] - PR + 0.1 && z > kiki.room[3] - 0.05 && z < ROOM[2] + 0.05)) || (roomDoor.cur < 1.0 && Math.abs(z + 3.4) < PR && x > -6.2 && x < -4.4) || BLOCKS.some(b => x > b[0] - PR && x < b[1] + PR && z > b[2] - PR && z < b[3] + PR);
 window.__walk = { walk, hitAt, goThroughDoor: () => goThroughDoor(), step: dt => walkStep(dt), setWalk: on => setWalk(on) };
 // 発電機室と機器室の間のドア（中心）。ボタンで、ドアの向こうへ移る
 const DOOR = { x: -5.3, z: -3.4 };
 // ドアの扉（蝶番は X −5.8。発電機室側 +Z へ開く）。タップで開け閉め。閉まっていると通れない
 const roomDoor = (() => {
-  const g = new THREE.Group(); g.position.set(-5.8, 0, -3.4); scene.add(g);
-  const dm = M(0xa9aeb2, 0.4, 0.5), hm = M(0xdfe2e4, 0.9, 0.25);
-  const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.98, 2.12, 0.045), dm); leaf.position.set(0.5, 1.06, 0); g.add(leaf);
-  for (const z of [0.04, -0.04]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.025, 0.025), hm); h.position.set(0.86, 1.0, z); g.add(h); const r = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16), hm); r.rotation.x = Math.PI / 2; r.position.set(0.9, 1.0, z * 0.6); g.add(r); }
-  return { g, cur: 0, target: 0, OPEN: -1.65, toggle() { this.target = this.target ? 0 : this.OPEN; } };
+  // 両開き（幅 1.6m。蝶番は X −6.1 と −4.5）。発電機室側の面：左の扉に書類12枚、右の扉に二酸化炭素消火設備の注意・危険の札（写真より）
+  const face = left => canvasTex(128, 340, (c, w, h) => {
+    c.fillStyle = '#c9c3b2'; c.fillRect(0, 0, w, h); c.strokeStyle = '#a49e8d'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
+    if (left) { for (let r = 0; r < 6; r++) for (let k = 0; k < 2; k++) { const x = 14 + k * 54 + r * 2, y = 30 + r * 42; c.fillStyle = '#fafaf8'; c.fillRect(x, y, 44, 38); c.fillStyle = '#9a9a9a'; for (let l = 0; l < 9; l++) c.fillRect(x + 4, y + 5 + l * 3.6, 36 - (l % 3) * 6, 0.8); } }
+    else { const x = 64, y = 90;
+      c.fillStyle = '#f4f6f2'; c.fillRect(x, y, 56, 32); c.strokeStyle = '#2f8a4a'; c.strokeRect(x, y, 56, 32); c.fillStyle = '#2f8a4a'; c.font = 'bold 6px sans-serif'; c.textAlign = 'center'; c.fillText('注 意', x + 28, y + 9); c.font = '3.4px sans-serif'; c.fillText('二酸化炭素消火設備があります', x + 28, y + 18); c.fillText('放出時は入室しないで下さい', x + 28, y + 24);
+      c.fillStyle = '#f2d21b'; c.fillRect(x, y + 34, 56, 30); c.fillStyle = '#111'; c.font = 'bold 6px sans-serif'; c.fillText('危険　この室は', x + 28, y + 43); c.font = '3.4px sans-serif'; c.fillText('二酸化炭素消火設備', x + 28, y + 51); c.fillText('窒息のおそれがあります', x + 28, y + 57);
+      c.fillStyle = '#111'; c.fillRect(x, y + 66, 56, 12); c.fillStyle = '#f2d21b'; c.font = 'bold 6px sans-serif'; c.fillText('⚠危険 DANGER', x + 28, y + 74);
+      c.fillStyle = '#fafafa'; c.fillRect(x, y + 78, 56, 50); c.fillStyle = '#111'; c.font = '3.4px sans-serif'; c.fillText('二酸化炭素 CARBON DIOXIDE', x + 28, y + 84);
+      c.fillStyle = '#f2e21b'; c.beginPath(); c.ellipse(x + 26, y + 98, 18, 8, 0, 0, 7); c.fill(); c.fillStyle = '#111'; c.beginPath(); c.arc(x + 30, y + 96, 5, 0, 7); c.fill(); c.beginPath(); c.moveTo(x + 8, y + 128); c.lineTo(x + 30, y + 108); c.lineTo(x + 52, y + 128); c.lineTo(x + 44, y + 128); c.lineTo(x + 30, y + 116); c.lineTo(x + 16, y + 128); c.fill(); c.font = 'bold 5px sans-serif'; c.fillText('CO2', x + 12, y + 99); } });
+  const dm = M(0xd9d3c2, 0.25, 0.55), hm = M(0xc9ccce, 0.9, 0.25), lw = 0.79;
+  const leaves = [[-6.1, 1], [-4.5, -1]].map(([hx, k]) => {
+    const g = new THREE.Group(); g.position.set(hx, 0, -3.4); scene.add(g); g.userData.k = k;
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(lw, 2.12, 0.045), dm); leaf.position.set(k * lw / 2, 1.06, 0); g.add(leaf);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(lw, 2.12), new THREE.MeshStandardMaterial({ map: face(k > 0), roughness: 0.6 })); f.position.set(k * lw / 2, 1.06, 0.0235); g.add(f);
+    for (const z of [0.045, -0.045]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.022, 0.022), hm); h.position.set(k * (lw - 0.13), 1.0, z); h.rotation.z = k * 0.25; g.add(h); }
+    return g; });
+  return { g: leaves, cur: 0, target: 0, OPEN: 1.65, toggle() { this.target = this.target ? 0 : this.OPEN; } };
 })();
 window.__roomDoor = roomDoor;
 function goThroughDoor() {
@@ -1882,7 +1898,7 @@ const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
     const r = el.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); raycaster.setFromCamera(ndc, camera);
     if (raycaster.intersectObject(window.__batNoteObj, true).length) { showBatNote(); return; }
     if (typeof rtRelayTap === 'function' && rtRelayTap(raycaster, e)) return;     // 継電器試験を開いている間は、継電器のタップを先に受ける
-    if (raycaster.intersectObject(roomDoor.g, true).length) { roomDoor.toggle(); return; }
+    if (raycaster.intersectObjects(roomDoor.g, true).length) { roomDoor.toggle(); return; }
     { const r = REARS.find(r => raycaster.intersectObjects(r.leaves, true).length); if (r) { r.toggle(); return; } }
     for (const h of raycaster.intersectObjects(doors.map(d => d.g), true)) { let o = h.object; while (o && o.userData.door === undefined) o = o.parent; if (o) { const d = doors[o.userData.door]; d.target = d.target ? 0 : OPEN; break; } }
   }); }
@@ -2675,7 +2691,7 @@ renderer.setAnimationLoop(() => {
   $('rd').textContent = `回転 ${Math.round(S.rpm)} min⁻¹ ｜ 電圧 ${Math.round(210 * S.volt)} V ｜ 周波数 ${S.hz.toFixed(1)} Hz ｜ ${S.mains ? '商用' : S.brk ? '発電' : '停電'}`;
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
-  roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.rotation.y = roomDoor.cur;
+  roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.forEach(l => { l.rotation.y = -l.userData.k * roomDoor.cur; });
   for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor ? 1.6 : 0.8) * Math.min(1, r.cur / 1.2); }
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }

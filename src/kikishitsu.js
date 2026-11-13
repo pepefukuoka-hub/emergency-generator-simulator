@@ -33,7 +33,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
   const shell = new THREE.Mesh(new THREE.BoxGeometry(X1 - X0, H, Z1 - Z0), [wallM, wallM, wallM, none, none, wallM]);
   shell.position.set((X0 + X1) / 2, H / 2, (Z0 + Z1) / 2); g.add(shell);
   // 発電機室との境の壁（ドアの穴 X −5.8〜−4.8、高さ 2.15）
-  const wm = M(0xe9e8e0, 0, 0.95), DX0 = -5.8, DX1 = -4.8, DH = 2.15;
+  const wm = M(0xe9e8e0, 0, 0.95), DX0 = -6.1, DX1 = -4.5, DH = 2.15;
   plane(DX0 - X0, H, wm, (X0 + DX0) / 2, H / 2, Z1, 'z-'); plane(X1 - DX1, H, wm, (DX1 + X1) / 2, H / 2, Z1, 'z-');
   plane(DX1 - DX0, H - DH, wm, (DX0 + DX1) / 2, (H + DH) / 2, Z1, 'z-');
   const frame = M(0xc8c4a8, 0.1, 0.8);
