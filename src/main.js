@@ -1239,11 +1239,30 @@ const rearDoor2 = (() => {
   const x = -8.3 + 3 * 0.95, cr = M(0xd3d0c0, 0.25, 0.6), hm = M(0xc9ccce, 0.8, 0.3), g = new THREE.Group(); pnl.add(g);
   const zb = -3.42;   // 中仕切り（奥）
   bx(x - 0.45, x + 0.45, 0.12, 2.28, zb - 0.01, zb, M(0xd6d3c8, 0.2, 0.7), g);
-  // 上の棚とオレンジ色の巻線部品
-  bx(x - 0.44, x + 0.44, 1.86, 1.9, -4.6, zb, M(0xbcbfc3, 0.3, 0.6), g);
-  for (let k = 0; k < 4; k++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 24), M(0xd9661e, 0.1, 0.55)); c.position.set(x - 0.3 + k * 0.2, 1.98, -3.75); g.add(c); bx(x - 0.3 + k * 0.2 - 0.01, x - 0.3 + k * 0.2 + 0.01, 1.9, 2.1, -3.69, -3.67, M(0xf2d21b, 0, 0.6), g); }
+  // 上の棚と、小形の変圧器4台（写真：裏から見て左から AVR用・AVR用・計器RY用・計器用、220/110V。黒い枠・オレンジ色の巻線・上に端子台・黄色い線）
+  bx(x - 0.44, x + 0.44, 1.84, 1.88, -3.9, zb, M(0xbcbfc3, 0.3, 0.6), g);
+  const blk = M(0x1d1e20, 0.3, 0.5), coilM = M(0xc65a1c, 0.15, 0.35), yel = M(0xf2d21b, 0, 0.55);
+  ['AVR用', 'AVR用', '計器RY用', '計器用'].forEach((nm, k) => {
+    const tx = x + 0.3 - k * 0.2, z0 = -3.66;
+    bx(tx - 0.07, tx + 0.07, 1.88, 2.06, z0 - 0.02, z0 + 0.06, blk, g);                       // 鉄心の黒い枠
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 28), coilM); c.rotation.z = Math.PI / 2; c.position.set(tx, 1.955, z0 - 0.035); g.add(c);   // 巻線
+    bx(tx - 0.05, tx + 0.05, 2.06, 2.1, z0 - 0.02, z0 + 0.04, M(0x2a2b2e, 0.2, 0.5), g);          // 端子台
+    for (let t = 0; t < 4; t++) bx(tx - 0.04 + t * 0.026, tx - 0.03 + t * 0.026, 2.1, 2.12, z0 - 0.01, z0 + 0.03, M(0x9a9c9e, 0.7, 0.4), g);
+    const lab = canvasTex(128, 32, (cc, w, h) => { cc.fillStyle = '#f5d32a'; cc.fillRect(0, 0, w, h); cc.fillStyle = '#111'; cc.font = 'bold 20px sans-serif'; cc.textAlign = 'center'; cc.textBaseline = 'middle'; cc.fillText(nm, w / 2, h / 2 + 1); });
+    const lm = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.02), new THREE.MeshStandardMaterial({ map: lab, roughness: 0.6 })); lm.rotation.y = Math.PI; lm.position.set(tx, 2.035, z0 - 0.025); g.add(lm);
+    const wc = new THREE.CatmullRomCurve3([new THREE.Vector3(tx + 0.03, 2.11, z0 - 0.03), new THREE.Vector3(tx + 0.055, 2.05, z0 - 0.07), new THREE.Vector3(tx + 0.055, 1.9, z0 - 0.07), new THREE.Vector3(tx + 0.04, 1.86, z0 - 0.05)]);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(wc, 16, 0.006, 6, false), yel));
+  });
+  // 穴あきの配線ダクトと、一番上の緑の抵抗器（2本ずつ2組。黄色い線でつなぐ）
+  bx(x - 0.36, x + 0.42, 2.12, 2.16, -3.62, zb, M(0xc4c7cb, 0.2, 0.55), g);
+  const resM = M(0x3f8a55, 0.05, 0.5), capM = M(0xe9e6dc, 0.1, 0.5);
+  for (const [cx, dz] of [[x + 0.2, 0], [x - 0.2, -0.05]]) for (const [dy, dz2] of [[0, 0], [-0.035, 0.03]]) {
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 18), resM); r.rotation.z = Math.PI / 2; r.position.set(cx, 2.22 + dy, -3.52 - dz - dz2); g.add(r);
+    for (const e of [-0.17, 0.17]) { const cp = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.02, 18), capM); cp.rotation.z = Math.PI / 2; cp.position.set(cx + e, 2.22 + dy, -3.52 - dz - dz2); g.add(cp); }
+  }
+  for (const cx of [x + 0.02, x + 0.38, x - 0.38]) { const wc = new THREE.CatmullRomCurve3([new THREE.Vector3(cx, 2.2, -3.56), new THREE.Vector3(cx - 0.02, 2.13, -3.6), new THREE.Vector3(cx + 0.03, 2.13, -3.6), new THREE.Vector3(cx + 0.02, 2.19, -3.56)]); g.add(new THREE.Mesh(new THREE.TubeGeometry(wc, 12, 0.005, 6, false), yel)); }
   // 端子の受け枠（横2本）と、3相の平たい端子
-  const steel = M(0xb4b6b3, 0.75, 0.35), ph = [[0.24, 0x1f4fd8], [0.0, 0xf0efe8], [-0.24, 0xd8232a]];   // 裏扉から見て、左から青・白・赤（写真）
+  const steel = M(0xa9aba7, 0.6, 0.55), ph = [[0.24, 0x1f4fd8], [0.0, 0xf0efe8], [-0.24, 0xd8232a]];   // 裏扉から見て、左から青・白・赤（写真）
   for (const y of [1.66, 1.5]) bx(x - 0.42, x + 0.42, y - 0.02, y + 0.02, -3.62, -3.58, M(0xc9cacc, 0.4, 0.5), g);
   const cableM = M(0x1c1d20, 0.05, 0.55);
   for (const [dx, col] of ph) {
@@ -2496,7 +2515,7 @@ renderer.setAnimationLoop(() => {
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.rotation.y = roomDoor.cur;
-  for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = 1.6 * Math.min(1, r.cur / 1.2); }
+  for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor2 ? 0.8 : 1.6) * Math.min(1, r.cur / 1.2); }
   doors.forEach(d => { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.g.rotation.y = d.cur; if (d.light) d.light.intensity = 1.8 * Math.min(1, -d.cur / 1.2); });
   audioUpdate(); if (fly) { fly.t = Math.min(1, fly.t + dt / 0.9); const k = ease(fly.t); camera.position.lerpVectors(fly.p0, fly.p1, k); controls.target.lerpVectors(fly.t0, fly.t1, k); if (fly.t >= 1) fly = null; }
   if (walk.on) walkStep(dt); else controls.update(); renderer.render(scene, camera);
