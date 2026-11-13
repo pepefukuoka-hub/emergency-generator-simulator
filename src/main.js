@@ -1988,7 +1988,9 @@ pad.insertAdjacentHTML('afterbegin', '<button id=runBtn>🚶 歩く</button>');
 pad.insertAdjacentHTML('afterbegin', '<button id=turnBtn title="その場で後ろを向く（180°回る）">↻ 180°</button>');
 $('turnBtn').onclick = () => { if (!walk.turnRem) walk.turnRem = Math.PI; };
 protectControl($('turnBtn'));
-$('runBtn').onclick = () => { walk.runOn = !walk.runOn; $('runBtn').textContent = walk.runOn ? '🏃 走る' : '🚶 歩く'; $('runBtn').classList.toggle('on', walk.runOn); };
+const setRun = on => { walk.runOn = on; $('runBtn').textContent = on ? '🏃 走る' : '🚶 歩く'; $('runBtn').classList.toggle('on', on); };
+$('runBtn').onclick = () => setRun(!walk.runOn);
+setRun(true);   // 始まったときは「走る」にしておく（利用者の指示）。ボタンで歩くに切り替えられる
 protectControl($('runBtn'));
 $('doorGo').onclick = goThroughDoor;
 { const cs = document.createElement('style'); cs.textContent = '#padBox{right:8px!important;bottom:8px!important;padding:4px!important;width:auto}#padBox button{font-size:12px!important;padding:3px 6px!important;margin:1px!important;min-height:30px;display:inline-block!important;width:auto!important}#padBox .pbRow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;max-width:200px}';
