@@ -1911,8 +1911,8 @@ function walkStep(dt) {
     // 本人の目線と同じ向き（yaw・pitch）のまま、真後ろ・少し上へ下がって見る。背後が壁なら、向きは変えずに近づく
     // 正面から見る（walk.front）：作業員の前に回って、顔の方を見る。前が壁なら近づく
     const sg = walk.front ? -1 : 1, bx = Math.sin(walk.yaw) * sg, bz = Math.cos(walk.yaw) * sg;
-    let d = walk.front ? 2.2 : 2.7;
-    for (let i = 1; i <= 54; i++) { const t = i * 0.05; if (t > d) break; if (hitAt(walk.pos.x + bx * t, walk.pos.z + bz * t)) { d = Math.max(0.6, t - 0.15); break; } }
+    let d = (walk.front ? 2.2 : 2.7) * (walk.zoom || 1);   // walk.zoom：2本指のピンチ／ホイールで離れる・近づく
+    for (let i = 1; i <= 200; i++) { const t = i * 0.05; if (t > d) break; if (hitAt(walk.pos.x + bx * t, walk.pos.z + bz * t)) { d = Math.max(0.6, t - 0.15); break; } }
     if (walk.front) { camera.position.set(walk.pos.x + bx * d, 1.5 + bob, walk.pos.z + bz * d); camera.lookAt(walk.pos.x, 1.15, walk.pos.z); frontFill.position.copy(camera.position); }
     else { camera.position.set(walk.pos.x + bx * d, 1.65 + 0.2 * d + bob, walk.pos.z + bz * d); camera.rotation.set(walk.pitch - 0.2, walk.yaw, 0, 'YXZ'); }
   } else {
@@ -2013,7 +2013,17 @@ addEventListener('keydown', e => { if (walk.on && !document.hidden && !e.target.
 addEventListener('keyup', e => { walk.keys[e.code] = false; });
 { let drag = false, lx = 0, ly = 0; const el = renderer.domElement;
   el.addEventListener('pointerdown', e => { if (walk.on) { drag = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); } });
-  el.addEventListener('pointermove', e => { if (walk.on && drag) { walk.yaw -= (e.clientX - lx) * 0.005; walk.pitch = Math.max(-1.2, Math.min(1.2, walk.pitch - (e.clientY - ly) * 0.004)); lx = e.clientX; ly = e.clientY; } });
+  // 2本指のピンチ：指を広げると作業員から離れて見る、狭めると近づく（本人の目線なら、広げると後ろから見るに切り替える）
+  const pts = new Map(); let pinch0 = 0, zoom0 = 1;
+  const pd = () => { const [a, b] = [...pts.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+  el.addEventListener('pointerdown', e => { if (!walk.on) return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { drag = false; pinch0 = pd(); zoom0 = walk.zoom || 1; } });
+  el.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 2 && pinch0 > 20) { const r = pd() / pinch0;
+      if (!walk.third && r > 1.15) { walk.third = true; walk.front = false; $('personView').textContent = '👤 後ろ'; zoom0 = 1; pinch0 = pd(); return; }
+      walk.zoom = Math.max(0.4, Math.min(3.5, zoom0 * r)); } });
+  for (const t of ['pointerup', 'pointercancel']) el.addEventListener(t, e => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; });
+  el.addEventListener('wheel', e => { if (!walk.on) return; e.preventDefault(); if (!walk.third && e.deltaY > 0) { walk.third = true; walk.front = false; $('personView').textContent = '👤 後ろ'; return; } walk.zoom = Math.max(0.4, Math.min(3.5, (walk.zoom || 1) * (e.deltaY > 0 ? 1.12 : 1 / 1.12))); }, { passive: false });
+  el.addEventListener('pointermove', e => { if (walk.on && drag && pts.size < 2) { walk.yaw -= (e.clientX - lx) * 0.005; walk.pitch = Math.max(-1.2, Math.min(1.2, walk.pitch - (e.clientY - ly) * 0.004)); lx = e.clientX; ly = e.clientY; } });
   movementStops.add(() => { drag = false; });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(type, () => { drag = false; }); }
 
