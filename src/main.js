@@ -23,7 +23,7 @@ controls.minDistance = 0.2;
 controls.zoomToCursor = true;
 let fly = null;
 controls.addEventListener('start', () => { fly = null; });
-function view(p, t) { fly = null; camera.position.set(...p); controls.target.set(...t); }
+function view(p, t) { fly = null; if (window.__worker && window.__walk && !window.__walk.walk.on) window.__worker.root.visible = false; if (camera.fov !== 45) { camera.fov = 45; camera.updateProjectionMatrix(); } camera.position.set(...p); controls.target.set(...t); }
 window.viewTo = view;
 view([-5.6, 2.4, 5.2], [0, 1.4, 0]);
 
@@ -1574,7 +1574,13 @@ function setWalk(on) {
   fly = null; worker.root.visible = on && walk.third; $('personView').style.display = on ? '' : 'none';
   walk.on = on; $('bw').textContent = on ? '🎥 全体の視点に戻る' : '🚶 歩く視点'; pad.style.display = on ? 'block' : 'none'; hint.style.display = on ? 'block' : 'none';
   if (on) { walk.saved = [camera.position.clone(), controls.target.clone()]; controls.enabled = false; controls.autoRotate = false; camera.fov = 68; camera.updateProjectionMatrix(); renderer.domElement.style.touchAction = 'none'; setTimeout(() => { hint.style.display = 'none'; }, 6000); }
-  else { controls.enabled = true; camera.fov = 45; camera.updateProjectionMatrix(); camera.rotation.order = 'XYZ'; const sv = walk.saved || [new THREE.Vector3(-5.6, 2.4, 5.2), new THREE.Vector3(0, 1.4, 0)]; camera.position.copy(sv[0]); controls.target.copy(sv[1]); camera.up.set(0, 1, 0); camera.lookAt(sv[1]); controls.update(); }
+  else {
+    // 全体の視点に戻るときは、それまで見ていた画面をそのまま引き継ぐ（位置・向き・画角）。見る中心は、後ろ／正面から見ていたなら作業員、本人の目線なら 2.5m 先
+    controls.enabled = true;
+    const dir = camera.getWorldDirection(new THREE.Vector3()), dist = walk.third ? Math.max(1.0, Math.hypot(camera.position.x - walk.pos.x, camera.position.z - walk.pos.z)) : 2.5, tgt = camera.position.clone().addScaledVector(dir, dist);
+    camera.rotation.order = 'XYZ'; camera.up.set(0, 1, 0); controls.target.copy(tgt); camera.lookAt(tgt); controls.update();
+    worker.root.visible = walk.third;   // 後ろ／正面から見ていたなら、作業員はその場に残す（見る場所を選ぶと消える）
+  }
 }
 const pad = document.createElement('div'); pad.className = 'hud'; pad.style.cssText = 'right:14px;bottom:14px;display:none;padding:6px';
 pad.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,52px);grid-auto-rows:52px;gap:4px"><span></span><button data-p="f1">▲</button><span></span><button data-p="s-1">◀</button><button data-p="f-1">▼</button><button data-p="s1">▶</button></div><div style="font-size:11px;text-align:center;color:#bcd">▲▼：前後　◀▶：その場で回る</div>';
@@ -1698,7 +1704,7 @@ dw.innerHTML = '<div class=hd><span>設備の説明</span><button id=dwClose>▲
   INFO.map(([cat, items], ci) => '<h4>' + cat + '</h4>' + items.map(([nm, , ...tx], ii) => `<button class=it data-c=${ci} data-i=${ii}>${nm}</button><div class=tx data-t=${ci}-${ii} style="display:none">${tx.map(t => '<p style="margin:3px 0">' + t + '</p>').join('')}</div>`).join('')).join('') +
   '<div style="font-size:11px;color:#9cc;margin-top:8px">※ 教育用の説明です。実際の整定値・点検項目は、保安規程と現場の資料に従ってください。</div>';
 window.__desk = { needles: deskNeedles, S };
-function flyTo(p, t) { if (walk.on) setWalk(false); fly = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) }; }
+function flyTo(p, t) { if (walk.on) setWalk(false); worker.root.visible = false; if (camera.fov !== 45) { camera.fov = 45; camera.updateProjectionMatrix(); } fly = { t: 0, p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) }; }
 dw.addEventListener('click', e => {
   const b = e.target.closest('.it'); if (!b) return;
   const ci = +b.dataset.c, ii = +b.dataset.i, box = dw.querySelector(`[data-t="${ci}-${ii}"]`), open = box.style.display === 'none';
