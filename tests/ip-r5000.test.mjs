@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {createIPState,ipTick} from '../src/ip-r5000.js';
+const relay={Is:5,T300:.4};
+const run=(s,n=1000)=>{for(let i=0;i<n;i++)ipTick(s,.005,relay);};
+let s=createIPState();Object.assign(s,{power:true,started:true,knob:50});ipTick(s,.01,relay);const set=s.current;s.path='TEST';s.connected=true;ipTick(s,.01,relay);assert(s.current<set,'SET must differ from real burden');
+s=createIPState();Object.assign(s,{power:true,started:true,knob:100,path:'TEST',connected:true});run(s);assert(s.result&&s.operated&&!s.started,'TRIP must stop and retain measurement');
+s=createIPState();Object.assign(s,{power:true,started:true,knob:100,path:'TEST',connected:true,contact:'CHECK'});run(s);assert(s.result&&s.started,'contact check must not stop');
+s=createIPState();Object.assign(s,{power:true,started:true,knob:100,path:'TEST',connected:false});run(s);assert.equal(s.current,0);assert.equal(s.result,null);
+s=createIPState();Object.assign(s,{power:true,started:true,knob:100,resistance:.5});run(s,6100);assert(!s.started&&s.notice,'30 second rating training guard');
+s=createIPState();s.knob=100;run(s);assert.equal(s.current,0);
+console.log('IP-R5000: 6 behavior checks passed');

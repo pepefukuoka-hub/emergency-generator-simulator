@@ -1,3 +1,4 @@
+import { mountIP } from './ip-r5000.js';
 import { createDoorDemo } from './worker-door-demo.js';
 import { createWorker } from './workers.js';
 import { buildKiki } from './kikishitsu.js';
@@ -2442,6 +2443,7 @@ const sets = () => {
 // ---------- 試験機の動作（毎フレーム） ----------
 const ipt = { noise: 0 };
 function rtTick(dt) {
+  if (testerChoice === 'ip') { if (RT.open) ipTrainer.tick(dt); return; }
   const t = TESTS[RT.test], d = cur(), dv = devv();
   RT.hasPower = RT.plug && RT.nfb;
   const live = RT.hasPower && RT.mc, Vr = OUTR[RT.rangeV], Vset = live ? Vr * RT.reg / 10 : 0;
@@ -2598,6 +2600,16 @@ const rtBtn = document.createElement('button'); h1.insertAdjacentHTML('beforeend
 rtp.innerHTML = '<div class=hd><span>🧪 継電器試験（PRT-3M／PRT-3TR）</span><span><button id=rtMin>▼ 小さくして3Dを見る</button><button id=rtX>✕ 終了して収納</button></span></div><div id=rtZoomRow style="margin:4px 0">3Dで寄る：<button id=rtZoomM>測定箱</button><button data-z="M,204,230,0.3">電圧計</button><button data-z="M,796,230,0.3">電流計</button><button data-z="M,496,120,0.17">カウンタ</button><button data-z="M,882,566,0.13">TEST SELECT</button><button id=rtZoomT>電源箱</button><button data-z="T,698,484,0.2">調整器</button><button data-z="T,399,500,0.2">出力レンジ</button><button data-zb=1>継電器の背面</button><button data-zb=2>継電器の前面</button></div><div class=rtbody>' +
   '<div>試験対象：<select id=rtTarget></select> 試験項目：<select id=rtTest></select> <label><input id=rtBad type=checkbox> 不良個体（判定を体験）</label></div><div id=rtLog></div>' +
   '<div class=info>盤の継電器を<b>1回タップ</b>すると名前と整定が出ます。同じ継電器を<b>もう1回タップ</b>すると、その継電器の試験を始めます。</div><h3>手順ガイド</h3><div id=rtGuide></div><h3>試験機（クリックで操作）</h3><div id=rtStat class=info></div><div class=info>ロータリー：つまみの左半分で左へ・右半分で右へ回る　／　トグル：クリック　／　調整器：円をドラッグ（ホイールで微調整）　／　START・STOP：押す</div><div id=rtUnits></div><h3>記録表</h3><div id=rtRec></div><h3>この試験の考え方と出典</h3><div id=rtRef></div></div>';
+let testerChoice = 'prt';
+const ipHost = document.createElement('div'); ipHost.className='rtbody'; ipHost.hidden=true; rtp.appendChild(ipHost);
+const ipTrainer = mountIP(ipHost, RDEF);
+const testerRow=document.createElement('div');testerRow.innerHTML='<label>使用する試験器 <select id="testerChoice"><option value="prt">会社 · PRT-3M／PRT-3TR</option><option value="ip">個人 · IP-R5000（OCR操作練習）</option></select></label><div id="testerChoiceNotice" role="status"></div>';
+rtp.querySelector('.hd').after(testerRow);
+const prtBody=rtp.querySelector('.rtbody');
+function syncTesterChoice(){const ip=testerChoice==='ip';prtBody.hidden=ip;ipHost.hidden=!ip;$('rtZoomRow').hidden=ip;rtp.querySelector('.hd span').textContent=ip?'🧪 継電器試験（IP-R5000）':'🧪 継電器試験（PRT-3M／PRT-3TR）';if(ip){tset.visible=false;leadGrp.visible=false;}}
+$('testerChoice').onchange=e=>{const busy=testerChoice==='ip'?!ipTrainer.canLeave():RT.nfb||RT.started||RT.applied||RT.reg!==0||Object.values(RT.leads).some(Boolean)||RT.iso.ctLift||RT.iso.vtLift||RT.iso.ctShort||RT.iso.tripLift;
+if(busy){e.target.value=testerChoice;$('testerChoiceNotice').textContent='電源OFF・調整器0・配線と隔離の復旧後に機種を切り換えてください。';return;}
+testerChoice=e.target.value;$('testerChoiceNotice').textContent='';if(testerChoice==='prt')placeSet();syncTesterChoice();};
 const rtTargetSel = $('rtTarget'), rtTestSel = $('rtTest'), rtStatEl = $('rtStat');
 rtTargetSel.innerHTML = Object.keys(RDEF).map(k => `<option value="${k}">${RDEF[k].name}</option>`).join('');
 function fillTests() { rtTestSel.innerHTML = testsFor(grp()).map(k => `<option value="${k}">${TESTS[k].title}</option>`).join('') + '<option value="_ground">地絡（OCG／DG）・漏電リレー：解説のみ</option>'; rtTestSel.value = RT.test; }
@@ -2769,8 +2781,9 @@ function rtRelayTap(rc, e) {
   selectTarget(tag); rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; rtView(); rtTipShow(`<b>${name}</b> の試験を始めます。<br>盤の扉を開けて、試験機を前に置きました。`, e); rtMsg(name + ' を試験の対象にしました。手順ガイドの ① から進めてください。', 'i');
   return true;
 }
-function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; rtView(); }
+function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; rtView(); syncTesterChoice(); }
 function rtClose() {
+  if(testerChoice==='ip'&&!ipTrainer.canLeave()){ $('testerChoiceNotice').textContent='IP-R5000の電源OFF・調整器0・接続と隔離を復旧してください。';return;}
   // 収納で電気的な復旧手順を飛ばさない。記録・対象・設定は次回も保持する。
   if (RT.reg !== 0 || RT.started || RT.applied || RT.counting || RT.nfb || Object.values(RT.leads).some(Boolean) || RT.iso.ctLift || RT.iso.vtLift || RT.iso.ctShort || RT.iso.tripLift) {
     rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る';
@@ -2783,6 +2796,7 @@ function rtClose() {
   rtp.style.display = 'none'; dwBtn.style.display = 'block';
 }
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
+window.__ip = ipTrainer;
 window.__rt = { relayScreen: tag => { scene.updateMatrixWorld(true); const v = RELAYS[tag].localToWorld(new THREE.Vector3(0, 0, 0.06)).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, tset, HIT: () => HIT, screenOf: (w, x, y, z) => { const v = termWorld(w === 'M' ? uM : uT, x, y, z).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 drawM(); drawT();
 
@@ -2862,7 +2876,7 @@ renderer.setAnimationLoop(() => {
   // 盤面の更新
   texAcc += dt; if (texAcc > 0.12) { texAcc = 0; dynTex.forEach(t => t.userData.redraw()); } dyn3.forEach(f => f(dt));
   $('rd').textContent = `回転 ${Math.round(S.rpm)} min⁻¹ ｜ 電圧 ${Math.round(210 * S.volt)} V ｜ 周波数 ${S.hz.toFixed(1)} Hz ｜ ${S.mains ? '商用' : S.brk ? '発電' : '停電'}`;
-  if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) rtRender(); }
+  if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) { rtRender(); syncTesterChoice(); } }
   if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.forEach(l => { l.rotation.y = -l.userData.k * roomDoor.cur; });
   for (const d of kiki.capDoors) { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.leaves[0].rotation.y = d.cur; }
