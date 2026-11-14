@@ -1,0 +1,1529 @@
+{
+  "schema_version": 1,
+  "model": "IP-R5000",
+  "product_number": 2004,
+  "source": {
+    "id": "M1",
+    "title": "IP-R5000 取扱説明書 第14版",
+    "document_id": "4108-000ST015",
+    "url": "https://www.musashi-in.co.jp/manual/IP-R5000_4108-000ST015_J14.pdf",
+    "pdf_page_offset": 8,
+    "checked_on": "2026-11-13"
+  },
+  "status": "document-derived; not hardware validated",
+  "general": {
+    "ambient_c": [
+      0,
+      40
+    ],
+    "max_relative_humidity_percent": 80,
+    "condensation_allowed": false,
+    "input_ac_v": [
+      90,
+      110
+    ],
+    "input_nominal_v": 100,
+    "input_hz": [
+      50,
+      60
+    ],
+    "max_consumption_va": 2000,
+    "dimensions_each_mm": {
+      "width": 470,
+      "length": 345,
+      "height": 180
+    },
+    "mass_kg": {
+      "power": 17,
+      "meter": 13
+    },
+    "fan": true,
+    "source": {
+      "printed_pages": [
+        10
+      ],
+      "pdf_pages": [
+        18
+      ]
+    }
+  },
+  "insulation_withstand": {
+    "voltage_output_to_case": {
+      "ac_v": 1000,
+      "seconds": 60
+    },
+    "current_output_to_case": {
+      "ac_v": 500,
+      "seconds": 60
+    },
+    "trip_to_case": {
+      "ac_v": 1000,
+      "seconds": 60
+    },
+    "source": {
+      "printed_pages": [
+        10
+      ],
+      "pdf_pages": [
+        18
+      ]
+    }
+  },
+  "auxiliary": {
+    "ac": {
+      "nominal_v": 100,
+      "follows_input": true,
+      "max_va": 500,
+      "breaker_a": 5
+    },
+    "dc": {
+      "nominal_v": [
+        24,
+        48,
+        110
+      ],
+      "tolerance_percent": 10,
+      "max_w_each": 10
+    },
+    "source": {
+      "printed_pages": [
+        10,
+        17
+      ],
+      "pdf_pages": [
+        18,
+        25
+      ]
+    }
+  },
+  "ocr_ratings": [
+    {
+      "resistance_ohm": 0.5,
+      "max_30s_a": 50,
+      "continuous_a": 20,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "resistance_ohm": 1,
+      "max_30s_a": 35,
+      "continuous_a": 14,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "resistance_ohm": 2,
+      "max_30s_a": 25,
+      "continuous_a": 10,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "resistance_ohm": 5,
+      "max_30s_a": 20,
+      "continuous_a": 6,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "resistance_ohm": 10,
+      "max_30s_a": 11,
+      "continuous_a": 4.5,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "resistance_ohm": 15,
+      "max_30s_a": 8,
+      "continuous_a": 3.5,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "resistance_ohm": 20,
+      "max_30s_a": 6,
+      "continuous_a": 3,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    }
+  ],
+  "gcr_dgr_current_ratings": [
+    {
+      "range_a": 0.5,
+      "max_30s_a": 0.5,
+      "continuous_a": 0.5,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    },
+    {
+      "range_a": 2.4,
+      "max_30s_a": 2.4,
+      "continuous_a": 2,
+      "source": {
+        "printed_pages": [
+          10
+        ],
+        "pdf_pages": [
+          18
+        ]
+      }
+    }
+  ],
+  "voltage_output": {
+    "ovr_uvr": {
+      "ranges_v": [
+        75,
+        150,
+        300
+      ],
+      "capacities_va": [
+        40,
+        40,
+        20
+      ]
+    },
+    "dgr": {
+      "ranges_v": [
+        75,
+        150,
+        300,
+        750
+      ],
+      "capacities_va": [
+        40,
+        40,
+        20,
+        20
+      ]
+    },
+    "pun_primary": {
+      "range_v": [
+        0,
+        120
+      ],
+      "max_va_approx": 2000,
+      "specified_point": {
+        "v": 103.5,
+        "a": 20
+      },
+      "input_v_condition": [
+        95,
+        105
+      ]
+    },
+    "source": {
+      "printed_pages": [
+        11
+      ],
+      "pdf_pages": [
+        19
+      ]
+    }
+  },
+  "meters": {
+    "ammeter": {
+      "ranges_a": [
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+        10,
+        25,
+        50
+      ],
+      "class": 0.5,
+      "movement": "moving coil"
+    },
+    "voltmeter": {
+      "ranges_v": [
+        75,
+        150,
+        300,
+        750
+      ],
+      "class": 0.5,
+      "movement": "moving coil",
+      "input_mode_range_v": 150
+    },
+    "counter": {
+      "mSEC": {
+        "range": [
+          0,
+          99999
+        ],
+        "resolution": 1,
+        "accuracy_text": "rdg±10mSEC"
+      },
+      "SEC": {
+        "range": [
+          0,
+          999.99
+        ],
+        "resolution": 0.01,
+        "accuracy_text": "rdg±10mSEC"
+      },
+      "Hz": {
+        "range": [
+          0,
+          99999
+        ],
+        "resolution": 1,
+        "accuracy_text": "rdg±2dgt",
+        "meaning": "time represented as mains cycles; do not model as general frequency meter"
+      },
+      "backup_seconds": 60
+    },
+    "source": {
+      "printed_pages": [
+        11,
+        20,
+        21
+      ],
+      "pdf_pages": [
+        19,
+        28,
+        29
+      ]
+    }
+  },
+  "detectors": {
+    "ab_auto": {
+      "input_impedance_ohm_approx": 23000,
+      "document_detection_voltage_dc_v": [
+        140,
+        170
+      ],
+      "document_detection_current_ma_approx": 0.5,
+      "note": "These are internal detection specifications, NOT permitted externally applied voltage. Equivalent circuit unresolved."
+    },
+    "ac_ct": {
+      "threshold_a": 3.5,
+      "tolerance_percent": 10
+    },
+    "ac_dc_v": {
+      "input_impedance_ohm_approx": 23000,
+      "ac": {
+        "input_range_v": [
+          0,
+          120
+        ],
+        "present_min_v": 30,
+        "absent_max_v": 8,
+        "document_uncertain_v": [
+          9,
+          29
+        ]
+      },
+      "dc": {
+        "input_range_v": [
+          0,
+          150
+        ],
+        "present_min_v": 24,
+        "absent_max_v": 8,
+        "document_uncertain_v": [
+          9,
+          23
+        ]
+      },
+      "fractional_boundary_behaviour": "not specified"
+    },
+    "source": {
+      "printed_pages": [
+        11,
+        19
+      ],
+      "pdf_pages": [
+        19,
+        27
+      ]
+    }
+  },
+  "controls": [
+    {
+      "id": "earth_side",
+      "unit": "meter",
+      "list_number": 1,
+      "label": "EARTH SIDE",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "voltage_lamp",
+      "unit": "meter",
+      "list_number": 2,
+      "label": "OVR/UVR/DGR.V lamp",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "voltage_output",
+      "unit": "meter",
+      "list_number": 3,
+      "label": "OVR/UVR/DGR.V",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "voltage_fuse",
+      "unit": "meter",
+      "list_number": 4,
+      "label": "voltage fuse 0.7A",
+      "kind": "fuse",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "pun_lamp",
+      "unit": "meter",
+      "list_number": 5,
+      "label": "PUN lamp",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "pun_output",
+      "unit": "meter",
+      "list_number": 6,
+      "label": "PUN",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "gcr_lamp",
+      "unit": "meter",
+      "list_number": 7,
+      "label": "GCR/DGR.A lamp",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "gcr_output",
+      "unit": "meter",
+      "list_number": 8,
+      "label": "GCR/DGR.A",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "ocr_lamp",
+      "unit": "meter",
+      "list_number": 9,
+      "label": "OCR lamp",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "ocr_output",
+      "unit": "meter",
+      "list_number": 10,
+      "label": "OCR",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "trip_fuse",
+      "unit": "meter",
+      "list_number": 11,
+      "label": "TRIP fuse 0.7A",
+      "kind": "fuse",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "trip_input",
+      "unit": "meter",
+      "list_number": 12,
+      "label": "TRIP.T",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "counter",
+      "unit": "meter",
+      "list_number": 13,
+      "label": "COUNTER",
+      "kind": "display",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "buttons": [
+        "MODE",
+        "RESET"
+      ],
+      "modes": [
+        "mSEC",
+        "Hz",
+        "SEC"
+      ]
+    },
+    {
+      "id": "meter_earth",
+      "unit": "meter",
+      "list_number": 14,
+      "label": "earth terminal",
+      "kind": "terminal",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "meter_sc",
+      "unit": "meter",
+      "list_number": 15,
+      "label": "SC",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "meter_rc",
+      "unit": "meter",
+      "list_number": 16,
+      "label": "RC",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "current_output_mode",
+      "unit": "meter",
+      "list_number": 17,
+      "label": "CURRENT OUTPUT",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        "TEST",
+        "SET"
+      ]
+    },
+    {
+      "id": "contact_mode",
+      "unit": "meter",
+      "list_number": 18,
+      "label": "CONTACT MODE",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        "TRIP_AB_AUTO",
+        "TRIP_AC_CT",
+        "TRIP_AC_DC_V",
+        "CHECK_AB",
+        "CHECK_OFF",
+        "CHECK_AC_DC_V"
+      ]
+    },
+    {
+      "id": "test_mode",
+      "unit": "meter",
+      "list_number": 19,
+      "label": "TEST MODE",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        "OCR",
+        "GCR",
+        "PUN",
+        "OVR",
+        "UVR",
+        "DGR"
+      ]
+    },
+    {
+      "id": "phase_selection",
+      "unit": "meter",
+      "list_number": 20,
+      "label": "R/T",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        "R",
+        "T"
+      ]
+    },
+    {
+      "id": "phase_shift",
+      "unit": "meter",
+      "list_number": 21,
+      "label": "PHASE SHIFT",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        "NORM",
+        "OFF",
+        "REV"
+      ]
+    },
+    {
+      "id": "voltmeter_range",
+      "unit": "meter",
+      "list_number": 22,
+      "label": "VOLT METER",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        75,
+        150,
+        300,
+        750
+      ],
+      "note": "12kV scale marking exists; not independent 12kV output."
+    },
+    {
+      "id": "voltmeter_source",
+      "unit": "meter",
+      "list_number": 23,
+      "label": "INPUT/OFF/OUTPUT",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        "INPUT",
+        "OFF",
+        "OUTPUT"
+      ]
+    },
+    {
+      "id": "ammeter_range",
+      "unit": "meter",
+      "list_number": 24,
+      "label": "AM METER",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      },
+      "positions": [
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+        10,
+        25,
+        50
+      ]
+    },
+    {
+      "id": "voltmeter",
+      "unit": "meter",
+      "list_number": 25,
+      "label": "V/kV",
+      "kind": "meter",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "ammeter",
+      "unit": "meter",
+      "list_number": 26,
+      "label": "A",
+      "kind": "meter",
+      "source": {
+        "printed_pages": [
+          8
+        ],
+        "pdf_pages": [
+          16
+        ]
+      }
+    },
+    {
+      "id": "power_earth",
+      "unit": "power",
+      "list_number": 1,
+      "label": "earth terminal",
+      "kind": "terminal",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "power_sc",
+      "unit": "power",
+      "list_number": 2,
+      "label": "SC",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "power_rc",
+      "unit": "power",
+      "list_number": 3,
+      "label": "RC",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "gcr_current_range",
+      "unit": "power",
+      "list_number": 4,
+      "label": "GCR/DGR CT RANGE",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      },
+      "positions": [
+        0.5,
+        2.4
+      ]
+    },
+    {
+      "id": "gcr_fuse",
+      "unit": "power",
+      "list_number": 5,
+      "label": "GCR/DGR fuse 3A",
+      "kind": "fuse",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "ocr_resistance",
+      "unit": "power",
+      "list_number": 6,
+      "label": "OCR CT RANGE",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      },
+      "positions": [
+        0,
+        0.5,
+        1,
+        2,
+        5,
+        10,
+        15,
+        20
+      ],
+      "unknown_positions": [
+        0
+      ]
+    },
+    {
+      "id": "stop",
+      "unit": "power",
+      "list_number": 7,
+      "label": "STOP",
+      "kind": "button",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "start",
+      "unit": "power",
+      "list_number": 8,
+      "label": "START",
+      "kind": "button",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "start_lamp",
+      "unit": "power",
+      "list_number": 9,
+      "label": "START lamp",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "main_adjust",
+      "unit": "power",
+      "list_number": 10,
+      "label": "VOLTAGE REGULATOR",
+      "kind": "dial",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "voltage_adjust",
+      "unit": "power",
+      "list_number": 11,
+      "label": "VOLT ADJ.",
+      "kind": "dial",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "voltage_test_mode",
+      "unit": "power",
+      "list_number": 12,
+      "label": "OVR/UVR-OFF-DGR",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      },
+      "positions": [
+        "OVR_UVR",
+        "OFF",
+        "DGR"
+      ]
+    },
+    {
+      "id": "main_lamp",
+      "unit": "power",
+      "list_number": 13,
+      "label": "MAIN POWER lamp",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "main_power",
+      "unit": "power",
+      "list_number": 14,
+      "label": "MAIN POWER",
+      "kind": "switch",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      },
+      "positions": [
+        "OFF",
+        "ON"
+      ]
+    },
+    {
+      "id": "aux_range",
+      "unit": "power",
+      "list_number": 15,
+      "label": "OUTPUT RANGE",
+      "kind": "selector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      },
+      "positions": [
+        "AC100",
+        "DC24",
+        "DC48",
+        "DC110"
+      ]
+    },
+    {
+      "id": "aux_output",
+      "unit": "power",
+      "list_number": 16,
+      "label": "AUX.POWER",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "aux_power",
+      "unit": "power",
+      "list_number": 17,
+      "label": "AUX switch 5A",
+      "kind": "switch_breaker",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      },
+      "positions": [
+        "OFF",
+        "ON"
+      ]
+    },
+    {
+      "id": "ac_input",
+      "unit": "power",
+      "list_number": 18,
+      "label": "AC LINE INPUT",
+      "kind": "connector",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    },
+    {
+      "id": "polarity_lamp",
+      "unit": "power",
+      "list_number": 19,
+      "label": "POLARITY",
+      "kind": "lamp",
+      "source": {
+        "printed_pages": [
+          9
+        ],
+        "pdf_pages": [
+          17
+        ]
+      }
+    }
+  ],
+  "cables": [
+    {
+      "product_number": 2701,
+      "name_ja": "電源クリップ",
+      "length_m": 3,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2702,
+      "name_ja": "SP接続",
+      "length_m": 0.8,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2548,
+      "name_ja": "SC",
+      "length_m": 0.6,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2513,
+      "name_ja": "RC",
+      "length_m": 0.6,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2523,
+      "name_ja": "OCR電流",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2516,
+      "name_ja": "GCR/DGR電流",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2517,
+      "name_ja": "電圧",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2518,
+      "name_ja": "DGR電圧",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2521,
+      "name_ja": "アースサイド",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2522,
+      "name_ja": "トリップ",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2547,
+      "name_ja": "耐電圧",
+      "length_m": 0.6,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2520,
+      "name_ja": "補助電源",
+      "length_m": 3,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    },
+    {
+      "product_number": 2514,
+      "name_ja": "接地",
+      "length_m": 5,
+      "quantity": 1,
+      "source": {
+        "printed_pages": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "pdf_pages": [
+          12,
+          13,
+          14,
+          15
+        ]
+      }
+    }
+  ],
+  "functional_rules": [
+    {
+      "id": "set_dummy_load",
+      "fact": "SET uses fixed 0.25 ohm dummy load; TEST load differs",
+      "source": {
+        "printed_pages": [
+          19
+        ],
+        "pdf_pages": [
+          27
+        ]
+      }
+    },
+    {
+      "id": "trip_vs_check",
+      "fact": "TRIP switches off test output on detected transition; C.CHECK retains output",
+      "source": {
+        "printed_pages": [
+          19
+        ],
+        "pdf_pages": [
+          27
+        ]
+      }
+    },
+    {
+      "id": "phase_selector_scope",
+      "fact": "R/T affects OCR output and TRIP detection across test modes",
+      "source": {
+        "printed_pages": [
+          20
+        ],
+        "pdf_pages": [
+          28
+        ]
+      }
+    },
+    {
+      "id": "dgr_reversal",
+      "fact": "DGR NORM/REV selects voltage same/opposite phase relative to supply; OFF disables voltage",
+      "source": {
+        "printed_pages": [
+          20
+        ],
+        "pdf_pages": [
+          28
+        ]
+      }
+    },
+    {
+      "id": "input_meter",
+      "fact": "INPUT forces 150V measurement range independent of range selector",
+      "source": {
+        "printed_pages": [
+          20
+        ],
+        "pdf_pages": [
+          28
+        ]
+      }
+    },
+    {
+      "id": "voltage_adjust_off",
+      "fact": "VOLT ADJ disabled when voltage-test selector OFF",
+      "source": {
+        "printed_pages": [
+          18
+        ],
+        "pdf_pages": [
+          26
+        ]
+      }
+    },
+    {
+      "id": "pun_buzzer",
+      "fact": "Short sound each second, continuous sound at 10 minutes; no automatic stop inferred",
+      "source": {
+        "printed_pages": [
+          11
+        ],
+        "pdf_pages": [
+          19
+        ]
+      }
+    }
+  ],
+  "simulation_assumptions": {
+    "verified_hardware_model": false,
+    "allow_ocr_zero_ohm": false,
+    "over_30s_handling": "training warning/block policy, not asserted hardware cutoff",
+    "electrical_transfer_function": "requires identification from hardware; block diagram alone insufficient",
+    "trip_latency_ms": null,
+    "meter_dynamics": null,
+    "dgr_actual_phase_error_degrees": null,
+    "thermal_cooldown_seconds": null
+  },
+  "unresolved": [
+    "p9 panel counter ranges disagree with p11 specification table",
+    "ab detection specifications do not determine a simple resistive equivalent circuit",
+    "0 ohm OCR rating absent",
+    "full pinout and connector-year compatibility not machine verified",
+    "electrical transient, overload, timing and firmware behaviour unavailable"
+  ]
+}
