@@ -65,7 +65,7 @@ def catmull(P, per=6):
 class GB:
     def __init__(self):
         self.bags = {}; self.group = 'rig'; self.cls = 'big'; self.M = Matrix.Identity(4)
-        self.tris = 0; self.roots_loc = {}; self.dec = {}; self._last = None; self._n = 0
+        self.tris = 0; self.roots_loc = {}; self.dec = {}; self._last = None; self._n = 0; self.jit = 0.0016
 
     # ---- 文脈 ----
     @contextmanager
@@ -90,7 +90,7 @@ class GB:
         if not vs: return
         c = sum((v.co for v in vs), Vector()) / len(vs); ext = max((v.co - c).length for v in vs)
         if ext < 1e-6: return
-        self._n += 1; d = (((self._n * 2654435761) % 1000) / 1000.0 - 0.5) * 0.0016
+        self._n += 1; d = (((self._n * 2654435761) % 1000) / 1000.0 - 0.5) * self.jit
         f = 1.0 + d / ext
         for v in vs: v.co = c + (v.co - c) * f
 
@@ -164,6 +164,26 @@ class GB:
         for i in range(n): bm.faces.new((A[i], A[(i + 1) % n], B[(i + 1) % n], B[i]))
         bm.faces.new(list(reversed(A))); bm.faces.new(B)
         self._bevel(bm, A + B, bev, seg)
+
+    def holed(self, mat, outer, holes, axis, a0, a1, **kw):
+        """穴のあいた板（2D の外形 outer と穴 holes を、axis 方向に a0→a1 の厚みで押し出す）。厚くすれば、くぼみ（井戸）のある塊になる"""
+        from mathutils.geometry import tessellate_polygon
+        bm = self.bm(mat, **kw); loops = [list(outer)] + [list(h) for h in holes]
+        def P(u, v, a):
+            return self.M @ (Vector((a, u, v)) if axis == 'x' else Vector((u, a, v)) if axis == 'y' else Vector((u, v, a)))
+        flat = [p for lp in loops for p in lp]
+        tris = tessellate_polygon([[Vector((u, v, 0.0)) for (u, v) in lp] for lp in loops])
+        A = [bm.verts.new(P(u, v, a0)) for (u, v) in flat]; B = [bm.verts.new(P(u, v, a1)) for (u, v) in flat]
+        for t in tris:
+            if len(set(t)) < 3: continue
+            try: bm.faces.new([A[i] for i in t]); bm.faces.new([B[i] for i in reversed(t)])
+            except ValueError: pass
+        k = 0
+        for lp in loops:
+            n = len(lp)
+            for i in range(n):
+                j = (i + 1) % n; bm.faces.new((A[k + i], A[k + j], B[k + j], B[k + i]))
+            k += n
 
     def loft(self, mat, loops, cap0=True, cap1=True, bev=0.0, closed=True, **kw):
         """同じ点数の輪を順につなぐ"""

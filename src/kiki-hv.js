@@ -1,9 +1,9 @@
 // 機器室の高圧の盤（受電・饋電盤の列、配電盤の列）の、区画ごとの扉と中身。
-// 写真（VCB の区画：配電盤-7 の上の区画、ZPD の区画：配電盤-1 の上の区画）から作った。ほかの区画も同じ作りとして使い回す（利用者の指示）。
+// 写真（VCB の区画：配電盤-7 の上の区画、ZPD の区画：配電盤-1 の上の区画）から作った。VCB・ZPD／VT／LA の本体、リレー・端子台・遮断器・ヒューズ・配線ダクトは、部品箱（src/parts.js、Blender で作成）の共通部品。ほかの区画も同じ作りとして使い回す（利用者の指示）。
 // 寸法・奥行き・扉の裏の部品の数は、写真からの近似と推測。メーカー名・形式名は入れない。
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { makeVcb, VCB_SIZE } from './vcb.js';
+import { makePart, PART } from './parts.js';
 
 export function makeHv({ M, canvasTex }) {
   const doors = [];
@@ -18,46 +18,7 @@ export function makeHv({ M, canvasTex }) {
   const texL = (w, h, d) => { const t = canvasTex(w, h, d); return M(0xffffff, 0.1, 0.65, { map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.12 }); };
   // 配線ダクト（すき間の切り込み）
   const ductT = tex(64, 256, (c, w, h) => { c.fillStyle = '#a3a8b1'; c.fillRect(0, 0, w, h); c.fillStyle = '#5f646c'; for (let y = 4; y < h; y += 10) { c.fillRect(0, y, 18, 5); c.fillRect(w - 18, y, 18, 5); } c.fillStyle = '#b8bcc4'; c.fillRect(22, 0, w - 44, h); });
-  // 端子台・小形リレーの列（棚の奥の板）。黄色の配線が下へ
-  const relayRow = (c, w, h, n, y0) => {
-    c.fillStyle = '#9da1a6'; c.fillRect(0, y0 - 6, w, 12);
-    for (let i = 0; i < n; i++) { const x = 10 + i * (w - 20) / n, ww = (w - 20) / n - 4;
-      c.fillStyle = '#26272b'; c.fillRect(x, y0 - 22, ww, 44); c.fillStyle = i % 4 === 0 ? '#c9814a' : '#3a3c40'; c.fillRect(x + 3, y0 - 18, ww - 6, 10); c.fillStyle = '#ddd'; c.fillRect(x + 3, y0 + 4, ww - 6, 4);
-      c.strokeStyle = '#e7c22a'; c.lineWidth = 2; for (const dx of [0.3, 0.7]) { c.beginPath(); c.moveTo(x + ww * dx, y0 + 22); c.lineTo(x + ww * dx + (i % 3 - 1) * 2, h); c.stroke(); } }
-  };
-  const vcbShelfT = texL(512, 128, (c, w, h) => { c.fillStyle = '#d6d3c4'; c.fillRect(0, 0, w, h); relayRow(c, w * 0.7, h, 14, 48);
-    for (let i = 0; i < 3; i++) { const x = w * 0.74 + i * 40; c.fillStyle = '#2b2d33'; c.fillRect(x, 20, 34, 58); c.fillStyle = '#5b78a6'; c.fillRect(x + 4, 26, 26, 20); c.fillStyle = '#eee'; c.fillRect(x + 6, 52, 22, 6); c.strokeStyle = '#e7c22a'; c.lineWidth = 2; c.beginPath(); c.moveTo(x + 17, 78); c.lineTo(x + 17, h); c.stroke(); } });
-  const zpdShelfT = texL(512, 160, (c, w, h) => { c.fillStyle = '#d8d5c7'; c.fillRect(0, 0, w, h);
-    c.fillStyle = '#f4f4ef'; c.fillRect(150, 8, 110, 20); c.strokeStyle = '#999'; c.strokeRect(150, 8, 110, 20); c.fillStyle = '#222'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, '盤内照明(5A)', 205, 18.5, 104, 14, false);
-    c.fillStyle = '#b9bcbf'; c.fillRect(20, 70, w - 40, 22); c.fillStyle = '#8d9094'; for (let x = 26; x < w - 30; x += 18) c.fillRect(x, 77, 10, 8);
-    c.fillStyle = '#f3f3f0'; c.fillRect(60, 44, 46, 74); c.fillStyle = '#c9cdd2'; c.beginPath(); c.arc(83, 70, 13, 0, 7); c.fill();   // ヒューズ
-    for (const x of [190, 238]) { c.fillStyle = '#25262a'; c.fillRect(x, 42, 42, 78); c.fillStyle = '#e8e8e2'; c.fillRect(x + 5, 48, 32, 12); }
-    for (let i = 0; i < 7; i++) { const x = 300 + i * 18 + (i > 2 ? 10 : 0); c.fillStyle = '#2a2b2e'; c.fillRect(x, 50, 15, 62); c.fillStyle = '#e8e8e2'; c.fillRect(x + 2, 60, 11, 6); }
-    c.strokeStyle = '#e7c22a'; c.lineWidth = 2; for (const x of [80, 200, 222, 248, 270, 306, 324, 352, 370, 388]) { c.beginPath(); c.moveTo(x, 120); c.lineTo(x + 2, h); c.stroke(); } c.strokeStyle = '#2f8a3e'; c.beginPath(); c.moveTo(400, 112); c.lineTo(404, h); c.stroke(); });
-  // 引出形の遮断器（VCB）の前面。形式名は入れず「VCB」だけ
-  const vcbFrontT = texL(256, 200, (c, w, h) => {
-    c.fillStyle = '#ddd8c6'; c.fillRect(0, 0, w, h); c.strokeStyle = '#b9b4a2'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
-    c.fillStyle = '#e9e6d8'; c.fillRect(38, 22, 180, 64); c.strokeStyle = '#3a3a3a'; c.lineWidth = 2.5; c.strokeRect(40, 24, 176, 60);
-    c.fillStyle = '#2a2a2a'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.save(); c.translate(128, 46); c.transform(1, 0, -0.22, 1, 0, 0); c.font = 'bold 30px sans-serif'; c.fillText('VCB', 0, 0); c.restore();
-    c.fillStyle = '#555'; for (let k = 0; k < 4; k++) c.fillRect(56, 64 + k * 4.5, 144 - k * 14, 1.6);
-    c.fillStyle = '#c9c4b2'; c.fillRect(20, 8, 26, 8); c.fillStyle = '#a33'; c.fillRect(150, 8, 18, 8);
-    c.fillStyle = '#e3c51c'; c.fillRect(70, 112, 22, 10); c.fillStyle = '#fafafa'; c.fillRect(150, 104, 60, 30); c.fillStyle = '#e3c51c'; for (let k = 0; k < 3; k++) c.fillRect(153 + k * 19, 107, 16, 9); c.fillStyle = '#999'; for (let k = 0; k < 4; k++) c.fillRect(154, 120 + k * 3, 52, 1);
-    c.fillStyle = '#fafafa'; c.fillRect(22, 146, 66, 44); c.fillStyle = '#999'; for (let k = 0; k < 9; k++) c.fillRect(26, 152 + k * 4, 56 - (k % 3) * 8, 1);
-    c.fillStyle = '#fafafa'; c.fillRect(150, 140, 60, 50); c.fillStyle = '#777'; for (let k = 0; k < 9; k++) c.fillRect(154, 146 + k * 4.6, 50 - (k % 2) * 10, 1);
-    c.fillStyle = '#e3c51c'; c.fillRect(214, 112, 26, 8); c.fillStyle = '#2a2a2a'; c.fillRect(108, 140, 26, 56); c.fillStyle = '#3d3d3d'; c.fillRect(112, 150, 18, 30);
-  });
-  // 引出形の ZPD／VT 本体の前面（写真は ZPD。VT は同じ形として名札だけ変える）
-  const unitFront = kind => texL(256, 200, (c, w, h) => {
-    c.fillStyle = '#ddd7c4'; c.fillRect(0, 0, w, h); c.strokeStyle = '#b5af9c'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2);
-    c.fillStyle = '#fafaf7'; c.fillRect(14, 10, 90, 24); c.strokeStyle = '#888'; c.lineWidth = 1; c.strokeRect(14, 10, 90, 24); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, kind, 59, 23, 84, 18);
-    c.fillStyle = '#f5f5f2'; c.fillRect(96, 64, 44, 42); c.fillStyle = '#888'; for (let k = 0; k < 8; k++) c.fillRect(100, 70 + k * 4.5, 36 - (k % 3) * 6, 1);
-    c.fillStyle = '#e8e8e4'; c.fillRect(144, 86, 34, 18); c.fillStyle = '#c33'; c.fillRect(146, 88, 30, 2);
-    c.fillStyle = '#fafafa'; c.fillRect(186, 42, 54, 12); c.fillStyle = '#e3c51c'; c.fillRect(188, 44, 14, 8); c.fillStyle = '#333'; c.font = 'bold 7px sans-serif'; c.fillText('注意', 214, 48.5);
-    c.fillStyle = '#f2d321'; c.fillRect(34, 128, 60, 40); c.fillStyle = '#c22'; c.font = 'bold 7px sans-serif'; c.fillText('"注 意"', 64, 134); c.fillStyle = '#555'; for (let k = 0; k < 6; k++) c.fillRect(38, 140 + k * 4, 52 - (k % 2) * 8, 1);
-    c.fillStyle = '#fafafa'; c.fillRect(110, 140, 40, 10); c.fillStyle = '#e3c51c'; c.fillRect(111, 141, 9, 8);
-    c.fillStyle = '#333'; c.font = 'bold 7px sans-serif'; c.fillText('UNLOCK ← LOCK', 76, 186); c.fillStyle = '#d33'; c.fillRect(156, 180, 6, 10);
-  });
-  const zpdFrontT = unitFront('ZPD'), vtFrontT = unitFront('VT');
+  const shelfTag = texL(256, 52, (c, w, h) => { c.fillStyle = '#f4f4ef'; c.fillRect(0, 0, w, h); c.strokeStyle = '#999'; c.strokeRect(1, 1, w - 2, h - 2); c.fillStyle = '#222'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, '盤内照明(5A)', w / 2, h / 2 + 2, w - 16, 34, false); });
   // 区画の札（写真の札の文字は、回路の略号だけにした）
   const tagT = t => tex(128, 36, (c, w, h) => { c.fillStyle = '#fafaf7'; c.fillRect(0, 0, w, h); c.strokeStyle = '#999'; c.lineWidth = 2; c.strokeRect(1, 1, w - 2, h - 2); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, t, w / 2, h / 2 + 1, w - 10, 26); });
   const TAG = { vcb: tagT('52F'), zpd: tagT('ZPD'), vt: tagT('VT') };
@@ -73,11 +34,22 @@ export function makeHv({ M, canvasTex }) {
   const C = (p, r, l, m, x, y, z, axis = 'y', seg = 16) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), m); o.position.set(x, y, z); if (axis === 'x') o.rotation.z = Math.PI / 2; if (axis === 'z') o.rotation.x = Math.PI / 2; p.add(o); return o; };
   const wire = (p, pts, r, m) => { const cv = new THREE.CatmullRomCurve3(pts.map(a => new THREE.Vector3(...a))); const o = new THREE.Mesh(new THREE.TubeGeometry(cv, 20, r, 6), m); p.add(o); return o; };
 
+  // 部品箱（src/parts.js。Blender で作り、陰影を焼き込んだ共通部品）を置く。裏（取付面）の下の中心が基準で、手前が +Z
+  const put = (p, name, x, y, z, sc = 1, opts) => { const o = makePart(name, opts); o.position.set(x, y, z); o.scale.setScalar(sc); p.add(o); return o; };
+  // 穴あきの配線ダクトを横に渡す（長さ 0.24m の部品を並べ、端は縮める）。x0→x1、y は中心の高さ、z は取付面
+  const ductRun = (p, x0, x1, y, z, sc = 0.7) => { const seg = PART.duct.L * sc; for (let x = x0; x < x1 - 0.005; x += seg) { const o = makePart('duct'), l = Math.min(seg, x1 - x); o.rotation.z = -Math.PI / 2; o.scale.set(sc, sc * l / seg, sc); o.position.set(x, y, z); p.add(o); } };
+  // 縦の配線ダクト（y0→y1）。ry＝π で扉の裏向き
+  const ductV = (p, x, y0, y1, z, ry = 0, sc = 0.9) => { const seg = PART.duct.L * sc; for (let y = y0; y < y1 - 0.005; y += seg) { const o = makePart('duct'), l = Math.min(seg, y1 - y); o.rotation.y = ry; o.scale.set(sc, sc * l / seg, sc); o.position.set(x, y, z); p.add(o); } };
+  // 扉の裏に付く部品（手前が −Z）
+  const putB = (p, name, x, y, sc = 1, rz = 0) => { const o = makePart(name); o.rotation.set(0, Math.PI, rz); o.position.set(x, y, -0.001); o.scale.setScalar(sc); p.add(o); return o; };
+  // 細い線を何本か束ねた配線（太い1本の管にしない）
+  const bundle = (p, pts, n, r, m, sp = 0.006) => { for (let k = 0; k < n; k++) { const a = k * 2.4, d = sp * Math.sqrt((k + 0.5) / n); wire(p, pts.map(([x, y, z], i) => [x + Math.cos(a + i * 0.5) * d, y, z + Math.sin(a + i * 0.5) * d]), r, m); } };
+  const railM = M(0xc9ccd0, 0.85, 0.3);
   // 共通：蛍光灯、右の縦ダクトと端子、左の黄色の配線、接地線
   function common(g, Wi, Hs) {
     B(g, Wi * 0.86, 0.03, 0.06, M(0xeeeeea, 0.1, 0.6), 0, Hs / 2 - 0.035, -0.16); C(g, 0.011, Wi * 0.78, tube, 0, Hs / 2 - 0.06, -0.15, 'x');
     for (const s of [-1, 1]) B(g, 0.018, 0.03, 0.03, M(0xeeeeea, 0.1, 0.6), s * Wi * 0.4, Hs / 2 - 0.06, -0.15);
-    const d = B(g, 0.05, Hs * 0.8, 0.07, ductT, Wi / 2 - 0.045, -0.02, -0.17); d.material = [greyDuct, greyDuct, greyDuct, greyDuct, ductT, greyDuct];
+    ductV(g, Wi / 2 - 0.045, -0.02 - Hs * 0.4, -0.02 + Hs * 0.4, -0.2);
     B(g, 0.02, Hs * 0.45, 0.025, black, Wi / 2 - 0.045, 0.02, -0.125);
     for (let k = 0; k < 8; k++) B(g, 0.024, 0.006, 0.004, silver, Wi / 2 - 0.045, 0.02 - Hs * 0.2 + k * Hs * 0.055, -0.111);
     wire(g, [[Wi / 2 - 0.03, -Hs / 2 + 0.02, -0.13], [Wi / 2 - 0.05, -Hs * 0.3, -0.12], [Wi / 2 - 0.04, -Hs * 0.1, -0.13]], 0.004, greenW);
@@ -88,52 +60,46 @@ export function makeHv({ M, canvasTex }) {
     const ys = Hs / 2 - 0.27;
     B(g, Wi * 0.9, 0.014, 0.5, greyDuct, -0.02, ys, -0.36);
     B(g, Wi * 0.9, 0.012, 0.012, greyDuct, -0.02, ys + 0.005, -0.112);
-    P(g, Wi * 0.86, 0.18, vcbShelfT, -0.02, ys + 0.1, -0.58);
-    B(g, Wi * 0.6, 0.012, 0.012, silver, -0.1, ys + 0.115, -0.56);
-    for (let i = 0; i < 10; i++) { const x = -Wi * 0.4 + i * Wi * 0.058; RB(g, 0.034, 0.05, 0.05, 0.004, black, x, ys + 0.115, -0.53); B(g, 0.022, 0.012, 0.004, i % 4 ? M(0x3a3c40, 0.2, 0.5) : M(0xc9814a, 0.1, 0.5), x, ys + 0.13, -0.504); }
-    for (let i = 0; i < 3; i++) RB(g, 0.04, 0.07, 0.06, 0.004, M(0x2b2d33, 0.2, 0.5), Wi * 0.2 + i * 0.05, ys + 0.1, -0.52);
-    // 札（回路の略号）を棚の前の縁に
-    const tg = P(g, 0.11, 0.032, TAG.vcb, Wi * 0.18, ys - 0.03, -0.105);
-    tg.userData.tagSlot = true;
+    // 奥の取付板に、金具レール・差し込み式のリレー10個・端子台2組、その下に横の配線ダクト（部品箱の共通部品）
+    B(g, Wi * 0.86, 0.19, 0.004, beige, -0.02, ys + 0.105, -0.582);
+    B(g, Wi * 0.8, 0.016, 0.006, railM, -0.02, ys + 0.125, -0.577);
+    for (let i = 0; i < 10; i++) { const x = -Wi * 0.4 + i * 0.03; put(g, 'relay', x, ys + 0.088, -0.574);
+      wire(g, [[x, ys + 0.09, -0.555], [x + 0.002, ys + 0.07, -0.55], [x, ys + 0.05, -0.56]], 0.002, yellowW); }
+    for (let i = 0; i < 2; i++) put(g, 'tb', Wi * 0.4 - 0.16 + i * 0.11, ys + 0.1, -0.58);
+    ductRun(g, -Wi * 0.43, Wi * 0.4, ys + 0.045, -0.58, 0.6);
     // 左の黄色の配線の束（棚から下へ）
-    wire(g, [[-Wi / 2 + 0.03, ys + 0.05, -0.2], [-Wi / 2 + 0.035, ys - 0.15, -0.16], [-Wi / 2 + 0.03, -Hs / 2 + 0.15, -0.17]], 0.012, yellowW);
-    // VCB 本体（引出形）：Blender で作った模型（src/vcb.js・blender/vcb/build.py。陰影は焼き込み済み）を、区画の高さに合わせて縮めて置く
-    const sc = Math.min(Hs * 0.57, 0.42) / VCB_SIZE.H, bw = VCB_SIZE.W * sc, bh = VCB_SIZE.H * sc, bd = VCB_SIZE.D * sc, bx = -0.04, by = -Hs / 2 + 0.02 + bh / 2, bz = -0.15 - bd / 2;
-    const vb = makeVcb(); vb.scale.setScalar(sc); vb.position.set(bx, -Hs / 2 + 0.035, -0.15 - VCB_SIZE.front * sc); g.add(vb);
-    // 左の黒い機器（操作機構の箱らしいもの。推測）
-    RB(g, 0.06, bh * 0.5, 0.22, 0.006, black, bx - bw / 2 - 0.045, by + bh * 0.05, bz + 0.1);
+    bundle(g, [[-Wi / 2 + 0.03, ys + 0.05, -0.2], [-Wi / 2 + 0.035, ys - 0.15, -0.16], [-Wi / 2 + 0.03, -Hs / 2 + 0.15, -0.17]], 9, 0.0026, yellowW, 0.009);
+    // VCB 本体（引出形）：部品箱の共通部品（補助回路のプラグ・台枠・車輪まで含む）を、区画の高さに合わせて縮めて置く
+    const V = PART.vcb, sc = Math.min(Hs * 0.57, 0.42) / V.H, bw = V.W * sc, bx = -0.02;
+    put(g, 'vcb', bx, -Hs / 2 + 0.035, -0.15 - V.front * sc, sc, { tag: '52F' });
     // 床：真ちゅう色のレールと、引き出し用の受け台（銀の板）
-    for (const s of [-1, 1]) B(g, 0.03, 0.03, 0.62, brass, bx + s * (bw * 0.5 - 0.04), -Hs / 2 + 0.02, -0.42);
-    B(g, bw * 1.05, 0.008, 0.16, brass, bx, -Hs / 2 + 0.012, -0.1);
-    B(g, bw * 0.45, 0.012, 0.11, silver, bx + 0.02, -Hs / 2 + 0.02, -0.09);
+    for (const s of [-1, 1]) { B(g, 0.03, 0.022, 0.6, chrom, bx + s * (bw * 0.5 - 0.02), -Hs / 2 + 0.016, -0.43); B(g, 0.004, 0.04, 0.6, chrom, bx + s * (bw * 0.5 + 0.012), -Hs / 2 + 0.025, -0.43); }
+    B(g, bw * 1.12, 0.004, 0.2, chrom, bx, -Hs / 2 + 0.007, -0.1);
+    const rp = RB(g, bw * 0.42, 0.006, 0.13, 0.002, M(0xb9bdc2, 0.75, 0.35), bx + 0.02, -Hs / 2 + 0.014, -0.085); rp.rotation.x = 0.06;
+    B(g, 0.03, 0.002, 0.018, M(0x2f9a5a, 0.1, 0.6), bx + bw * 0.36, -Hs / 2 + 0.0095, -0.06);
   }
   function unitInside(g, Wi, Hs, kind) {
     common(g, Wi, Hs);
     // 上の灰色の枠（DIN レール、ヒューズ、リレー、端子）
     const ys = Hs / 2 - 0.26, fw = Wi * 0.82, fh = 0.17;
-    P(g, fw, fh, zpdShelfT, -0.03, ys + fh / 2, -0.5);
+    B(g, fw, fh, 0.004, beige, -0.03, ys + fh / 2, -0.502);
     for (const y of [ys, ys + fh]) B(g, fw + 0.02, 0.022, 0.38, greyDuct, -0.03, y, -0.31);
     for (const s of [-1, 1]) B(g, 0.022, fh, 0.38, greyDuct, -0.03 + s * fw / 2, ys + fh / 2, -0.31);
-    B(g, fw * 0.92, 0.02, 0.012, silver, -0.03, ys + fh * 0.45, -0.49);
-    for (const x of [-0.04, 0.0]) RB(g, 0.034, 0.075, 0.05, 0.004, black, -0.03 + x, ys + fh * 0.48, -0.465);
-    for (let i = 0; i < 6; i++) RB(g, 0.016, 0.06, 0.04, 0.002, M(0x2a2b2e, 0.2, 0.5), -0.03 + 0.07 + i * 0.019, ys + fh * 0.45, -0.47);
-    RB(g, 0.04, 0.07, 0.04, 0.004, M(0xf2f2ee, 0.1, 0.5), -0.03 - fw * 0.33, ys + fh * 0.48, -0.47);
+    // 金具レールに、ヒューズ・小形の配線用遮断器2台・差し込み式のリレー6個（部品箱の共通部品）。上に名札、下へ黄色の線
+    B(g, fw * 0.92, 0.02, 0.006, railM, -0.03, ys + fh * 0.5, -0.497);
+    put(g, 'fuse', -0.03 - fw * 0.36, ys + fh * 0.5 - 0.036, -0.494, 0.92);
+    for (let i = 0; i < 2; i++) put(g, 'cp', -0.03 - fw * 0.16 + i * 0.05, ys + fh * 0.5 - 0.04, -0.494, 0.85);
+    for (let i = 0; i < 6; i++) put(g, 'relay', -0.03 + fw * 0.08 + i * 0.027 + (i > 2 ? 0.012 : 0), ys + fh * 0.5 - 0.037, -0.494);
+    P(g, 0.085, 0.017, shelfTag, -0.03 - fw * 0.2, ys + fh - 0.022, -0.499);
+    for (let i = 0; i < 9; i++) { const x = -0.03 - fw * 0.38 + i * fw * 0.095; wire(g, [[x, ys + fh * 0.3, -0.47], [x + 0.003, ys + 0.03, -0.46], [x, ys + 0.008, -0.47]], 0.002, i === 8 ? greenW : yellowW); }
     wire(g, [[-0.03 - fw / 2, ys + 0.02, -0.25], [-0.03 - fw / 2 - 0.02, ys - 0.03, -0.2], [-Wi / 2 + 0.02, ys - 0.06, -0.22]], 0.012, M(0x111111, 0.1, 0.6));
     // 本体（引出形）
-    const uw = Wi * 0.6, uh = Math.min(Hs * 0.55, 0.42), ud = 0.45, uy = -Hs / 2 + 0.05 + uh / 2, uz = -0.14 - ud / 2, ux = -0.04;
-    RB(g, uw, uh, ud, 0.008, unitM, ux, uy, uz);
-    P(g, uw - 0.008, uh - 0.008, kind === 'vt' ? vtFrontT : zpdFrontT, ux, uy, -0.139);
-    // 取っ手（コの字）
-    B(g, 0.1, 0.012, 0.012, silver, ux, uy - uh * 0.22, -0.112); for (const s of [-1, 1]) B(g, 0.012, 0.012, 0.03, silver, ux + s * 0.045, uy - uh * 0.22, -0.125);
-    // 右上の赤いコネクタと、灰色の配線の束（右のダクトへ）
-    RB(g, 0.04, 0.035, 0.03, 0.004, red, ux + uw / 2 - 0.06, uy + uh * 0.28, -0.125);
-    wire(g, [[ux + uw / 2 - 0.05, uy + uh * 0.24, -0.12], [ux + uw / 2 + 0.01, uy - uh * 0.15, -0.11], [Wi / 2 - 0.08, uy - uh * 0.05, -0.14], [Wi / 2 - 0.05, uy + uh * 0.2, -0.16]], 0.013, greyWrap);
+    const U = PART.unit, sc = Math.min(Wi * 0.6 / U.W, Math.min(Hs * 0.55, 0.42) / U.H), uw = U.W * sc, uh = U.H * sc, uy = -Hs / 2 + 0.02 + uh / 2, ux = -0.04;
+    // 本体と受け皿：部品箱の共通部品（取っ手・赤いコネクタと線・注意の札・止め金具まで含む）。名札は ZPD／VT で差し替える
+    put(g, 'unit', ux, -Hs / 2 + 0.02, -0.14 - U.front * sc, sc, { tag: kind === 'vt' ? 'VT' : 'ZPD' });
     // 両わきの案内の板（左に札）
     for (const s of [-1, 1]) B(g, 0.014, uh * 1.05, 0.42, beige, ux + s * (uw / 2 + 0.035), uy, -0.36);
     P(g, 0.07, 0.025, TAG[kind], ux - uw / 2 - 0.035, uy + uh * 0.32, -0.148);
-    // 床：亜鉛めっきの受け皿と、引き出し用の金具
-    B(g, Wi * 0.86, 0.01, 0.62, galv, -0.02, -Hs / 2 + 0.008, -0.42);
-    B(g, 0.03, 0.015, 0.16, silver, ux, -Hs / 2 + 0.02, -0.14); B(g, 0.05, 0.012, 0.02, silver, ux, -Hs / 2 + 0.03, -0.06);
   }
 
   // ---------- 引込計器盤（No.2）の中：写真2枚（IMG_3624・3625）より。上から 照明、89R（断路器）とアクリルの覆い、木の板に取引用計器・通信装置・試験端子箱、左に遠方手動操作器、制御の棚、下に LA-R の引出し ----------
@@ -162,15 +128,14 @@ export function makeHv({ M, canvasTex }) {
     lab.forEach((t, i) => { c.fillStyle = '#f6f6f2'; c.fillRect(xs[i], 4, i === 2 ? 110 : 64, 16); c.fillStyle = '#222'; c.textAlign = 'left'; c.textBaseline = 'middle'; fit(c, t, xs[i] + 3, 12.5, (i === 2 ? 110 : 64) - 6, 11, false); });
     c.fillStyle = '#b9bcbf'; c.fillRect(10, 64, w - 20, 16); c.strokeStyle = '#e7c22a'; c.lineWidth = 2; for (let x = 40; x < w - 30; x += 13) { c.beginPath(); c.moveTo(x, 96); c.lineTo(x + 1, h); c.stroke(); } });
   const opT = texL(64, 128, (c, w, h) => { c.fillStyle = '#f3f3ef'; c.fillRect(0, 0, w, h); c.fillStyle = '#2a9a4a'; c.font = 'bold 18px sans-serif'; c.save(); c.translate(36, 60); c.rotate(-Math.PI / 2); c.fillText('OFF', -50, 0); c.fillStyle = '#d22'; c.fillText('ON', 12, 0); c.restore(); c.fillStyle = '#d22'; c.fillRect(24, 54, 10, 14); });
-  const laT = unitFront('LA-R');
   const lbl = (t, w = 0.09, ht = 0.034) => texL(128, Math.round(128 * ht / w), (c, cw, ch) => { c.fillStyle = '#fafaf7'; c.fillRect(0, 0, cw, ch); c.strokeStyle = '#222'; c.lineWidth = 3; c.strokeRect(2, 2, cw - 4, ch - 4); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; fit(c, t, cw / 2, ch / 2 + 1, cw - 12, ch * 0.75); });
   const tag89 = lbl('89R'), tagLA = lbl('LA-R');
   function inletInside(g, Wi, Hs) {
     common(g, Wi, Hs);
     const Y = t => Hs / 2 - t;                                   // 上からの距離 → 高さ
     // 左の縦ダクト（黄色の配線）
-    const dl = B(g, 0.05, Hs * 0.42, 0.07, ductT, -Wi / 2 + 0.035, Y(0.55), -0.2); dl.material = [greyDuct, greyDuct, greyDuct, greyDuct, ductT, greyDuct];
-    wire(g, [[-Wi / 2 + 0.04, Y(0.08), -0.25], [-Wi / 2 + 0.03, Y(0.4), -0.17], [-Wi / 2 + 0.035, Y(0.95), -0.17]], 0.012, yellowW);
+    ductV(g, -Wi / 2 + 0.035, Y(0.55) - Hs * 0.21, Y(0.55) + Hs * 0.21, -0.235);
+    bundle(g, [[-Wi / 2 + 0.04, Y(0.08), -0.25], [-Wi / 2 + 0.03, Y(0.4), -0.17], [-Wi / 2 + 0.035, Y(0.95), -0.17]], 9, 0.0026, yellowW, 0.009);
     // ---- 89R（断路器）の区画 ----
     const t0 = 0.12, t1 = 1.02, zc0 = -0.42;
     B(g, Wi - 0.1, t1 - t0, 0.006, darkBack, 0, Y((t0 + t1) / 2), -0.66);
@@ -238,18 +203,15 @@ export function makeHv({ M, canvasTex }) {
     for (const y of [ys, ys + fh]) { B(g, fw + 0.02, 0.012, 0.1, greyDuct, -0.02, y, -0.37); const lip = B(g, fw + 0.02, 0.04, 0.012, ductT, -0.02, y + (y === ys ? 0.014 : -0.014), -0.32); lip.material = [greyDuct, greyDuct, greyDuct, greyDuct, ductT, greyDuct]; }
     for (const sx of [-1, 1]) B(g, 0.03, fh, 0.1, greyDuct, -0.02 + sx * fw / 2, ys + fh / 2, -0.37);
     B(g, fw * 0.94, 0.02, 0.012, silver, -0.02, ys + fh * 0.5, -0.41);
-    for (let i = 0; i < 3; i++) { const x = -fw / 2 + 0.08 + i * 0.07; RB(g, 0.05, 0.09, 0.06, 0.005, M(0xeeeeea, 0.05, 0.45), x, ys + fh * 0.5, -0.38); B(g, 0.016, 0.022, 0.004, M(0xe8742a, 0.1, 0.5), x - 0.008, ys + fh * 0.53, -0.348); B(g, 0.01, 0.018, 0.012, M(0x333333, 0.2, 0.5), x + 0.012, ys + fh * 0.53, -0.345); }
-    for (let i = 0; i < 2; i++) { const x = 0.06 + i * 0.045; RB(g, 0.038, 0.08, 0.05, 0.005, M(0xf2f2ee, 0.05, 0.45), x, ys + fh * 0.5, -0.385); C(g, 0.012, 0.012, M(0xd8d8d2, 0.3, 0.4), x, ys + fh * 0.5, -0.355, 'z', 16); }
-    for (let i = 0; i < 4; i++) RB(g, 0.022, 0.07, 0.045, 0.003, black, 0.16 + i * 0.025, ys + fh * 0.5, -0.39);
-    RB(g, 0.06, 0.08, 0.04, 0.004, M(0x2a2b2e, 0.2, 0.5), fw / 2 - 0.06, ys + fh * 0.5, -0.39);
+    for (let i = 0; i < 3; i++) put(g, 'cp', -fw / 2 + 0.08 + i * 0.07, ys + fh * 0.5 - 0.047, -0.404);
+    for (let i = 0; i < 2; i++) put(g, 'fuse', 0.06 + i * 0.045, ys + fh * 0.5 - 0.039, -0.404);
+    for (let i = 0; i < 4; i++) put(g, 'relay', 0.16 + i * 0.027, ys + fh * 0.5 - 0.037, -0.404);
+    put(g, 'tb', fw / 2 - 0.075, ys + fh * 0.5 - 0.022, -0.404, 0.8);
     // ---- LA-R の引出し（ZPD と同じ形。写真より） ----
-    const uw = Wi * 0.56, uh = 0.27, uy = -Hs / 2 + 0.05 + uh / 2, ux = -0.02;
-    RB(g, uw, uh, 0.42, 0.008, unitM, ux, uy, -0.14 - 0.21); P(g, uw - 0.008, uh - 0.008, laT, ux, uy, -0.139);
-    B(g, 0.1, 0.012, 0.012, silver, ux, uy - uh * 0.12, -0.112); for (const sx of [-1, 1]) B(g, 0.012, 0.012, 0.03, silver, ux + sx * 0.045, uy - uh * 0.12, -0.125);
+    const U = PART.unit, usc = 0.27 / U.H, uw = U.W * usc, uh = 0.27, uy = -Hs / 2 + 0.03 + uh / 2, ux = -0.02;
+    put(g, 'unit', ux, -Hs / 2 + 0.03, -0.14 - U.front * usc, usc, { tag: 'LA-R' });
     for (const sx of [-1, 1]) B(g, 0.014, uh * 1.1, 0.42, beige, ux + sx * (uw / 2 + 0.035), uy, -0.36);
     P(g, 0.07, 0.026, tagLA, ux - uw / 2 - 0.035, uy + uh * 0.36, -0.148);
-    B(g, Wi * 0.7, 0.01, 0.5, galv, -0.02, -Hs / 2 + 0.008, -0.36); B(g, Wi * 0.66, 0.045, 0.008, galv, -0.02, -Hs / 2 + 0.03, -0.09);
-    B(g, 0.03, 0.015, 0.16, silver, ux, -Hs / 2 + 0.02, -0.14);
     // 右の黒い波付き管
     wire(g, [[Wi / 2 - 0.09, Y(0.1), -0.3], [Wi / 2 - 0.08, Y(0.9), -0.2], [Wi / 2 - 0.09, Y(1.7), -0.2], [0.05, Y(1.95), -0.3]], 0.008, black);
   }
@@ -260,10 +222,10 @@ export function makeHv({ M, canvasTex }) {
     C(lf, 0.007, Hs * 0.9, silver, -W / 2 + 0.05, 0, -0.02); RB(lf, 0.04, 0.09, 0.012, 0.004, silver, -W / 2 + 0.08, -0.05, -0.025);
     if (kind === 'inlet') {
       // 引込計器盤の扉の裏（写真より）：蝶番の側に縦ダクト2本と灰色の束、上に小さな棚とリレー、のぞき窓のステンレスの枠、下に書類入れ
-      for (const dx of [0.07, 0.16]) { const d = B(lf, 0.05, Hs * 0.86, 0.06, ductT, W / 2 - dx, -Hs * 0.02, -0.035); d.material = [greyDuct, greyDuct, greyDuct, greyDuct, greyDuct, ductT]; }
+      for (const dx of [0.07, 0.16]) ductV(lf, W / 2 - dx, -Hs * 0.45, Hs * 0.41, -0.001, Math.PI);
       wire(lf, [[W / 2 - 0.115, Hs * 0.45, -0.07], [W / 2 - 0.12, 0, -0.075], [W / 2 - 0.11, -Hs * 0.4, -0.07]], 0.016, greyWrap);
       B(lf, 0.2, 0.012, 0.09, greyDuct, W / 2 - 0.3, Hs * 0.33, -0.05); B(lf, 0.2, 0.05, 0.01, greyDuct, W / 2 - 0.3, Hs * 0.345, -0.095);
-      for (const [x, y] of [[W / 2 - 0.3, Hs * 0.38], [W / 2 - 0.3, Hs * 0.27]]) RB(lf, 0.05, 0.05, 0.04, 0.004, black, x, y, -0.025);
+      for (const [x, y] of [[W / 2 - 0.32, Hs * 0.36], [W / 2 - 0.28, Hs * 0.36], [W / 2 - 0.3, Hs * 0.25]]) putB(lf, 'relay', x, y, 1.2);
       const fs = new THREE.Shape(), r = 0.05, ww = 0.3, wh = 0.46, rr = (s2, w2, h2, r2) => { s2.moveTo(-w2 / 2 + r2, -h2 / 2); s2.lineTo(w2 / 2 - r2, -h2 / 2); s2.quadraticCurveTo(w2 / 2, -h2 / 2, w2 / 2, -h2 / 2 + r2); s2.lineTo(w2 / 2, h2 / 2 - r2); s2.quadraticCurveTo(w2 / 2, h2 / 2, w2 / 2 - r2, h2 / 2); s2.lineTo(-w2 / 2 + r2, h2 / 2); s2.quadraticCurveTo(-w2 / 2, h2 / 2, -w2 / 2, h2 / 2 - r2); s2.lineTo(-w2 / 2, -h2 / 2 + r2); s2.quadraticCurveTo(-w2 / 2, -h2 / 2, -w2 / 2 + r2, -h2 / 2); };
       rr(fs, ww, wh, r); const hole = new THREE.Path(); rr(hole, ww - 0.04, wh - 0.04, r - 0.015); fs.holes.push(hole);
       const fr = new THREE.Mesh(new THREE.ExtrudeGeometry(fs, { depth: 0.012, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.004, bevelSegments: 3, curveSegments: 8 }), M(0xc9ccd0, 0.9, 0.22)); fr.position.set(-0.08, Hs * 0.05, -0.02); lf.add(fr);
@@ -273,20 +235,20 @@ export function makeHv({ M, canvasTex }) {
     }
     if (kind === 'vcb') {
       // 縦の端子台とダクト（蝶番の側）、黒い丸い機器、小さい端子台、横のトレイ、下の黒い箱（写真より。数は簡略）
-      const d = B(lf, 0.05, Hs * 0.62, 0.06, ductT, W / 2 - 0.11, Hs * 0.08, -0.035); d.material = [greyDuct, greyDuct, greyDuct, greyDuct, greyDuct, ductT];
-      B(lf, 0.022, Hs * 0.55, 0.03, black, W / 2 - 0.16, Hs * 0.08, -0.02);
+      ductV(lf, W / 2 - 0.11, Hs * 0.08 - Hs * 0.31, Hs * 0.08 + Hs * 0.31, -0.001, Math.PI);
+      for (let k = 0, n = Math.floor(Hs * 0.55 / 0.107); k < n; k++) putB(lf, 'tb', W / 2 - 0.185, Hs * 0.08 + (k - (n - 1) / 2) * 0.107, 1, Math.PI / 2);
       C(lf, 0.045, 0.07, black, 0.0, Hs * 0.3, -0.04, 'z', 24);
       P(lf, 0.08, 0.04, plateT, -0.2, Hs * 0.4, -0.002, Math.PI); P(lf, 0.08, 0.04, plateT, -0.1, Hs * 0.4, -0.002, Math.PI);
-      for (let i = 0; i < 4; i++) { RB(lf, 0.04, 0.045, 0.03, 0.004, black, -0.12 + i * 0.06, Hs * 0.05, -0.02); B(lf, 0.03, 0.01, 0.004, M(0xd96a1c, 0.1, 0.5), -0.12 + i * 0.06, Hs * 0.065, -0.036); }
+      for (let i = 0; i < 4; i++) putB(lf, 'relay', -0.12 + i * 0.045, Hs * 0.02, 1.2);
       B(lf, W * 0.55, 0.05, 0.08, greyDuct, -0.03, -Hs * 0.07, -0.045);
       RB(lf, 0.2, Hs * 0.26, 0.085, 0.006, black, -0.02, -Hs * 0.3, -0.045);
       wire(lf, [[W / 2 - 0.1, Hs * 0.35, -0.05], [0.05, Hs * 0.2, -0.06], [0.0, Hs * 0.33, -0.06]], 0.006, yellowW);
       wire(lf, [[W / 2 - 0.1, -Hs * 0.05, -0.07], [W / 2 - 0.05, -Hs * 0.2, -0.06], [W / 2 - 0.02, -Hs * 0.35, -0.04]], 0.014, greyWrap);
     } else {
-      const d = B(lf, 0.04, Hs * 0.3, 0.05, ductT, W / 2 - 0.1, Hs * 0.2, -0.03); d.material = [greyDuct, greyDuct, greyDuct, greyDuct, greyDuct, ductT];
+      ductV(lf, W / 2 - 0.1, Hs * 0.05, Hs * 0.35, -0.001, Math.PI, 0.8);
       B(lf, W * 0.5, 0.045, 0.07, greyDuct, -0.03, -Hs * 0.02, -0.04);
       RB(lf, 0.13, Hs * 0.2, 0.07, 0.006, black, -0.01, -Hs * 0.28, -0.04);
-      RB(lf, 0.05, 0.04, 0.03, 0.004, black, W / 2 - 0.2, Hs * 0.33, -0.02);
+      putB(lf, 'relay', W / 2 - 0.2, Hs * 0.28, 1.2);
       wire(lf, [[W / 2 - 0.1, Hs * 0.05, -0.05], [W / 2 - 0.04, -Hs * 0.2, -0.05], [W / 2 - 0.02, -Hs * 0.32, -0.03]], 0.011, greyWrap);
     }
   }
