@@ -26,7 +26,7 @@ export function mountIP(host, relays) {
   .ipcase{background:linear-gradient(115deg,#c9cccb,#ecece7 42%,#b5bab8);color:#172225;border:8px solid #53605f;border-radius:14px;padding:18px;box-shadow:inset 0 0 0 2px #e4e5df,0 8px 20px #0008;margin:16px 0}.ipcase h3{color:#22312e!important}.ipgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.ipmeter{background:#faf7e9;border:8px solid #222c2c;border-radius:10px;padding:15px;text-align:center;color:#152622;font:28px monospace}.ipcase label{display:block;margin:8px 0}.ipcase input[type=range]{width:100%}.ipcase button{min-height:38px}.ipread{font-family:monospace;background:#253d36;color:#b9ffb5;padding:10px;border-radius:5px}.ipcase select{max-width:100%}#ipNotice{min-height:2em}@media(max-width:450px){.ipgrid{grid-template-columns:1fr}.ipcase{padding:10px}}
   </style><h3>IP-R5000 · 個人の試験器</h3><p>OCRの動作電流・時間の操作練習。継電器の整定と動作曲線は既存教材の架空モデルです。実機の合否判定には使えません。</p>
   <label>試験対象 <select id=ipTarget>${entries.map(([k,r])=>`<option value="${k}">${r.name}</option>`).join('')}</select></label>
-  <div class=info>この版はOCR単体練習に対応。電圧・地絡・CB連動・耐電圧と専用3D筐体は未実装です。既存の全継電器はPRT側で引き続き選べます。</div>
+  <div class=info>この版はOCR単体練習に対応。電圧・地絡・CB連動・耐電圧は未実装です。3D外形・配置は公式図面からの近似です。既存の全継電器はPRT側で引き続き選べます。</div>
   <h3>準備</h3><label><input type=checkbox id=ipIsolated> 停電・CT二次側の安全な切離し・トリップ回路の隔離を確認（教材）</label><label><input type=checkbox id=ipEarth> 接地・電源条件を確認</label><label><input type=checkbox id=ipConnected> 電流回路と無電圧検出接点を接続（教材の仮接続）</label>
   <section class=ipcase><h3>計器操作部 · METER OPERATING UNIT</h3><div class=ipgrid><div class=ipmeter><output id=ipCurrent>0.000</output> A</div><div class=ipread>COUNTER<br><output id=ipCounter>0.000</output> s<br><span id=ipTrip>待機</span></div></div>
   <div class=ipgrid><label>電流出力<select id=ipPath><option>SET</option><option>TEST</option></select></label><label>接点構造<select id=ipContact><option value=TRIP>TRIP · a/b(AUTO)</option><option value=CHECK>C.CHECK · a/b</option></select></label><label>電流計レンジ<select id=ipMeter>${[.25,.5,1,2.5,5,10,25,50].map(x=>`<option ${x===25?'selected':''}>${x}</option>`).join('')}</select> A</label><label>実負荷抵抗（教材設定）<select id=ipBurden><option value=.25>0.25Ω</option><option value=.5 selected>0.50Ω</option><option value=1>1.00Ω</option></select></label></div><p>SETは内蔵0.25Ω疑似負荷。TESTでは接続負荷によって電流が変わります。</p></section>
@@ -42,5 +42,12 @@ export function mountIP(host, relays) {
   el('ipStart').onclick=()=>{if(!s.power||!s.isolated||!s.earth||(s.path==='TEST'&&!s.connected)){say('主電源・準備・TEST時の接続を確認してください。');return;}s.started=true;s.result=null;s.operated=false;s.acc=0;s.elapsed=0;s.exposure=0;say(s.path==='SET'?'疑似負荷で電流を設定しています。':'継電器へ印加しています。');render();};
   el('ipStop').onclick=()=>{s.started=false;s.current=0;render();};el('ipZero').onclick=()=>{s.knob=0;el('ipKnob').value=0;render();};el('ipReset').onclick=()=>{if(s.started){say('STOP後にRESETしてください。');return;}s.elapsed=0;s.result=null;s.operated=false;render();};
   el('ipRecord').onclick=()=>{if(!s.result){say('TESTで動作を検出してから記録してください。');return;}records.push({...s.result,target});el('ipRecords').innerHTML=records.map((r,i)=>`<p>${i+1}. ${relays[r.target].name} · ${r.current.toFixed(3)} A · ${r.seconds.toFixed(3)} s · ${r.mode}（架空）</p>`).join('');s.result=null;say('記録しました。合否基準は未登録です。');};
-  return {state:s,canLeave:()=>!s.power&&!s.started&&s.knob===0&&!s.connected&&!s.isolated, tick(dt){ipTick(s,dt,relays[target]);render();},render};
+  return {state:s,target:()=>target, action(id,dir=1,value=null){
+    if(id.startsWith('unsupported')||id==='mode'){say('この操作はOCR練習版では未対応です。');return;}
+    const node=el(id);if(!node)return;
+    if(node.tagName==='SELECT'){node.selectedIndex=(node.selectedIndex+dir+node.options.length)%node.options.length;node.dispatchEvent(new Event('change'));}
+    else if(node.type==='checkbox'){node.click();}
+    else if(node.type==='range'){node.value=value===null?Math.max(0,Math.min(100,+node.value+dir)):Math.max(0,Math.min(100,value));node.dispatchEvent(new Event('input'));}
+    else node.click();render();
+  },canLeave:()=>!s.power&&!s.started&&s.knob===0&&!s.connected&&!s.isolated, tick(dt){ipTick(s,dt,relays[target]);render();},render};
 }

@@ -1,3 +1,4 @@
+import { createIP3D } from './ip-r5000-3d.js';
 import { mountIP } from './ip-r5000.js';
 import { createDoorDemo } from './worker-door-demo.js';
 import { createWorker } from './workers.js';
@@ -1826,7 +1827,7 @@ function enterTitle() { if (walk.on) setWalk(false); if (typeof dwBtn !== 'undef
 function enterGame() { started = true; setTimeout(startAsWorker, 0); if (typeof dwBtn !== 'undefined') dwBtn.style.display = 'block'; ov.style.display = 'none'; menuBtn.style.display = 'block'; h1.style.display = h2.style.display = 'block'; controls.enabled = true; controls.autoRotate = $('a').checked; }
 $('tStart').onclick = () => { audioInit(); enterGame(); };
 // スタートしたら、発電機の操作盤側（入口側）に立つ作業員を、後ろから見る状態で始める（利用者の指示）
-function startAsWorker() { if (walk.on) return; walk.pos.set(-3.6, 1.65, -1.4); walk.yaw = -Math.PI / 2 - 0.35; walk.pitch = -0.1; walk.third = true; walk.front = false; setWalk(true); $('personView').textContent = '👤 後ろ'; }
+function startAsWorker() { if (walk.on || RT.open) return; walk.pos.set(-3.6, 1.65, -1.4); walk.yaw = -Math.PI / 2 - 0.35; walk.pitch = -0.1; walk.third = true; walk.front = false; setWalk(true); $('personView').textContent = '👤 後ろ'; }
 menuBtn.onclick = enterTitle;
 $('tHow').onclick = () => modal('<h2>操作説明</h2>・<b>ドラッグ</b>：画面を回す　<b>ホイール／ピンチ</b>：拡大縮小<br>・<b>右ドラッグ／2本指の移動／矢印ボタン</b>：見る中心を上下左右へ動かします。下側へ移動してから拡大できます。<br>・左上のボタン：見る場所を切り替えます（点検側、操作盤側、配電盤、内部を見る位置など）<br>・左下の「運転」：<b>始動（試験運転）</b>、<b>停電→自動始動</b>、<b>復電・停止</b><br>・「内部」：<b>透かして見る</b>／<b>断面（半分切る）</b>で、ピストンや回転子の動きが見えます<br>・画面下の説明に、いま何が起きているかが出ます<br>・音が出ます。気になるときは、オプションで切れます<br><span style="color:#9bd">※ 教育用の想像モデルです。内部構造や数値は実機と異なる場合があります。</span>');
 $('tOpt').onclick = () => modal('<h2>オプション</h2><label><input id=o_snd type=checkbox ' + (S.sound ? 'checked' : '') + '> 音を鳴らす</label><label>動作の速さ <select id=o_spd><option value=0.02>超スロー</option><option value=0.05>スロー</option><option value=0.12>普通</option></select></label><label><input id=o_shd type=checkbox ' + (renderer.shadowMap.enabled ? 'checked' : '') + '> 影を表示（重いときは切る）</label><label><input id=o_hq type=checkbox ' + (renderer.getPixelRatio() > 1 ? 'checked' : '') + '> 高画質（重いときは切る）</label><label><input id=o_exp type=checkbox ' + ($('std').style.display !== 'none' ? 'checked' : '') + '> 解説文を表示</label>');
@@ -2233,12 +2234,14 @@ for (const z of [0.3, -0.3]) { const lid = new THREE.Group(); lid.position.set(0
   const w = 0.424, d = z > 0 ? 0.304 : 0.312, wall = M(0xa3957a, 0.25, 0.65);
   bx(-w / 2, w / 2, 0, 0.004, -d / 2, d / 2, wall, lid); for (const sx of [-1, 1]) bx(sx * w / 2 - 0.002, sx * w / 2 + 0.002, 0, 0.05, -d / 2, d / 2, wall, lid); for (const sz of [-1, 1]) bx(-w / 2, w / 2, 0, 0.05, sz * d / 2 - 0.002, sz * d / 2 + 0.002, wall, lid);
   const st = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.12), new THREE.MeshStandardMaterial({ map: canvasTex(400, 240, (g, W, H) => { g.fillStyle = '#eceee9'; g.fillRect(0, 0, W, H); g.strokeStyle = '#333'; g.lineWidth = 1.2; g.strokeRect(14, 14, W - 28, H - 28); g.strokeRect(30, 40, 150, 130); g.strokeRect(210, 40, 160, 90); for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(40, 60 + i * 18); g.lineTo(170, 60 + i * 18); g.stroke(); } g.fillStyle = '#222'; g.font = '13px sans-serif'; g.textAlign = 'center'; g.fillText('内部結線図（模式）', W / 2, 205); }), roughness: 0.7 })); st.rotation.x = -Math.PI / 2; st.position.set(0, 0.0045, 0); lid.add(st); }
+const prtLids = tset.children.filter(o => o.type === 'Group' && o !== uM && o !== uT);
+const ipModel = createIP3D(); tset.add(ipModel.group); ipModel.group.visible = false;
 tset.visible = false;
 const tableBlock = [0, 0, 0, 0];
 function placeSet() {
   if (!RT.open) return;
   // 単体試験は、扉を開けて、継電器の背面の端子につなぐ。机は、開いた扉（先端が盤面から約0.9m）に当たらない位置に置く
-  const d = cur(), z = pz(d.panel); tset.position.set(-8.48, 0, z); tset.visible = true; leadGrp.visible = true;
+  const d = testerChoice === 'ip' ? RDEF[ipTrainer.target()] : cur(), z = pz(d.panel); tset.position.set(-8.48, 0, z); tset.visible = true; leadGrp.visible = true;
   doors.forEach((dr, i) => { dr.target = i === d.panel ? OPEN : 0; });
   if (!BLOCKS.includes(tableBlock)) BLOCKS.push(tableBlock);
   tableBlock[0] = -8.85; tableBlock[1] = -8.1; tableBlock[2] = z - 0.65; tableBlock[3] = z + 0.65; RT.leadsDirty = true;
@@ -2443,7 +2446,7 @@ const sets = () => {
 // ---------- 試験機の動作（毎フレーム） ----------
 const ipt = { noise: 0 };
 function rtTick(dt) {
-  if (testerChoice === 'ip') { if (RT.open) ipTrainer.tick(dt); return; }
+  if (testerChoice === 'ip') { if (RT.open) { ipTrainer.tick(dt); ipModel.update(ipTrainer.state,dt); } return; }
   const t = TESTS[RT.test], d = cur(), dv = devv();
   RT.hasPower = RT.plug && RT.nfb;
   const live = RT.hasPower && RT.mc, Vr = OUTR[RT.rangeV], Vset = live ? Vr * RT.reg / 10 : 0;
@@ -2606,10 +2609,29 @@ const ipTrainer = mountIP(ipHost, RDEF);
 const testerRow=document.createElement('div');testerRow.innerHTML='<label>使用する試験器 <select id="testerChoice"><option value="prt">会社 · PRT-3M／PRT-3TR</option><option value="ip">個人 · IP-R5000（OCR操作練習）</option></select></label><div id="testerChoiceNotice" role="status"></div>';
 rtp.querySelector('.hd').after(testerRow);
 const prtBody=rtp.querySelector('.rtbody');
-function syncTesterChoice(){const ip=testerChoice==='ip';prtBody.hidden=ip;ipHost.hidden=!ip;$('rtZoomRow').hidden=ip;rtp.querySelector('.hd span').textContent=ip?'🧪 継電器試験（IP-R5000）':'🧪 継電器試験（PRT-3M／PRT-3TR）';if(ip){tset.visible=false;leadGrp.visible=false;}}
+let shownTester = null;
+function syncTesterChoice(){const ip=testerChoice==='ip';
+ if(shownTester!==testerChoice){shownTester=testerChoice;prtBody.hidden=ip;ipHost.hidden=!ip;$('rtZoomRow').hidden=ip;$('ipZoomRow').hidden=!ip;
+ rtp.querySelector('.hd span').textContent=ip?'🧪 継電器試験（IP-R5000）':'🧪 継電器試験（PRT-3M／PRT-3TR）';}
+ uM.visible=uT.visible=!ip;for(const lid of prtLids)lid.visible=!ip;ipModel.group.visible=ip;
+ if(RT.open)tset.visible=true;if(ip)leadGrp.visible=false;
+}
+function ipFocus(which='both'){
+ if(walk.on)setWalk(false);h1._collapse?.();h2._collapse?.();
+ rtp.classList.add('min');$('rtMin').textContent='▲ 操作・準備を開く';
+ placeSet();syncTesterChoice();ipModel.update(ipTrainer.state,1);scene.updateMatrixWorld(true);
+ const obj=which==='meter'?ipModel.meter:which==='power'?ipModel.power:ipModel.group;
+ const q=obj.getWorldPosition(new THREE.Vector3());if(which==='both')q.y+=.94;else q.y+=.14;
+ const fit=Math.max(1,1.05/camera.aspect),d=which==='both'?1.1:.55;
+ fly=null;view([q.x+d*fit,q.y+d*.95*fit,q.z-.12],q.toArray());controls.update();
+}
+const ipZoom=document.createElement('div');ipZoom.id='ipZoomRow';ipZoom.hidden=true;
+ipZoom.innerHTML='<button data-ipview="both">IP-R5000 全体を3Dで見る</button><button data-ipview="meter">計器操作部</button><button data-ipview="power">電源抵抗部</button><div style="font-size:11px">3Dのつまみ：左右をクリック／大型調整器：ドラッグ・ホイール。準備は「操作・準備を開く」から。</div>';
+testerRow.after(ipZoom);ipZoom.onclick=e=>{const b=e.target.closest('[data-ipview]');if(b)ipFocus(b.dataset.ipview);};
+$('ipTarget').addEventListener('change',()=>{if(testerChoice==='ip')placeSet();});
 $('testerChoice').onchange=e=>{const busy=testerChoice==='ip'?!ipTrainer.canLeave():RT.nfb||RT.started||RT.applied||RT.reg!==0||Object.values(RT.leads).some(Boolean)||RT.iso.ctLift||RT.iso.vtLift||RT.iso.ctShort||RT.iso.tripLift;
 if(busy){e.target.value=testerChoice;$('testerChoiceNotice').textContent='電源OFF・調整器0・配線と隔離の復旧後に機種を切り換えてください。';return;}
-testerChoice=e.target.value;$('testerChoiceNotice').textContent='';if(testerChoice==='prt')placeSet();syncTesterChoice();};
+testerChoice=e.target.value;$('testerChoiceNotice').textContent='';placeSet();syncTesterChoice();if(testerChoice==='ip')ipFocus();else rtView();};
 const rtTargetSel = $('rtTarget'), rtTestSel = $('rtTest'), rtStatEl = $('rtStat');
 rtTargetSel.innerHTML = Object.keys(RDEF).map(k => `<option value="${k}">${RDEF[k].name}</option>`).join('');
 function fillTests() { rtTestSel.innerHTML = testsFor(grp()).map(k => `<option value="${k}">${TESTS[k].title}</option>`).join('') + '<option value="_ground">地絡（OCG／DG）・漏電リレー：解説のみ</option>'; rtTestSel.value = RT.test; }
@@ -2643,14 +2665,15 @@ function rtPanelPoint(unit, point) {
   const u = unit.userData, p = u.pane.worldToLocal(point.clone());
   return [(p.x / u.pw + 0.5) * u.W, (0.5 - p.y / u.ph) * u.H];
 }
+function ipRegAt(point,h){const angle=Math.atan2(point[0]-h.x,h.y-point[1])*180/Math.PI;ipTrainer.action('ipKnob',1,Math.max(0,Math.min(100,(angle+140)/2.8)));}
 function rtPick3D(e) {
   if (!RT.open || !tset.visible || walk.on || ov.style.display !== 'none') return null;
   rtRayAt(e);
-  for (const hit of rtRay.intersectObjects([uM, uT], true)) {
+  for (const hit of rtRay.intersectObjects(testerChoice==='ip'?ipModel.units:[uM, uT], true)) {
     let o = hit.object;
-    while (o && !o.userData.rtControl && o !== uM && o !== uT) o = o.parent;
+    while (o && !o.userData.rtControl && o !== uM && o !== uT && !ipModel.units.includes(o)) o = o.parent;
     if (o?.userData.rtControl) {
-      const { which, hit: h } = o.userData.rtControl, unit = which === 'M' ? uM : uT;
+      const { which, hit: h } = o.userData.rtControl, unit = which === 'IM' ? ipModel.meter : which === 'IT' ? ipModel.power : which === 'M' ? uM : uT;
       return { unit, which, h, point: rtPanelPoint(unit, hit.point) };
     }
     const unit = o === uM ? uM : o === uT ? uT : null;
@@ -2661,11 +2684,11 @@ function rtPick3D(e) {
   }
   return null;
 }
-function rtDrawUnit(which) { if (which === 'M') drawM(); else drawT(); }
+function rtDrawUnit(which) { if (which === 'IM' || which === 'IT') { ipModel.update(ipTrainer.state); return; } if (which === 'M') drawM(); else drawT(); }
 function endRT3D(e) {
   if (!rtDrag3D || (e && e.pointerId !== rtDrag3D.pointerId)) return;
   const d = rtDrag3D; rtDrag3D = null;
-  if (d.h.k === 'btn') rtUp(d.h);
+  if (d.which!=='IM' && d.which!=='IT' && d.h.k === 'btn') rtUp(d.h);
   controls.enabled = d.controlsEnabled; rtDrawUnit(d.which);
 }
 {
@@ -2675,6 +2698,7 @@ function endRT3D(e) {
     const d = rtPick3D(e); if (!d) return;
     e.preventDefault(); e.stopImmediatePropagation();
     rtDrag3D = { ...d, pointerId: e.pointerId, controlsEnabled: controls.enabled }; controls.enabled = false; el.setPointerCapture(e.pointerId);
+    if (d.which==='IM'||d.which==='IT') { if(d.h.k==='reg')ipRegAt(d.point,d.h);else ipTrainer.action(d.h.id,d.point[0]<d.h.x?-1:1);rtDrawUnit(d.which);return; }
     if (d.h.k === 'rot') rtRot(d.h.id, d.point[0] < d.h.x ? -1 : 1);
     else if (d.h.k === 'reg') rtRegAt(...d.point, d.h);
     else if (d.h.k === 'btn' && d.h.id !== 'plugflip') rtDown(d.h);
@@ -2689,7 +2713,7 @@ function endRT3D(e) {
     const pane = d.unit.userData.pane, normal = new THREE.Vector3(0, 0, 1).transformDirection(pane.matrixWorld);
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, pane.getWorldPosition(new THREE.Vector3()));
     const hit = rtRay.ray.intersectPlane(plane, new THREE.Vector3());
-    if (hit) { rtRegAt(...rtPanelPoint(d.unit, hit), d.h); rtDrawUnit(d.which); }
+    if (hit) { if(d.which==='IM'||d.which==='IT')ipRegAt(rtPanelPoint(d.unit,hit),d.h);else rtRegAt(...rtPanelPoint(d.unit, hit), d.h); rtDrawUnit(d.which); }
   }, true);
   for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(name, e => {
     if (!rtDrag3D || e.pointerId !== rtDrag3D.pointerId) return;
@@ -2697,7 +2721,7 @@ function endRT3D(e) {
   }, true);
   el.addEventListener('wheel', e => {
     const d = rtPick3D(e); if (!d || d.h.k !== 'reg') return;
-    e.preventDefault(); e.stopImmediatePropagation(); rtRegStep(d.h, e.deltaY < 0 ? 0.1 : -0.1); rtDrawUnit(d.which);
+    e.preventDefault(); e.stopImmediatePropagation(); if(d.which==='IM'||d.which==='IT')ipTrainer.action('ipKnob',e.deltaY<0?1:-1);else rtRegStep(d.h, e.deltaY < 0 ? 0.1 : -0.1); rtDrawUnit(d.which);
   }, { capture: true, passive: false });
 }
 function rtFocusUnit(unit) {
@@ -2767,6 +2791,7 @@ const rtTip = document.createElement('div'); rtTip.style.cssText = 'position:fix
 let rtTipTimer = 0;
 function rtTipShow(html, e) { rtTip.innerHTML = html; rtTip.style.display = 'block'; const w = rtTip.offsetWidth, h = rtTip.offsetHeight; rtTip.style.left = clamp(e.clientX + 14, 6, innerWidth - w - 6) + 'px'; rtTip.style.top = clamp(e.clientY - h - 14, 6, innerHeight - h - 6) + 'px'; clearTimeout(rtTipTimer); rtTipTimer = setTimeout(() => { rtTip.style.display = 'none'; RT.pick = null; }, 8000); }
 function rtRelayTap(rc, e) {
+  if(RT.open && testerChoice==='ip') return false;
   if (!RT.open) return false;
   let tag = null, type = null;
   for (const h of rc.intersectObjects([...Object.values(RELAYS), ...Object.values(RELAY_BACK)], true)) { let o = h.object; while (o && !o.userData.relayTag) o = o.parent; if (o) { tag = o.userData.relayTag; type = o.userData.relayType; break; } }
@@ -2781,7 +2806,7 @@ function rtRelayTap(rc, e) {
   selectTarget(tag); rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; rtView(); rtTipShow(`<b>${name}</b> の試験を始めます。<br>盤の扉を開けて、試験機を前に置きました。`, e); rtMsg(name + ' を試験の対象にしました。手順ガイドの ① から進めてください。', 'i');
   return true;
 }
-function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; rtView(); syncTesterChoice(); }
+function rtOpen() { if (walk.on) setWalk(false); dw.style.display = 'none'; dwBtn.style.display = 'none'; tipEl.style.display = 'none'; doors.forEach(d => { d.target = 0; }); RT.open = true; rtTargetSel.value = RT.target; fillTests(); placeSet(); rtp.style.display = 'block'; rtp.classList.remove('min'); $('rtMin').textContent = '▼ 小さくして3Dを見る'; RT.guideDirty = true; rtView(); syncTesterChoice(); if(testerChoice==='ip')ipFocus(); }
 function rtClose() {
   if(testerChoice==='ip'&&!ipTrainer.canLeave()){ $('testerChoiceNotice').textContent='IP-R5000の電源OFF・調整器0・接続と隔離を復旧してください。';return;}
   // 収納で電気的な復旧手順を飛ばさない。記録・対象・設定は次回も保持する。
@@ -2797,6 +2822,7 @@ function rtClose() {
 }
 $('bt').onclick = rtOpen; $('rtX').onclick = rtClose; $('rtMin').onclick = () => { rtp.classList.toggle('min'); $('rtMin').textContent = rtp.classList.contains('min') ? '▲ 開く' : '▼ 小さくして3Dを見る'; };
 window.__ip = ipTrainer;
+window.__ip3d = {model:ipModel,pick:(x,y)=>{const hit=rtPick3D({clientX:x,clientY:y});return hit?{id:hit.h.id,point:hit.point,which:hit.which}:null;},focus:ipFocus,render:()=>{ipModel.update(ipTrainer.state,1);scene.updateMatrixWorld(true);renderer.render(scene,camera);},screenOf:(which,x,y)=>{const unit=which==='IM'?ipModel.meter:ipModel.power;scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);const p=termWorld(unit,x,y,.03).project(camera),b=renderer.domElement.getBoundingClientRect();return [b.left+(p.x+1)/2*b.width,b.top+(1-p.y)/2*b.height];}};
 window.__rt = { relayScreen: tag => { scene.updateMatrixWorld(true); const v = RELAYS[tag].localToWorld(new THREE.Vector3(0, 0, 0.06)).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, tset, HIT: () => HIT, screenOf: (w, x, y, z) => { const v = termWorld(w === 'M' ? uM : uT, x, y, z).project(camera), b = renderer.domElement.getBoundingClientRect(); return [b.left + (v.x + 1) / 2 * b.width, b.top + (1 - v.y) / 2 * b.height]; }, RT, rtAct, rtLead, rtRot, rtDown, rtUp, rtTick, rtRecord, selectTarget, TESTS, cur, drawM, drawT, rebuildLeads, rtOpen, rtClick };
 drawM(); drawT();
 
@@ -2877,7 +2903,7 @@ renderer.setAnimationLoop(() => {
   texAcc += dt; if (texAcc > 0.12) { texAcc = 0; dynTex.forEach(t => t.userData.redraw()); } dyn3.forEach(f => f(dt));
   $('rd').textContent = `回転 ${Math.round(S.rpm)} min⁻¹ ｜ 電圧 ${Math.round(210 * S.volt)} V ｜ 周波数 ${S.hz.toFixed(1)} Hz ｜ ${S.mains ? '商用' : S.brk ? '発電' : '停電'}`;
   if (typeof rtTick === 'function') { rtTick(dt); if (RT.open) { animateTester(uM, dt); animateTester(uT, dt); } if (RT.leadsDirty) { RT.leadsDirty = false; rebuildLeads(); } if (RT.open) { rtRender(); syncTesterChoice(); } }
-  if (typeof RT !== 'undefined' && RT.open) { const td = doors[cur().panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
+  if (typeof RT !== 'undefined' && RT.open) { const td = doors[(testerChoice==='ip'?RDEF[ipTrainer.target()]:cur()).panel]; if (td) { td.target = OPEN; if (Math.abs(td.cur - td.target) > 0.004) RT.leadsDirty = true; } }
   roomDoor.cur += (roomDoor.target - roomDoor.cur) * Math.min(1, dt * 4); roomDoor.g.forEach(l => { l.rotation.y = -l.userData.k * roomDoor.cur; });
   for (const d of kiki.capDoors) { d.cur += (d.target - d.cur) * Math.min(1, dt * 4); d.leaves[0].rotation.y = d.cur; }
   for (const r of REARS) { r.cur += (r.target - r.cur) * Math.min(1, dt * 4); r.leaves.forEach(l => { l.rotation.y = l.userData.k * r.cur; }); r.light.intensity = (r === rearDoor ? 1.6 : 0.8) * Math.min(1, r.cur / 1.2); }
