@@ -58,6 +58,7 @@ src/relay-instruments.js  試験機の立体つまみ・メーター・拡大パ
 src/kikishitsu.js  機器室（入口のドアの向こう）。配置図から読んだ盤の並び
 src/kiki-hv.js     機器室の高圧の盤（受電・饋電盤、配電盤の列）の区画ごとの扉と中身（VCB／ZPD・VT の区画）
 src/vcb.js         Blender で作った引出形 VCB の本体（src/vcb/vcb.glb・ao.jpg）を読み込み、前面のラベル（Canvas。メーカー名なし）を貼る。作り直しは blender/vcb/run.sh
+src/dc-rear.js     機器室の監視用UPS（No.61-1 インバータ盤・61-2 直流電源盤・61-3 蓄電池盤）の裏（扉と中身。写真9枚から）
 src/ccr-inside.js  機器室の CCR の扉の中身（上段＝操作部、下段＝CCR本体、扉の裏）
 scripts/build.mjs  esbuild で three.js ごと1つの HTML にまとめる
 docs/index.html    完成品（ビルドで生成。手で編集しない）
