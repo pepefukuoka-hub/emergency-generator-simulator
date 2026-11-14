@@ -1,6 +1,16 @@
 # 空港設備シミュレータ（旧：非常用発電機シミュレータ）：次回への引き継ぎ
 
-## 最新の状態（2026-11-14、試験器選択・OCR練習追加）
+## 最新の状態（2026-11-14、IP-R5000 OCR練習版の公開完了）
+
+- 公開確認へのユーザー回答「続けて」を受け、保留していたハブmainへのpushを実施。最新fetchで他の変更がないことを確認。ハブ公開コミット：2f5c884e22dcd29705419540128b0f37352ffa02。GitHub Pages実行43563946619はsuccess。
+- 公開URL：https://pepefukuoka-hub.github.io/work/hatsudenki-sim/ 。キャッシュ回避クエリv=2f5c884付きで取得した公開HTMLとソース側docs/index.htmlのSHA-256一致：7c48a93710211c0047f9846d97fab833c91740a392e28e948a601df74d50fa91。
+- ソース実装：6a9b187。作業ブランチ：claude/determined-mendel-b26jq2。今回の引き継ぎコミットはgit log参照。開発用mainおよび開発用URLは今回未更新。
+- 見方：スタート → 継電器試験 → 使用する試験器 → 個人・IP-R5000（OCR操作練習）。既存PRT系・継電器9台は保持。
+- 今回は公開と照合のみ。実装・検証範囲は下記の記録どおり。OCRは教材近似、専用3D・電圧/地絡/CB/PUNは未実装。通常3D描画での追加パネル連続動作・実スマホ・実機は未検証。
+- 次：公式図面に基づくIP専用操作盤と結線モデル、対象継電器型式別特性。生成画像の誤った目盛・表示を操作盤へ転用しない。
+- 作業環境：/workspace/emergency-generator-simulator、ハブ：/workspace/portfolio-hub。従来の調査資料はresearch/ip-r5000/。
+
+## 過去の状態（2026-11-14、試験器選択・OCR練習追加）
 
 - ブランチ：claude/determined-mendel-b26jq2。最新main a13cd6dを統合し、監視用UPSなど他の変更を維持。最新コミットはgit log参照。
 - 既存継電器9台とPRT-3M/PRT-3TRを維持し、試験器選択に個人のIP-R5000を追加。src/ip-r5000.jsが独立状態とOCR練習UIを担当。
