@@ -35,6 +35,11 @@ export function makeDcRear({ M, canvasTex }) {
     for (let y = -16; y < h + 16; y += 16) for (let x = -32; x < w + 32; x += 32) { const o = (y / 16) % 2 ? 16 : 0; c.beginPath(); c.moveTo(x + o, y); c.lineTo(x + o + 16, y + 8); c.lineTo(x + o + 32, y); c.stroke(); }
   }, [6, 4]);
   const meshM = new THREE.MeshStandardMaterial({ map: meshTex, alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.7, roughness: 0.35 });
+  const sqTex = canvasTex(128, 128, (c, w, h) => {   // 角穴のパンチングの網（インバータ盤の天井）
+    c.fillStyle = '#c9ccce'; c.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) for (let x = 0; x < w; x += 16) c.clearRect(x + 3, y + 3, 11, 11);
+  }, [8, 5]);
+  const sqM = new THREE.MeshStandardMaterial({ map: sqTex, alphaTest: 0.4, side: THREE.DoubleSide, metalness: 0.6, roughness: 0.4 });
+  const tagTex = t => canvasTex(48, 64, (c, w, h) => { c.fillStyle = '#f4f4ee'; c.fillRect(0, 0, w, h); c.strokeStyle = '#999'; c.beginPath(); c.arc(w / 2, 10, 4, 0, 7); c.stroke(); c.fillStyle = '#222'; c.font = 'bold 28px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, w / 2, 40); });
   const ductTex = canvasTex(64, 256, (c, w, h) => {   // 灰色の穴あきダクト（縦のスリット）
     c.fillStyle = '#9ea2a6'; c.fillRect(0, 0, w, h); c.fillStyle = '#2a2c2e'; for (let y = 6; y < h; y += 16) c.fillRect(6, y, w - 12, 9);
   });
@@ -57,6 +62,8 @@ export function makeDcRear({ M, canvasTex }) {
     B(0, 0.015, 0.06, h, 0, DP, frameM, root); B(W - 0.015, W, 0.06, h, 0, DP, frameM, root);
     B(0, W, 0.04, 0.07, 0, DP, M(0x9a9c98, 0.3, 0.7), root);   // 床板
     if (kind === 'bat') B(0, W, h - 0.015, h, 0, DP, frameM, root);
+    else if (kind === 'inv') { B(0, W, h - 0.012, h, 0, 0.05, frameM, root); B(0, W, h - 0.012, h, DP - 0.05, DP, frameM, root);
+      const mp = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.03, DP - 0.1), sqM); mp.rotation.x = -Math.PI / 2; mp.position.set(W / 2, h - 0.006, -DP / 2); root.add(mp); }
     else { B(0, W, h - 0.012, h, 0, 0.05, frameM, root); B(0, W, h - 0.012, h, DP - 0.05, DP, frameM, root);
       const mp = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.03, DP - 0.1), meshM); mp.rotation.x = -Math.PI / 2; mp.position.set(W / 2, h - 0.006, -DP / 2); root.add(mp); }
     // 裏の枠（外まわり）。ボルトの穴の点
@@ -66,7 +73,7 @@ export function makeDcRear({ M, canvasTex }) {
     for (let u = 0.15; u < W - 0.1; u += 0.3) holes.push([u, h - fr / 2], [u, 0.17]);
     holes.forEach(([u, y]) => CY(u, y, -0.001, 0.0045, 0.002, blackM, 'z', 8, root));
 
-    let built = false; const build = () => { if (built) return; built = true; if (kind === 'bat') batteries(); else rectifier(); };
+    let built = false; const build = () => { if (built) return; built = true; if (kind === 'bat') batteries(); else if (kind === 'inv') inverter(); else rectifier(); };
 
     // ---------- 蓄電池盤：棚2段、各段2列 ----------
     function batteries() {
@@ -151,6 +158,52 @@ export function makeDcRear({ M, canvasTex }) {
       B(fr, W - fr, 0.07, 0.12, 0.2, 0.6, M(0x7a7c78, 0.3, 0.6));
     }
 
+    // ---------- インバータ盤（No.61-1）：写真 IMG_3564〜3566 ----------
+    function inverter() {
+      const ya = 0.68, yb = 1.62;
+      B(fr, W - fr, ya - 0.025, ya + 0.025, 0, 0.04, frameM); B(fr, W - fr, yb - 0.025, yb + 0.025, 0, 0.04, frameM);
+      for (const u of [0.18, 1.02]) B(u - 0.025, u + 0.025, 0.2, ya, 0, 0.04, frameM);
+      B(fr, W - fr, yb + 0.03, yb + 0.05, 0.1, 0.55, plateM);                         // 抵抗器の棚
+      // 天井の下：緑の抵抗器3本（白い線で渡り）
+      for (let i = 0; i < 3; i++) { const y = 1.78 + i * 0.065; CY(0.66, y, 0.32, 0.022, 0.34, M(0x2f5a2e, 0.15, 0.3), 'x', 20);
+        for (const k of [-1, 1]) { CY(0.66 + k * 0.175, y, 0.32, 0.016, 0.012, M(0x222222, 0.3, 0.5), 'x', 12); bolt(0.66 + k * 0.19, y, 0.31); } }
+      T([[0.47, 1.91, 0.31], [0.43, 1.88, 0.3], [0.47, 1.845, 0.31]], 0.005, whiteM); T([[0.85, 1.845, 0.31], [0.89, 1.81, 0.3], [0.85, 1.78, 0.31]], 0.005, whiteM);
+      T([[0.47, 1.78, 0.31], [0.42, 1.72, 0.3], [0.3, 1.69, 0.28], [0.1, 1.69, 0.26]], 0.004, yelM); T([[0.85, 1.91, 0.31], [0.92, 1.8, 0.3], [0.95, 1.69, 0.28], [1.25, 1.69, 0.26]], 0.004, yelM);
+      // 左右の太い線（赤い被覆の端子をボルトで留め、天井から下へ）
+      for (const u of [0.26, 1.08]) { B(u + 0.07, u + 0.12, 1.7, 1.86, 0.36, 0.38, zincM); bolt(u + 0.095, 1.82, 0.355, brassM); bolt(u + 0.095, 1.73, 0.355, brassM);
+        CY(u + 0.06, 1.88, 0.33, 0.016, 0.07, M(0xc0202a, 0.1, 0.4));
+        T([[u + 0.06, 1.92, 0.33], [u + 0.05, 1.99, 0.3], [u - 0.02, 1.97, 0.22], [u - 0.03, 1.6, 0.16], [u - 0.03, 0.9, 0.16], [u - 0.02, 0.4, 0.2], [u, 0.1, 0.3]], 0.014, cableM);
+        T([[u - 0.06, h, 0.24], [u - 0.06, 1.5, 0.14], [u - 0.06, 0.8, 0.14], [u - 0.04, 0.2, 0.24]], 0.014, cableM);
+        for (const y of [1.6, 1.2, 0.8]) { const tie = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.003, 4, 12), M(0xe8e2a0, 0, 0.6)); tie.rotation.x = Math.PI / 2; tie.position.set(u - 0.045, y, -0.15); inside.add(tie); } }
+      // 横の穴あきダクトと右の縦ダクト
+      B(0.1, W - 0.12, 1.53, 1.6, 0.28, 0.36, ductM); B(W - 0.16, W - 0.09, 0.2, 1.53, 0.26, 0.33, ductM);
+      // ファン2台（黒い角形）
+      for (const u of [0.52, 0.86]) { RB(u, 1.44, 0.34, 0.15, 0.15, 0.05, 0.01, blackM);
+        CY(u, 1.44, 0.312, 0.065, 0.004, M(0x0a0a0a, 0.2, 0.6), 'z', 28); CY(u, 1.44, 0.31, 0.024, 0.01, M(0x2a2a2a, 0.3, 0.5), 'z', 20);
+        for (const r of [0.03, 0.048, 0.064]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0015, 4, 28), M(0x222222, 0.3, 0.5)); ring.position.set(u, 1.44, -0.308); inside.add(ring); }
+        T([[u - 0.07, 1.38, 0.31], [u - 0.1, 1.3, 0.3], [u - 0.06, 1.24, 0.32]], 0.003, yelM); }
+      // 基板3枚（取付板の上）と小さな緑の抵抗器
+      B(0.2, 1.18, 1.03, 1.34, 0.46, 0.47, plateM);
+      for (const u of [0.38, 0.66, 0.94]) { B(u - 0.1, u + 0.1, 1.06, 1.3, 0.445, 0.455, pcbM);
+        for (let i = 0; i < 6; i++) B(u - 0.08 + (i % 3) * 0.06, u - 0.05 + (i % 3) * 0.06, 1.1 + (i / 3 | 0) * 0.1, 1.13 + (i / 3 | 0) * 0.1, 0.435, 0.445, i % 2 ? blackM : M(0x2a5ad8, 0.2, 0.5));
+        CY(u + 0.08, 1.2, 0.43, 0.009, 0.06, M(0x6a9a5a, 0.1, 0.4), 'y', 10); }
+      // 電解コンデンサ3本（金属のバンド・上に渡りの板）と、台の箱
+      RB(0.55, 0.78, 0.4, 0.34, 0.16, 0.26, 0.01, M(0xd6d4cb, 0.1, 0.6));
+      for (let i = 0; i < 3; i++) { const u = 0.45 + i * 0.1; CY(u, 0.95, 0.4, 0.04, 0.18, M(0x1a1b1d, 0.3, 0.35), 'y', 24);
+        CY(u, 0.9, 0.4, 0.042, 0.02, zincM, 'y', 24); CY(u, 1.045, 0.4, 0.034, 0.008, M(0x777a7e, 0.6, 0.4), 'y', 20); }
+      for (const dd of [-0.02, 0.03]) B(0.4, 0.7, 1.055, 1.062, 0.4 + dd - 0.012, 0.4 + dd + 0.012, zincM);
+      // 左：変圧器の巻線（写真の左端）、右：巻線2つの変圧器（赤い被覆の端子、K・L の札）
+      RB(0.12, 0.85, 0.42, 0.12, 0.28, 0.17, 0.03, coilM); B(0.05, 0.19, 0.69, 0.71, 0.3, 0.54, blackM);
+      xfmr(1.0, 0.71, 0.4, 2, 0.95, false);
+      ['K', 'L'].forEach((t, i) => { const tg = new THREE.Mesh(new THREE.PlaneGeometry(0.035, 0.045), M(0xffffff, 0, 0.6, { map: tagTex(t) })); tg.position.set(0.93 + i * 0.155, 0.86, -0.305); inside.add(tg);
+        T([[0.93 + i * 0.155, 0.885, 0.305], [0.94 + i * 0.155, 0.95, 0.31], [0.95 + i * 0.155, 1.0, 0.32]], 0.0012, whiteM); });
+      // 下：三相の変圧器と、右の雑音フィルタ（小さな金属の箱）
+      xfmr(0.6, 0.22, 0.38, 3, 1.0, true);
+      for (const y of [0.28, 0.46]) { RB(1.12, y, 0.4, 0.1, 0.07, 0.12, 0.004, zincM); B(1.09, 1.15, y - 0.015, y + 0.02, 0.338, 0.34, M(0xf2f2ec, 0, 0.6));
+        T([[1.07, y, 0.4], [1.05, y + 0.05, 0.38], [1.04, y + 0.12, 0.36]], 0.0025, M(0x2a8a3a, 0.1, 0.5)); }
+      B(fr, W - fr, 0.07, 0.12, 0.2, 0.6, M(0x7a7c78, 0.3, 0.6));
+    }
+
     // 変圧器：巻線 n 個（黄色の含浸）・黒い鉄心の締め金・台・上の端子台（三相は青・白・赤の印）
     function xfmr(u, y0, d, n, s, strip) {
       const cw = 0.15 * s, ch = 0.24 * s, cd = 0.17 * s, gap = 0.012, tot = n * cw + (n - 1) * gap, ul = u - tot / 2;
@@ -190,17 +243,17 @@ export function makeDcRear({ M, canvasTex }) {
     // ---------- 裏の扉（1枚、推測）。列の外側の端に蝶番、裏の通路側へ大きく開いて隣の盤の裏に沿う ----------
     const leaves = [];
     const doorM = M(0xd3d2c5, 0.25, 0.6), gasket = M(0x222222, 0.1, 0.8);
-    for (const [hx, k] of kind === 'bat' ? [[0, -1]] : [[W, 1]]) {
+    for (const [hx, k] of kind === 'bat' ? [[0, -1]] : [[W, 1]]) {   // 直流電源盤は列の中ほどなので、直角まで開く
       const leaf = new THREE.Group(); leaf.position.set(hx, 0, 0.004); leaf.userData.k = k; root.add(leaf);
       const s = k < 0 ? 1 : -1, lw = W - 0.006;
       const plate = new THREE.Mesh(new RoundedBoxGeometry(lw, h - 0.08, 0.022, 2, 0.004), doorM); plate.position.set(s * lw / 2, 0.06 + (h - 0.08) / 2, 0.011); leaf.add(plate);
-      const gk = new THREE.Mesh(new THREE.BoxGeometry(lw - 0.04, h - 0.12, 0.004), gasket); gk.position.set(s * lw / 2, 0.06 + (h - 0.08) / 2, -0.002); leaf.add(gk);
+      for (const [gw, gh, gx, gy] of [[lw - 0.04, 0.012, 0, (h - 0.14) / 2], [lw - 0.04, 0.012, 0, -(h - 0.14) / 2], [0.012, h - 0.14, (lw - 0.05) / 2, 0], [0.012, h - 0.14, -(lw - 0.05) / 2, 0]]) { const gk = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, 0.004), gasket); gk.position.set(s * lw / 2 + gx, 0.06 + (h - 0.08) / 2 + gy, -0.002); leaf.add(gk); }   // 扉の裏のパッキン（周りだけ）
       const hd = new THREE.Mesh(new RoundedBoxGeometry(0.03, 0.16, 0.03, 2, 0.008), M(0x8f9397, 0.6, 0.35)); hd.position.set(s * (lw - 0.07), 1.0, 0.035); for (const y of [0.5, 1.5]) { const lk = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.012, 16), zincM); lk.rotation.x = Math.PI / 2; lk.position.set(s * (lw - 0.07), y, 0.027); leaf.add(lk); }; leaf.add(hd);
       for (const y of [0.35, h - 0.35]) { const hg = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.08, 10), zincM); hg.position.set(s * 0.004, y, 0.022); leaf.add(hg); }
       leaves.push(leaf);
     }
     return {
-      leaves, light: { intensity: 0 }, cur: 0, target: 0, OPEN: 2.85, cab: [x0, x1, z0, z1], inside,
+      leaves, light: { intensity: 0 }, cur: 0, target: 0, OPEN: kind === 'rect' ? 1.62 : 2.85, cab: [x0, x1, z0, z1], inside,
       build, toggle() { build(); this.target = this.target ? 0 : this.OPEN; inside.visible = true; },
     };
   }
