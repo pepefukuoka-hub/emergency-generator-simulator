@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { makeHv } from './kiki-hv.js';
 import { roadLighting } from './road-lighting.js';
+import { makePart, PART } from './parts.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { makeCcrInside } from './ccr-inside.js';
 import { makeDcRear } from './dc-rear.js';
@@ -344,13 +345,12 @@ export function buildKiki({ M, canvasTex, plateMat }) {
       tube([P(0.25, l, 1.945), P(0.25, l + 0.004, 1.97), P(0.25, l, 1.995)], 0.0028, wireM); tube([P(0.25, l, 1.875), P(0.252, l - 0.004, 1.84), P(0.27, l, 1.8)], 0.0028, wireM); }
     for (let i = 0; i < 6; i++) face(M(0xffffff, 0, 0.6, { map: txtTex(['制御電源', '表示電源', '開閉器', 'コンデンサ', '投入回路', 'コンデンサ'][i] , 128, 40, 22) }), 0.278, 0.13 + i * 0.075, 1.835, 0.06, 0.018);
     // 小形の配線用遮断器3台・端子・ヒューズ2本（下の棚へ黄色い線）
-    for (let i = 0; i < 3; i++) { const l = 0.14 + i * 0.075;
-      RB(0.25, l, 1.665, 0.07, 0.058, 0.11, 0.006, M(0xe9e9e3, 0.1, 0.45)); B(0.213, 0.216, l - 0.02, l + 0.02, 1.68, 1.715, M(0xe9e2d2, 0.1, 0.5));
-      RB(0.21, l, 1.665, 0.02, 0.016, 0.026, 0.004, blackM); B(0.213, 0.215, l + 0.008, l + 0.022, 1.632, 1.646, M(0xf08a1a, 0.1, 0.5));
-      for (const d of [-0.016, 0, 0.016]) { tube([P(0.25, l + d, 1.61), P(0.25, l + d, 1.57), P(0.27, l + d, 1.535)], 0.0028, wireM); tube([P(0.25, l + d, 1.72), P(0.25, l + d, 1.76), P(0.265, l + d, 1.8)], 0.0028, wireM); } }
+    const part = (name, u, l, y, sc = 1, opts) => { const o = makePart(name, opts); o.rotation.y = Math.PI / 2; o.scale.setScalar(sc); o.position.set(...P(u, l, y)); g.add(o); return o; };   // 部品箱の共通部品（正面は盤の正面と同じ向き）
+    for (let i = 0; i < 3; i++) { const l = 0.14 + i * 0.075; part('cp', 0.3, l, 1.665 - 0.052, 1.1);
+      for (const d of [-0.013, 0.013]) { tube([P(0.25, l + d, 1.615), P(0.25, l + d, 1.57), P(0.27, l + d, 1.535)], 0.0028, wireM); tube([P(0.25, l + d, 1.715), P(0.25, l + d, 1.76), P(0.265, l + d, 1.8)], 0.0028, wireM); } }
     RB(0.26, 0.37, 1.665, 0.05, 0.03, 0.05, 0.004, M(0x4a4d52, 0.3, 0.5)); for (const d of [-0.006, 0.006]) tube([P(0.25, 0.37 + d, 1.64), P(0.255, 0.37 + d, 1.58), P(0.27, 0.37 + d, 1.535)], 0.0028, wireM);
     B(0.285, 0.295, 0.41, 0.56, 1.655, 1.675, M(0xc9cbcd, 0.75, 0.3));
-    for (const l of [0.45, 0.51]) { RB(0.25, l, 1.665, 0.06, 0.036, 0.08, 0.006, M(0xf1f1ec, 0.05, 0.4)); const cy = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.02, 20), M(0xd8d8d2, 0.1, 0.35)); cy.rotation.z = Math.PI / 2; cy.position.set(...P(0.21, l, 1.675)); g.add(cy);
+    for (const l of [0.45, 0.51]) { part('fuse', 0.285, l, 1.665 - 0.039);
       tube([P(0.25, l, 1.62), P(0.25, l, 1.57), P(0.27, l, 1.535)], 0.0028, wireM); }
     // 右の縦ダクトと、上から下りるケーブルの束
     B(0.2, 0.3, 0.635, 0.69, 1.3, h - 0.03, ductM(60, true));
@@ -359,15 +359,10 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     tube([P(0.3, 0.18, 1.06), P(0.24, 0.1, 1.0), P(0.26, 0.04, 1.1), P(0.3, 0.035, 1.35), P(0.33, 0.035, 1.6)], 0.014, M(0xa8acb2, 0.5, 0.45));
     // ② 真空電磁接触器の引出し：黒い開口、前板、取っ手2本、赤・青の制御プラグ、引出しの台（真ちゅう色）
     B(0.32, 0.34, 0.12, 0.62, 0.93, 1.47, blackM); B(0.2, 0.32, 0.12, 0.14, 0.93, 1.47, blackM); B(0.2, 0.32, 0.6, 0.62, 0.93, 1.47, inM);
-    B(0.24, 0.32, 0.145, 0.555, 0.98, 1.46, M(0xd0ccbd, 0.2, 0.55)); face(M(0xffffff, 0.15, 0.55, { map: vcsTex }), 0.239, 0.35, 1.22, 0.41, 0.48);
-    for (const l of [0.2, 0.5]) { const hdl = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.12, 6, 12), M(0x8b8f95, 0.6, 0.35)); hdl.position.set(...P(0.215, l, 1.2)); g.add(hdl);
-      for (const dy of [-0.06, 0.06]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.025, 10), M(0x8b8f95, 0.6, 0.35)); st.rotation.z = Math.PI / 2; st.position.set(...P(0.228, l, 1.2 + dy)); g.add(st); } }
-    for (const [l, col] of [[0.24, 0xd8232a], [0.3, 0x1f4fd8]]) { RB(0.225, l, 1.045, 0.035, 0.05, 0.04, 0.005, M(col, 0.1, 0.4)); RB(0.205, l, 1.045, 0.012, 0.03, 0.022, 0.003, M(0x2a2a2a, 0.2, 0.5));
-      for (let t = 0; t < 4; t++) tube([P(0.2, l - 0.012 + t * 0.008, 1.06), P(0.18, l + 0.01 + t * 0.006, 1.1), P(0.19, l - 0.04, 1.08), P(0.27, 0.18, 1.05)], 0.0026, wireM); }
-    B(0.15, 0.33, 0.14, 0.6, 0.955, 0.972, M(0xb9a24a, 0.75, 0.35)); for (const l of [0.14, 0.59]) B(0.15, 0.33, l, l + 0.012, 0.972, 1.0, M(0xb9a24a, 0.75, 0.35));
-    B(0.2, 0.3, 0.34, 0.45, 0.972, 0.976, M(0xc7c09c, 0.6, 0.4)); B(0.16, 0.2, 0.33, 0.36, 0.972, 0.975, M(0xd8232a, 0.1, 0.5));
+    // 本体と台：部品箱の共通部品（取っ手・4色の差し込みプラグと線・注意の札・クロメートの台・インタロックの板まで含む）
+    { const V = PART.vmc, sc = 0.41 / V.W; part('vmc', 0.24 + V.front * sc, 0.35, 0.976, sc, { tag: '88C' + k }); }
     // 88C の札（引出しの右上と、盤の右側）
-    const tg = txtTex('88C' + k, 96, 40, 26); for (const l of [0.48, 0.585]) face(M(0xffffff, 0, 0.6, { map: tg }), l < 0.5 ? 0.237 : 0.198, l, 1.43, 0.05, 0.022);
+    face(M(0xffffff, 0, 0.6, { map: txtTex('88C' + k, 96, 40, 26) }), 0.198, 0.585, 1.43, 0.05, 0.022);
     // ③ 棚と、下の化粧板
     B(0.17, CAPD, 0.02, wd - 0.02, 0.86, 0.93, inM); B(0.165, 0.18, 0.02, wd - 0.02, 0.86, 0.935, M(0xe3e0d4, 0.15, 0.6));
     B(0.18, 0.2, 0.02, wd - 0.02, 0.08, 0.86, inM); face(M(0xffffff, 0.15, 0.6, { map: lowTex }), 0.179, wd / 2, 0.47, wd - 0.06, 0.76);
@@ -384,7 +379,7 @@ export function buildKiki({ M, canvasTex, plateMat }) {
     D(-0.11, -0.026, 0.82, 2.12, 0.07, 0.12, ductM(80, true));
     for (const y of [2.09, 1.64, 1.1, 0.84]) D(-0.13, -0.026, y - 0.03, y + 0.03, 0.12, 0.52, ductM(26));
     // 補助リレー（ソケット付き。黒・黄色い線がダクトへ）
-    const relay = (z, y) => { DR(-0.055, y, z, 0.05, 0.05, 0.045, 0.004, blackM); D(-0.083, -0.079, y - 0.012, y + 0.012, z - 0.016, z + 0.016, M(0x3f4247, 0.3, 0.5));
+    const relay = (z, y) => { const o = makePart('relay'); o.rotation.y = -Math.PI / 2; o.scale.setScalar(1.15); o.position.set(-0.026, y - 0.042, z); lg.add(o);
       for (const dz of [-0.012, 0, 0.012]) DT([[-0.06, y + 0.025, z + dz], [-0.07, y + 0.05, z + dz], [-0.075, y + (y > 1.2 ? 0.08 : 0.06), z + dz + 0.01]], 0.0024, wireM); };
     relay(0.3, 1.58); relay(0.36, 1.58); relay(0.3, 1.17); relay(0.27, 1.01); relay(0.33, 1.01); relay(0.27, 0.92); relay(0.36, 0.92); relay(0.27, 0.75); relay(0.33, 0.75);
     D(-0.05, -0.026, 2.13, 2.17, 0.15, 0.4, M(0xc9cbcd, 0.75, 0.3)); for (let i = 0; i < 9; i++) { D(-0.07, -0.05, 2.12, 2.18, 0.16 + i * 0.026, 0.18 + i * 0.026, blackM); DT([[-0.06, 2.12, 0.17 + i * 0.026], [-0.065, 2.0, 0.15 + i * 0.01], [-0.07, 1.9, 0.1]], 0.0024, wireM); }
