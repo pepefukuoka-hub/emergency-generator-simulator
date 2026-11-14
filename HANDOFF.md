@@ -9,7 +9,7 @@
 - 選択直後の歩行モード開始予約が3Dクリックを妨げる競合を修正。終了・PRT再選択で従来モデルに復元。
 - 確認：ビルド、OCRの6項目テスト、diff検査。通常requestAnimationFrameが動くChromiumで3D表示、実マウスの調整器操作、9対象保持、PRT復元、ページエラーなし。画面目視。実スマホ・実機は未確認。
 - 未実装：実機と同じ結線操作・負担特性、OVR/UVR/GR/DGR/CB/PUN。OCRは教材近似。3Dの電圧計はOCR練習中ゼロ表示、未対応操作には明示。実試験を完全再現したものではない。
-- 公開先は既存ハブURL。公開コミット・SHA照合はこの項目へ追記する。開発用mainは今回未更新。
+- 公開完了：https://pepefukuoka-hub.github.io/work/hatsudenki-sim/ 。ハブ192683085ea39abec6962889f57709a36216fa5a、Pages実行43583937842はsuccess。公開HTMLとdocs/index.htmlのSHA-256一致：9c622e0bd9855a13552d582bf361b51eebe05102aab20b937ca1d6f232d29727。ソースf026799（公開記録の最新コミットはgit log参照）。開発用mainは今回未更新。
 - 次：実機型式別特性と結線モデルを公式資料に照合し拡張。調査メモはresearch/ip-r5000/。環境/workspace/emergency-generator-simulator、ハブ/workspace/portfolio-hub。Chromiumは--use-gl=angle --use-angle=swiftshader。検証スクリプト/tmp/ip3d-live.cjsと画像/workspace/ip-r5000/review/ip3d-live.pngはローカルのみ。
 
 ## 過去の状態（2026-11-14、IP-R5000 OCR練習版の公開完了）
